@@ -1,0 +1,19 @@
+[project]
+name = "iit-framework"
+version = "0.2.0"
+description = "Framework para el problema de Mínima Partición de Información (MIP) usando IIT."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.0",
+    "scipy>=1.17",
+    "pyphi>=1.2.0",
+    "pyinstrument>=5.1",
+    "pandas>=2.3",
+    "openpyxl>=3.1",
+    "pyttsx3>=2.98",
+    "colorama>=0.4.5",
+]
+
+[tool.uv]
+dev-dependencies = []

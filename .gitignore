@@ -55,3 +55,11 @@ dist/
 build/
 
 .log
+
+# Outputs generados
+review/
+.logs/
+*.log
+
+# uv lock
+uv.lock
