@@ -6,7 +6,8 @@ import numpy as np
 from src.base.application import aplicacion
 from src.base.sia import SIA
 from src.constants.base import COLS_IDX, NET_LABEL, STR_ONE, TYPE_TAG
-from src.constants.tags import DUMMY_ARR, DUMMY_PARTITION, PYPHI_ANALYSIS_TAG, PYPHI_LABEL, PYPHI_STRATEGY_TAG
+from src.constants.tags import DUMMY_ARR, DUMMY_PARTITION
+from src.strategies.pyphi.tags import PYPHI_ANALYSIS_TAG, PYPHI_LABEL, PYPHI_STRATEGY_TAG
 from src.funcs.format import fmt_biparticion
 from src.funcs.labels import ABECEDARY, lil_endian
 from src.io.logger import SafeLogger

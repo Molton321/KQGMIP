@@ -11,7 +11,7 @@ Configura los parámetros ABCD del sistema y elige la estrategia:
 from src.io.manager import Manager
 from src.strategies.brute_force import BruteForce
 # from src.strategies.q_nodes import QNodes
-# from src.strategies.pyphi_wrapper import Phi
+# from src.strategies.pyphi import Phi
 # from src.strategies.geometric import GeometricSIA
 
 

@@ -1,0 +1,3 @@
+GEOMETRIC_LABEL: str = "Geometric"
+GEOMETRIC_STRATEGY_TAG: str = f"{GEOMETRIC_LABEL}_strategy"
+GEOMETRIC_ANALYSIS_TAG: str = f"{GEOMETRIC_LABEL}_analysis"

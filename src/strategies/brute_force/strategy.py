@@ -9,14 +9,12 @@ from numpy.typing import NDArray
 from src.base.application import aplicacion
 from src.base.sia import SIA
 from src.constants.base import ACTUAL, COLS_IDX, EFECTO, EXCEL_EXTENSION, FLOAT_ZERO, NET_LABEL, TYPE_TAG
-from src.constants.tags import (
+from src.constants.tags import DUMMY_ARR, DUMMY_EMD, ERROR_PARTITION
+from src.strategies.brute_force.tags import (
     BRUTEFORCE_ANALYSIS_TAG,
     BRUTEFORCE_FULL_ANALYSIS_TAG,
     BRUTEFORCE_LABEL,
     BRUTEFORCE_STRATEGY_TAG,
-    DUMMY_ARR,
-    DUMMY_EMD,
-    ERROR_PARTITION,
 )
 from src.funcs.emd import seleccionar_emd
 from src.funcs.format import fmt_biparticion

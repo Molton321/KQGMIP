@@ -6,7 +6,7 @@ import numpy as np
 from src.base.application import aplicacion
 from src.base.sia import SIA
 from src.constants.base import ACTUAL, COLS_IDX, EFECTO, INFTY_POS, INT_ZERO, LAST_IDX, NET_LABEL, TYPE_TAG
-from src.constants.tags import QNODES_ANALYSIS_TAG, QNODES_LABEL, QNODES_STRATEGY_TAG
+from src.strategies.q_nodes.tags import QNODES_ANALYSIS_TAG, QNODES_LABEL, QNODES_STRATEGY_TAG
 from src.funcs.emd import emd_efecto
 from src.funcs.format import fmt_biparticion_q
 from src.funcs.labels import ABECEDARY
