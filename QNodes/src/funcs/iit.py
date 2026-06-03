@@ -16,6 +16,9 @@ from src.models.enums.distance import MetricDistance
 from src.models.enums.notation import Notation
 from src.models.enums.temporal_emd import TimeEMD
 
+# TODO: unificar con GeoMIP/funcs/base.py
+# get_labels, ABECEDARY, emd_efecto y lil_endian son equivalentes a GeoMIP/funcs/base.py
+
 
 # @cache
 def get_labels(n: int) -> tuple[str, ...]:

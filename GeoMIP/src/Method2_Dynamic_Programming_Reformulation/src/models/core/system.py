@@ -245,23 +245,17 @@ class System:
         )
         return new_sys
 
-    def distribucion_marginal(self):
-        """
-        Partiendo de idealmente un subsistema o una bipartición como entrada, se seleccionana los nodos/elementos cuando su estado es OFF o inactivo para cada uno de ellos, mediante la propiedad de las distribuciones marginales, esto nos permite calcular más eficientemente la EMD-Effect, logrando así determinar un coste para dar comparación entre idealmente, un sub-sistema y una bipartición. Hemos de aplicar una reversión en la selección del estado inicial puesto
-
-        Returns:
-            NDArray[np.float32]: Este arreglo contiene cada elemento/variable de forma ordenada y consecutiva seleccionado específicamente en la clave formada por el estado inicial.
-        """
-        probabilidad: float
-        distribuciones = np.empty(self.indices_ncubos.size, dtype=np.float32)
-
+    def distribucion_marginal(self) -> np.ndarray:
+        result = np.empty(len(self.ncubos), dtype=np.float32)
         for i, ncubo in enumerate(self.ncubos):
-            probabilidad = ncubo.data
-            if ncubo.dims.size:
-                sub_estado_inicial = tuple(self.estado_inicial[j] for j in ncubo.dims)
-                probabilidad = ncubo.data[seleccionar_subestado(sub_estado_inicial)]
-            distribuciones[i] = 1 - probabilidad
-        return distribuciones
+            if ncubo.dims.size == 0:
+                result[i] = 1.0 - float(ncubo.data)
+            else:
+                idx = 0
+                for bit_pos, dim in enumerate(reversed(ncubo.dims.tolist())):
+                    idx |= int(self.estado_inicial[dim]) << bit_pos
+                result[i] = 1.0 - ncubo.data.ravel()[idx]
+        return result
 
     def __str__(self) -> str:
         sub_dims = self.dims_ncubos

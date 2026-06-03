@@ -71,17 +71,22 @@ class GeometricSIA(SIA):
         )
 
 
-        self._flat_data = []
-        for idx, ncubo in enumerate(self.sia_subsistema.ncubos):
-            # garantías: ncubo.data.shape == (2,2,...,2)
-            # np.ravel() lo aplana. El orden ‘C’ equivale 
-            # a little-endian si tus tuples están invertidas.
-            self._flat_data.append(ncubo.data.ravel())
+        self._flat_matrix = np.stack(
+            [ncubo.data.ravel() for ncubo in self.sia_subsistema.ncubos]
+        )  # shape: (n_ncubos, 2^n_dims)
 
         self.vertices = set(presente + futuro)
         dims = self.sia_subsistema.dims_ncubos
         self.estado_inicial = self.sia_subsistema.estado_inicial[dims]
         self.estado_final = 1 - self.estado_inicial
+
+        # Precomputar índice entero de cada estado posible
+        n_dims = len(self.estado_inicial)
+        self._estado_a_idx: dict[tuple, int] = {}
+        for bits in range(1 << n_dims):
+            estado = tuple((bits >> i) & 1 for i in range(n_dims))
+            self._estado_a_idx[estado] = bits
+
         mip = self.find_mip()
         # print(mip)
         fmt_mip = fmt_biparte_q(list(mip), self.nodes_complement(mip))
@@ -119,6 +124,9 @@ class GeometricSIA(SIA):
             emd = emd_efecto(dist, self.sia_dists_marginales)
             key = [(0,nodo) for nodo in presentes]
             key.extend([(1,nodo) for nodo in futuros])
+            if emd == 0.0:
+                self.memoria_particiones[tuple(key)] = (0.0, dist)
+                return tuple(key)
             # print(fmt_biparte_q(list(key), self.nodes_complement(key)))
             self.memoria_particiones[tuple(key)] = (emd, dist)
         return min(
@@ -162,15 +170,13 @@ class GeometricSIA(SIA):
         # index_final = tuple(np.array(estado_final)[::-1])
 
 
-        estado_ini_int = int("".join(map(str, estado_inicial[::-1])), 2)
-        estado_fin_int = int("".join(map(str, estado_final[::-1])), 2)
+        idx_ini = self._estado_a_idx[tuple(estado_inicial)]
+        idx_fin = self._estado_a_idx[tuple(estado_final)]
 
-        # Con eso, cada flat_data[idx][...] ya te da directamente X[i] o X[j].
         diffs = np.abs(
-            np.array([flat[estado_ini_int] for flat in self._flat_data])
-        - np.array([flat[estado_fin_int] for flat in self._flat_data])
+            self._flat_matrix[:, idx_ini] - self._flat_matrix[:, idx_fin]
         )
-        self.tabla_transiciones[key] = diffs.tolist()
+        self.tabla_transiciones[key] = (diffs * factor).tolist()
         # for idx in ncubos:
         #     self.tabla_transiciones[key][idx] = (abs(self.sia_subsistema.ncubos[idx].data[index_inicial]-self.sia_subsistema.ncubos[idx].data[index_final]))
         
