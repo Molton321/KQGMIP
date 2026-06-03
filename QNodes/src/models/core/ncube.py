@@ -125,7 +125,8 @@ class NCube:
 
             Se han agrupado los valores del n-cubo por promedio, dejando los remanentes en la dimension 0.
         """
-        if tuple(ejes) not in self.memo:
+        clave = ejes.tobytes()
+        if clave not in self.memo:
             marginable_axis = np.intersect1d(ejes, self.dims)
             if not marginable_axis.size:
                 return self
@@ -139,13 +140,13 @@ class NCube:
                 [d for d in self.dims if d not in marginable_axis],
                 dtype=np.int8,
             )
-            self.memo[tuple(ejes)] = (
+            self.memo[clave] = (
                 np.mean(self.data, axis=ejes_locales, keepdims=False),
                 new_dims,
             )
         return NCube(
-            data=self.memo[tuple(ejes)][0],
-            dims=self.memo[tuple(ejes)][1],
+            data=self.memo[clave][0],
+            dims=self.memo[clave][1],
             indice=self.indice,
         )
 
