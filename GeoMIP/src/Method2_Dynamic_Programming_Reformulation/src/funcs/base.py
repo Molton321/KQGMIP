@@ -5,7 +5,10 @@ from pathlib import Path
 
 import numpy as np
 from numpy.typing import NDArray
-from pyemd import emd
+try:
+    from pyemd import emd as _pyemd_emd
+except Exception:
+    _pyemd_emd = None
 
 from src.models.enums.distance import MetricDistance
 from src.models.enums.notation import Notation
@@ -78,7 +81,9 @@ def emd_causal(u: NDArray[np.float64], v: NDArray[np.float64]) -> float:
     np.fill_diagonal(costs, INT_ZERO)
 
     cost_mat: NDArray[np.float64] = np.array(costs, dtype=np.float64)
-    return emd(u, v, cost_mat)
+    if _pyemd_emd is None:
+        raise ImportError("pyemd/pot no está disponible. emd_causal no puede ejecutarse.")
+    return _pyemd_emd(u, v, cost_mat)
 
 
 def hamming_distance(a: int, b: int) -> int:
