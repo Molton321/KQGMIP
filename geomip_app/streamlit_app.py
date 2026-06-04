@@ -23,7 +23,7 @@ from core.loader import (
     estado_a_string,
     stirling2,
 )
-from core.runner import ejecutar_estrategias
+from core.runner import ejecutar_estrategias, verificar_disponibilidad
 from core.comparator import tabla_speedup, validar_resultados
 from core.visualizer import graficar_distribucion, graficar_phi, graficar_radar, graficar_tiempo
 from core.exporter import exportar_csv, exportar_excel, exportar_json
@@ -48,6 +48,18 @@ st.markdown(
     "Comparación de estrategias para la **Mínima Partición de Información (MIP)** "
     "sobre redes definidas por una Matriz de Probabilidad de Transición (TPM)."
 )
+
+# Verificar disponibilidad de estrategias al inicio
+@st.cache_resource
+def _disponibilidad():
+    return verificar_disponibilidad()
+
+_disp = _disponibilidad()
+_no_disp = {k: v for k, v in _disp.items() if v is not True}
+if _no_disp:
+    with st.expander("⚠️ Algunas estrategias no están disponibles (ver detalle)", expanded=False):
+        for nombre, motivo in _no_disp.items():
+            st.warning(f"**{nombre}:** {motivo}")
 
 # ════════════════════════════════════════════════════════════════════════════
 # SESSION STATE
