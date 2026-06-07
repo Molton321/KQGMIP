@@ -293,3 +293,30 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
   - pendiente operativo: crear rama nueva dedicada en 20263 y publicar commit consolidado.
 - **IA:** la IA ejecutó la revisión completa de fase, aplicó el saneamiento KISS/DRY solicitado,
   revalidó los gates y dejó preparado el estado para el paso de integración en rama nueva.
+
+## 2026-06-07 (Fase 1 en rama nueva) — Implementación mínima del núcleo k-genérico
+
+- **Contexto:** el usuario autorizó continuar con Fase 1 bajo las reglas (correctitud primero,
+  sin código innecesario, KISS/DRY/SOLID).
+- **Acción (modelo de dominio):** añadido `src/models/core/partition.py` con clase `KPartition`
+  validada y documentada:
+  - normalización canónica de bloques,
+  - validaciones de disjunción/cobertura/no-vacuidad,
+  - firma determinista (`signature`) para memoización,
+  - constructor `from_blocks(...)` con entradas array-like.
+- **Acción (core):** añadido `System.k_partition(partition: KPartition)` en
+  `src/models/core/system.py` para reconstrucción de subsistema particionado por bloques k,
+  con validación explícita de universos presente/futuro.
+- **Acción (métrica):** añadido `delta_k(...)` en `src/funcs/emd.py`:
+  `δ_k = EMD(P(subsystem), P(partitioned_subsystem))`, retornando `(loss, partition_distribution)`.
+- **Acción (tests nuevos):**
+  - `tests/unit/test_kpartition_validation.py` (validez estructural y canonicidad);
+  - `tests/unit/test_delta_k_k2_equivalence.py` (regresión de equivalencia k=2 vs `bipartition`
+    legacy en N2A/N3A/N4A, 10 particiones no triviales por red).
+- **Acción (export core):** `src/models/core/__init__.py` ahora exporta `KPartition`.
+- **Parámetros reales de validación:**
+  - `uv run pytest -q` → **49 passed**;
+  - `uv run ruff check .` → **All checks passed**;
+  - `uv run mypy src` → **Success: no issues found in 33 source files**.
+- **IA:** la IA implementó la capa mínima de Fase 1, diseñó/ejecutó pruebas de regresión k=2 y
+  verificó calidad con gates completos.

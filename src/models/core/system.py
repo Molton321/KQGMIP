@@ -6,6 +6,7 @@ from src.constants.errors import ERROR_INCOMPATIBLE_SPACES
 from src.funcs.labels import reindex, select_state
 from src.models.base.application import application
 from src.models.core.ncube import NCube
+from src.models.core.partition import KPartition
 from src.models.enums.notation import Notation
 
 
@@ -109,6 +110,41 @@ class System:
             )
 
         new_system.ncubes = self.memo[key]
+        return new_system
+
+    def k_partition(self, partition: KPartition) -> System:
+        """Build a k-partitioned subsystem from a validated ``KPartition``.
+
+        For each future n-cube, this method keeps the mechanism dimensions paired
+        with that future block and marginalizes the remaining dimensions.
+        """
+        current_future_universe = tuple(sorted(int(i) for i in self.ncube_indices.tolist()))
+        current_present_universe = tuple(sorted(int(i) for i in self.ncube_dims.tolist()))
+
+        if partition.future_universe != current_future_universe:
+            raise ValueError(
+                "KPartition future universe does not match subsystem future indices. "
+                f"Expected {current_future_universe}, got {partition.future_universe}."
+            )
+        if partition.present_universe != current_present_universe:
+            raise ValueError(
+                "KPartition present universe does not match subsystem mechanism indices. "
+                f"Expected {current_present_universe}, got {partition.present_universe}."
+            )
+
+        future_to_mechanism: dict[int, NDArray[np.int8]] = {}
+        for purview_block, mechanism_block in partition.signature:
+            mechanism_arr = np.array(mechanism_block, dtype=np.int8)
+            for future_idx in purview_block:
+                future_to_mechanism[future_idx] = mechanism_arr
+
+        new_system = System.__new__(System)
+        new_system.initial_state = self.initial_state
+        new_system.memo = {}
+        new_system.ncubes = tuple(
+            cube.marginalize(np.setdiff1d(cube.dims, future_to_mechanism[cube.index]))
+            for cube in self.ncubes
+        )
         return new_system
 
     def marginal_distribution(self) -> NDArray[np.float32]:

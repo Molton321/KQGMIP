@@ -5,6 +5,8 @@ from numpy.typing import NDArray
 
 from src.constants.base import INT_ZERO, STR_ONE
 from src.models.base.application import application
+from src.models.core.partition import KPartition
+from src.models.core.system import System
 from src.models.enums.distance import MetricDistance
 from src.models.enums.temporal_emd import TimeEMD
 
@@ -81,3 +83,27 @@ def select_distance() -> Callable[[int, int], int]:
 
 def hamming_distance(a: int, b: int) -> int:
     return bin(a ^ b).count(STR_ONE)
+
+
+def delta_k(
+    subsystem: System,
+    partition: KPartition,
+    baseline_distribution: NDArray[np.float32] | None = None,
+) -> tuple[float, NDArray[np.float32]]:
+    """Compute δ_k for a validated k-partition on a subsystem.
+
+    Definition used in this project:
+    δ_k = EMD(P(subsystem), P(partitioned_subsystem))
+
+    where ``partitioned_subsystem`` is built by the tensor-product style
+    reconstruction induced by the paired purview/mechanism blocks.
+
+    Returns:
+        A tuple ``(loss, partition_distribution)``.
+    """
+    original = baseline_distribution
+    if original is None:
+        original = subsystem.marginal_distribution()
+
+    partitioned_distribution = subsystem.k_partition(partition).marginal_distribution()
+    return effect_emd(original, partitioned_distribution), partitioned_distribution
