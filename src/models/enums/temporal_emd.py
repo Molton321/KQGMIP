@@ -2,8 +2,8 @@ from enum import Enum
 
 
 class TimeEMD(Enum):
-    """Variantes temporales de la Earth Mover's Distance."""
+    """Temporal variants of the Earth Mover's Distance."""
 
-    EMD_EFECTO = "emd-effect"
-    EMD_CAUSA = "emd-cause"
-    EMD_INTEGRADA = "emd-cause-effect"
+    EMD_EFFECT = "emd-effect"
+    EMD_CAUSE = "emd-cause"
+    EMD_INTEGRATED = "emd-cause-effect"

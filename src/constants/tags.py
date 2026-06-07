@@ -1,7 +1,8 @@
-# Constantes compartidas por todas las estrategias
+# Constants shared across all strategies.
+import numpy as np
 
 DUMMY_EMD: int = -1
-DUMMY_ARR: list[int] = [0]
+DUMMY_ARR: np.ndarray = np.zeros(1, dtype=np.float32)
 ERROR_PARTITION: str = "No hay suficientes elementos para particionar.\n"
 DUMMY_PARTITION: str = "NO-PARTITION\n"
 

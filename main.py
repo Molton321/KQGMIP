@@ -1,32 +1,33 @@
 """
-Punto de entrada para análisis de un único subsistema.
+Entry point for the analysis of a single subsystem.
 
-Configura los parámetros ABCD del sistema y elige la estrategia:
-  - BruteForce   → fuerza bruta (exacta, exponencial)
-  - QNodes       → greedy submodular (rápida, polinomial)
-  - Phi          → librería pyphi de referencia
-  - GeometricSIA → programación dinámica geométrica (GeoMIP)
+Sets the system's ABCD parameters and chooses the strategy:
+  - BruteForce   → brute force (exact, exponential)
+  - QNodes       → greedy submodular (fast, polynomial)
+  - Phi          → reference pyphi library
+  - GeometricSIA → geometric dynamic programming (GeoMIP)
 """
 
-from src.io.manager import Manager
-from src.strategies.brute_force import BruteForce
-# from src.strategies.q_nodes import QNodes
-# from src.strategies.pyphi import Phi
-# from src.strategies.geometric import GeometricSIA
+from src.controllers.manager import Manager
+from src.controllers.strategies.q_nodes import QNodes
+
+# from src.controllers.strategies.phi import Phi
+# from src.controllers.strategies.geometric import GeometricSIA
 
 
-def iniciar():
-    # ── Parámetros del subsistema ──────────────────────────────────────────
-    # Cada cadena tiene un bit por nodo (0 = excluir, 1 = incluir).
-    estado_inicial = "1000"   # Estado en t=0
-    condiciones    = "1110"   # Condiciones de fondo: 0 → condicionar variable
-    alcance        = "1110"   # Alcance futuro:       0 → marginalizar variable
-    mecanismo      = "1110"   # Mecanismo presente:   0 → marginalizar variable
+def run():
+    # ── Subsystem parameters ───────────────────────────────────────────────
+    # Each string holds one bit per node (0 = exclude, 1 = include).
+    initial_state = "1111011011"  # State at t=0
+    conditions = "1110001100"  # Background conditions: 0 → condition the variable
+    purview = "0011101111"  # Future purview:        0 → marginalize the variable
+    mechanism = "1000111111"  # Present mechanism:     0 → marginalize the variable
+
     # ───────────────────────────────────────────────────────────────────────
 
-    gestor = Manager(estado_inicial)
-    tpm = gestor.cargar_red()
+    manager = Manager(initial_state)
+    tpm = manager.load_network()
 
-    analizador = BruteForce(tpm, estado_inicial)
-    solucion = analizador.aplicar_estrategia(condiciones, alcance, mecanismo)
-    print(solucion)
+    analyzer = QNodes(tpm, initial_state)
+    solution = analyzer.apply_strategy(conditions, purview, mechanism)
+    print(solution)

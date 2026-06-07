@@ -1,13 +1,13 @@
 import numpy as np
 from numpy.typing import NDArray
 
-from src.constants.base import ABC_START, EMPTY_STR, STR_ONE, VOID_STR
-from src.base.application import aplicacion
+from src.constants.base import ABC_START, EMPTY_STR, VOID_STR
+from src.models.base.application import application
 from src.models.enums.notation import Notation
 
 
 def get_labels(n: int) -> tuple[str, ...]:
-    """Genera etiquetas alfanuméricas estilo Excel (A, B, ..., Z, AA, AB, ...)."""
+    """Generate Excel-style alphanumeric labels (A, B, ..., Z, AA, AB, ...)."""
     def get_excel_column(n: int) -> str:
         if n <= 0:
             return ""
@@ -20,8 +20,8 @@ ABECEDARY: tuple[str, ...] = get_labels(40)
 LOWER_ABECEDARY: list[str] = [letter.lower() for letter in ABECEDARY]
 
 
-def literales(remaining_vars: NDArray[np.int8], lowercase: bool = False) -> str:
-    """Convierte índices de variables a sus etiquetas literales (A, B, C...)."""
+def literals(remaining_vars: NDArray[np.int8], lowercase: bool = False) -> str:
+    """Convert variable indices to their literal labels (A, B, C...)."""
     return (
         EMPTY_STR.join(
             ABECEDARY[i].lower() if lowercase else ABECEDARY[i]
@@ -32,17 +32,8 @@ def literales(remaining_vars: NDArray[np.int8], lowercase: bool = False) -> str:
     )
 
 
-def dec2bin(decimal: int, width: int) -> str:
-    return format(decimal, f"0{width}b")
-
-
-def estados_binarios(n: int) -> list[str]:
-    """Genera todos los estados binarios no nulos para n nodos."""
-    return [dec2bin(i, n) for i in range(1 << n)][1:]
-
-
 def lil_endian(n: int) -> np.ndarray:
-    """Genera la permutación de índices en notación little-endian."""
+    """Build the little-endian index permutation."""
     if n <= 0:
         return np.array([0], dtype=np.uint32)
 
@@ -55,12 +46,14 @@ def lil_endian(n: int) -> np.ndarray:
     block_result = np.zeros(block_size, dtype=np.uint32)
     bit_group_size = 6 if n > 24 else 4
 
+    # Process the permutation in blocks to bound peak memory for large n.
     for start in range(0, size, block_size):
         end = min(start + block_size, size)
         current_size = end - start
         block_result[:current_size] = 0
         block_indices = np.arange(start, end, dtype=np.uint32)
 
+        # Reverse the bit order in groups, accumulating into block_result.
         for base_bit in range(0, n, bit_group_size):
             bits_remaining = min(bit_group_size, n - base_bit)
             if bits_remaining <= 0:
@@ -81,37 +74,37 @@ def big_endian(n: int) -> np.ndarray:
     return np.array(range(n), dtype=np.uint32)
 
 
-def reindexar(n: int) -> np.ndarray:
-    """Selecciona la permutación de índices según la notación configurada."""
-    notacion = aplicacion.notacion_indexado
-    if isinstance(notacion, Notation):
-        notacion = notacion.value
+def reindex(n: int) -> np.ndarray:
+    """Select the index permutation according to the configured notation."""
+    notation = application.indexing_notation
+    if isinstance(notation, Notation):
+        notation = notation.value
 
-    notaciones = {
+    notations = {
         Notation.BIG_ENDIAN.value: big_endian(n),
         Notation.LIL_ENDIAN.value: lil_endian(n),
     }
-    if notacion not in notaciones:
+    if notation not in notations:
         raise ValueError(
-            f"Notación no soportada: '{notacion}'. "
-            f"Opciones: {', '.join(sorted(notaciones))}"
+            f"Notación no soportada: '{notation}'. "
+            f"Opciones: {', '.join(sorted(notations))}"
         )
-    return notaciones[notacion]
+    return notations[notation]
 
 
-def seleccionar_estado(subestado: tuple) -> tuple:
-    """Ajusta el orden de acceso al n-cubo según la notación configurada."""
-    notacion = aplicacion.notacion_indexado
-    if isinstance(notacion, Notation):
-        notacion = notacion.value
+def select_state(substate: tuple) -> tuple:
+    """Adjust the n-cube access order according to the configured notation."""
+    notation = application.indexing_notation
+    if isinstance(notation, Notation):
+        notation = notation.value
 
-    notaciones = {
-        Notation.BIG_ENDIAN.value: subestado,
-        Notation.LIL_ENDIAN.value: subestado[::-1],
+    notations = {
+        Notation.BIG_ENDIAN.value: substate,
+        Notation.LIL_ENDIAN.value: substate[::-1],
     }
-    if notacion not in notaciones:
+    if notation not in notations:
         raise ValueError(
-            f"Notación no soportada: '{notacion}'. "
-            f"Opciones: {', '.join(sorted(notaciones))}"
+            f"Notación no soportada: '{notation}'. "
+            f"Opciones: {', '.join(sorted(notations))}"
         )
-    return notaciones[notacion]
+    return notations[notation]

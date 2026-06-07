@@ -2,8 +2,8 @@ from enum import Enum
 
 
 class MetricDistance(Enum):
-    """Métricas de distancia para el cálculo de EMD causal."""
+    """Ground distance metrics for the causal EMD computation."""
 
     HAMMING = "distancia-hamming"
     MANHATTAN = "distancia-manhattan"
-    EUCLIDIANA = "distancia-euclidiana"
+    EUCLIDEAN = "distancia-euclidiana"

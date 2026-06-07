@@ -1,27 +1,28 @@
 """
-Punto de entrada principal del framework IIT.
+Main entry point of the IIT framework.
 
-Uso:
-    uv run exec.py              → análisis individual (main.py)
-    uv run exec.py --batch      → procesamiento por lotes desde Excel (main_batch.py)
+Usage:
+    uv run exec.py              → single analysis (main.py)
+    uv run exec.py --batch      → batch processing from Excel (main_batch.py)
 
-Configuraciones de la aplicación disponibles en src/base/application.py.
+Application settings live in src/models/base/application.py.
 """
 
 import sys
-from src.base.application import aplicacion
+
+from src.models.base.application import application
 
 
 def main():
-    aplicacion.activar_profiling()
-    aplicacion.set_pagina_red_muestra("A")
+    application.enable_profiling()
+    application.set_sample_network_page("A")
 
     if "--batch" in sys.argv:
-        from main_batch import iniciar
+        from main_batch import run
     else:
-        from main import iniciar
+        from main import run
 
-    iniciar()
+    run()
 
 
 if __name__ == "__main__":

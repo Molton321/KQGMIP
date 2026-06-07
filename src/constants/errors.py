@@ -1,8 +1,8 @@
-def ERROR_ESPACIOS_INCOMPATIBLES(espacio: int) -> str:
-    return f"Estado inicial debe tener longitud {espacio}"
-
-
 ERROR_INCOMPATIBLE_SIZES: str = (
-    "Todos los parámetros (estado_inicial, condicion, alcance, mecanismo) "
+    "Todos los parámetros (initial_state, condition, purview, mechanism) "
     "deben tener la misma longitud."
 )
+
+
+def ERROR_INCOMPATIBLE_SPACES(space: int) -> str:
+    return f"Estado inicial debe tener longitud {space}"

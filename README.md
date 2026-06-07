@@ -1,6 +1,11 @@
-# Framework IIT — Mínima Partición de Información (MIP)
+# K_QGMIP — Mínima Partición de Información (MIP) y k-particiones
 
-Framework de investigación para analizar la **Integrated Information Theory (IIT)** y encontrar la **Minimal Information Partition (MIP)** de sistemas binarios. Compara cuatro estrategias algorítmicas sobre la misma base de código unificada.
+Proyecto **K_QGMIP** (Teoría de la Información Integrada, IIT) para encontrar la **Minimal
+Information Partition (MIP)** de sistemas binarios y extenderla a **k-particiones** (k ∈ {2..5})
+mediante las estrategias geométrica (GeoMIP → KGeoMIP) y submodular (QNodes → KQNodes).
+
+> README en reescritura completa en la Fase 8 (ver `PLANNING.md`). El nombre y la hoja de
+> ruta oficiales están en `docs/Proyecto_KQMIP.md`.
 
 ---
 

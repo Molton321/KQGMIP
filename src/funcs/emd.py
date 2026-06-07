@@ -1,81 +1,82 @@
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 from numpy.typing import NDArray
 
 from src.constants.base import INT_ZERO, STR_ONE
-from src.base.application import aplicacion
+from src.models.base.application import application
 from src.models.enums.distance import MetricDistance
 from src.models.enums.temporal_emd import TimeEMD
 
 
-def emd_efecto(u: NDArray[np.float32], v: NDArray[np.float32]) -> float:
+def effect_emd(u: NDArray[np.float32], v: NDArray[np.float32]) -> float:
     """
-    EMD analítica para el repertorio efecto (presente → futuro).
+    Analytic EMD for the effect repertoire (present → future).
 
-    Bajo independencia condicional, la EMD entre dos distribuciones marginales
-    es la suma de las diferencias absolutas nodo a nodo.
+    Under conditional independence, the EMD between two marginal distributions
+    is the sum of the node-by-node absolute differences.
     """
     return float(np.sum(np.abs(u - v)))
 
 
-def emd_causal(u: NDArray[np.float64], v: NDArray[np.float64]) -> float:
+def causal_emd(u: NDArray[np.float64], v: NDArray[np.float64]) -> float:
     """
-    EMD para el repertorio causal (presente → pasado) usando distancia de Hamming
-    como métrica de suelo. Requiere el paquete `pyemd`.
+    EMD for the causal repertoire (present → past) using the Hamming distance
+    as the ground metric. Requires the `pyemd` package.
     """
     try:
         from pyemd import emd
 
         n = u.size
-        costos: NDArray[np.float64] = np.empty((n, n))
-        distancia = seleccionar_distancia()
+        costs: NDArray[np.float64] = np.empty((n, n))
+        distance = select_distance()
 
+        # Build the symmetric ground-cost matrix from the configured distance.
         for i in range(n):
-            costos[i, :i] = [distancia(i, j) for j in range(i)]
-            costos[:i, i] = costos[i, :i]
-        np.fill_diagonal(costos, INT_ZERO)
+            costs[i, :i] = [distance(i, j) for j in range(i)]
+            costs[:i, i] = costs[i, :i]
+        np.fill_diagonal(costs, INT_ZERO)
 
-        return emd(u.astype(np.float64), v.astype(np.float64), costos)
-    except ImportError:
+        return emd(u.astype(np.float64), v.astype(np.float64), costs)
+    except ImportError as err:
         raise ImportError(
             "pyemd no está instalado. Instálalo con: pip install pyemd"
-        )
+        ) from err
 
 
-def seleccionar_emd() -> Callable[[NDArray[np.float32], NDArray[np.float32]], float]:
-    """Devuelve la función EMD configurada en la aplicación."""
-    emd_metricas = {
-        TimeEMD.EMD_EFECTO.value: emd_efecto,
-        TimeEMD.EMD_CAUSA.value: emd_causal,
+def select_emd() -> Callable[[NDArray[np.float32], NDArray[np.float32]], float]:
+    """Return the EMD function configured in the application."""
+    emd_metrics: dict[str, Callable[..., float]] = {
+        TimeEMD.EMD_EFFECT.value: effect_emd,
+        TimeEMD.EMD_CAUSE.value: causal_emd,
     }
-    tiempo = aplicacion.tiempo_emd
-    if isinstance(tiempo, TimeEMD):
-        tiempo = tiempo.value
+    time = application.emd_time
+    if isinstance(time, TimeEMD):
+        time = time.value
 
-    if tiempo not in emd_metricas:
+    if time not in emd_metrics:
         raise ValueError(
-            f"Tiempo EMD no soportado: '{tiempo}'. "
-            f"Opciones: {', '.join(sorted(emd_metricas))}"
+            f"Tiempo EMD no soportado: '{time}'. "
+            f"Opciones: {', '.join(sorted(emd_metrics))}"
         )
-    return emd_metricas[tiempo]
+    return emd_metrics[time]
 
 
-def seleccionar_distancia() -> Callable[[int, int], int]:
-    """Devuelve la función de distancia de suelo configurada (para EMD causal)."""
-    distancias = {
+def select_distance() -> Callable[[int, int], int]:
+    """Return the configured ground-distance function (for the causal EMD)."""
+    distances = {
         MetricDistance.HAMMING.value: hamming_distance,
     }
-    distancia = aplicacion.distancia_metrica
-    if isinstance(distancia, MetricDistance):
-        distancia = distancia.value
+    distance = application.metric_distance
+    if isinstance(distance, MetricDistance):
+        distance = distance.value
 
-    if distancia not in distancias:
+    if distance not in distances:
         raise ValueError(
-            f"Distancia no soportada: '{distancia}'. "
-            f"Opciones: {', '.join(sorted(distancias))}"
+            f"Distancia no soportada: '{distance}'. "
+            f"Opciones: {', '.join(sorted(distances))}"
         )
-    return distancias[distancia]
+    return distances[distance]
 
 
 def hamming_distance(a: int, b: int) -> int:

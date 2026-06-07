@@ -2,7 +2,7 @@ from enum import Enum
 
 
 class Notation(Enum):
-    """Notaciones binarias para indexación de datasets y operaciones."""
+    """Binary notations for dataset indexing and operations."""
 
     LIL_ENDIAN = "little-endian"
     BIG_ENDIAN = "big-endian"

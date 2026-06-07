@@ -1,31 +1,25 @@
+from collections.abc import Generator
 from itertools import chain, combinations, islice, product
-from typing import Generator, Tuple, Union
 
 import numpy as np
 
 
-def generar_candidatos(n_vars: int):
-    """Genera todas las combinaciones de variables para condicionamiento (vacío hasta n-1)."""
-    return (combo for r in range(n_vars) for combo in combinations(range(n_vars), r))
+def generate_candidates(num_vars: int):
+    """Generate every variable combination for conditioning (empty up to n-1)."""
+    return (combo for r in range(num_vars) for combo in combinations(range(num_vars), r))
 
 
-def generar_subsistemas(vars: tuple[int, ...]):
-    """Genera el producto cartesiano de todos los posibles alcances × mecanismos."""
-    tiempos = [combo for r in range(len(vars) + 1) for combo in combinations(vars, r)]
-    return product(tiempos, tiempos)
+def generate_subsystems(variables: np.ndarray | tuple[int, ...]):
+    """Generate the cartesian product of every possible purview × mechanism."""
+    times = [combo for r in range(len(variables) + 1) for combo in combinations(variables, r)]
+    return product(times, times)
 
 
-def generar_particiones(
-    m: int,
-    n: int,
-    *,
-    as_matrix: bool = False,
-    as_generator: bool = True,
-) -> Union[Generator[Tuple[np.ndarray, np.ndarray], None, None], list]:
+def generate_partitions(m: int, n: int) -> Generator[tuple[np.ndarray, np.ndarray]]:
     """
-    Genera biparticiones binarias para un subsistema de m futuros × n presentes.
+    Generate the binary bipartitions for a subsystem of m effects × n causes.
 
-    Total de particiones no triviales: 2^(m-1) * 2^n - 1
+    Total of non-trivial partitions: 2^(m-1) * 2^n - 1.
     """
     if m < 1:
         raise ValueError(f"Alcance trivial: m no puede ser {m}")
@@ -41,40 +35,25 @@ def generar_particiones(
     m_bits = (m_indices >> m_shifts) & 1
     n_bits = (n_indices >> n_shifts) & 1
 
-    if as_generator:
-        def partition_generator():
-            m_row = m_bits[0]
-            for j in range(1, n_combinations):
-                yield m_row, n_bits[j]
-            for i in range(1, m_combinations):
-                m_row = m_bits[i]
-                for j in range(n_combinations):
-                    yield m_row, n_bits[j]
-        return partition_generator()
-
-    if as_matrix:
-        total_rows = m_combinations * n_combinations
-        result = np.empty((total_rows, m + n), dtype=np.uint8)
-        result[:, :m].reshape(m_combinations, n_combinations, m)[:] = m_bits[:, np.newaxis, :]
-        result[:, m:].reshape(m_combinations, n_combinations, n)[:] = n_bits
-        return result
-
-    return [
-        (m_bits[i], n_bits[j])
-        for i in range(m_combinations)
-        for j in range(n_combinations)
-    ]
+    # Skip the trivial (all-zero effect / all-zero cause) row to match the legacy enumeration.
+    m_row = m_bits[0]
+    for j in range(1, n_combinations):
+        yield m_row, n_bits[j]
+    for i in range(1, m_combinations):
+        m_row = m_bits[i]
+        for j in range(n_combinations):
+            yield m_row, n_bits[j]
 
 
-def biparticiones(alcances: np.ndarray, mecanismos: np.ndarray, total=None):
-    """Genera todas las biparticiones no triviales del subsistema."""
+def bipartitions(purviews: np.ndarray, mechanisms: np.ndarray, total=None):
+    """Generate every non-trivial bipartition of the subsystem."""
     if total is None:
-        total = (1 << alcances.size) * (1 << mecanismos.size)
+        total = (1 << purviews.size) * (1 << mechanisms.size)
     return islice(
-        product(subconjuntos(alcances), subconjuntos(mecanismos)), 1, total - 1
+        product(subsets(purviews), subsets(mechanisms)), 1, total - 1
     )
 
 
-def subconjuntos(arr: np.ndarray):
-    """Genera todos los subconjuntos de un arreglo (incluyendo vacío)."""
+def subsets(arr: np.ndarray):
+    """Generate every subset of an array (including the empty one)."""
     return chain.from_iterable(combinations(arr, r) for r in range(len(arr) + 1))

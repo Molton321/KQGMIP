@@ -13,6 +13,7 @@ eggs/
 lib/
 lib64/
 parts/
+.core/
 sdist/
 var/
 wheels/
@@ -31,7 +32,6 @@ env/
 
 # uv
 .uv/
-uv.lock
 
 # CPython
 .pyc
@@ -58,8 +58,13 @@ build/
 
 # Outputs generados
 review/
-.logs/
 *.log
 
-# uv lock
-uv.lock
+# Logs unificados en logs/ : el runtime va en logs/runtime/ (ignorado);
+# la bitácora logs/ai_agent_changelog.md SÍ se versiona.
+logs/runtime/
+
+# Muestras grandes generadas (no versionar)
+data/samples/N20*.csv
+data/samples/N22*.csv
+data/samples/N25*.csv
