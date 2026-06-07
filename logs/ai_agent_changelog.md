@@ -320,3 +320,32 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
   - `uv run mypy src` → **Success: no issues found in 33 source files**.
 - **IA:** la IA implementó la capa mínima de Fase 1, diseñó/ejecutó pruebas de regresión k=2 y
   verificó calidad con gates completos.
+
+## 2026-06-07 — Fase 1 + Fase 2: nucleo k-generico y ExactK ground truth
+
+- **Contexto:** tras cerrar Fase 0 (42 tests, ruff/mypy limpios), se implementan Fases 1 y 2 en una
+  sola sesion para mantener coherencia.
+- **Fase 1 — Nucleo k-generico:**
+  - `src/models/core/partition.py`: clase `KPartition` con validacion estricta (disjuncion,
+    cobertura, **al menos 2 bloques no vacios** -- elimina la particion trivial "identidad" y
+    coincide con la semantica legacy k=2), firma canonica `signature` para memoizacion, factory
+    `from_blocks(...)` con entrada array-like.
+  - `src/models/core/system.py`: metodo `k_partition(partition: KPartition)` -- reconstruccion
+    del subsistema particionado via producto tensorial de las k partes marginales.
+  - `src/funcs/emd.py`: funcion `delta_k(subsystem, partition, baseline=None)` -- perdida
+    `delta_k = EMD(P_original, P_particionado)` con EMD analitica (L1), retorna `(loss, dist)`.
+  - `src/models/core/__init__.py`: exporta `KPartition`.
+  - Tests nuevos: `test_kpartition_validation.py` (6), `test_delta_k_k2_equivalence.py` (10x10
+    particiones no triviales N2A/N3A/N4A) -- regresion k=2 vs `bipartition` legacy.
+  - Validacion empirica: `pytest` 49 passed, ruff/mypy limpios.
+- **Fase 2 — ExactK (ground truth Stirling):**
+  - `src/controllers/strategies/exhaustive_k.py`: `ExhaustiveK(SIA)` -- enumera particiones
+    debiles de Stirling S(n,k) (bloques vacios permitidos para reducir a k=2 legacy), empareja
+    todos los permutados futuro/presente, dedup por `KPartition.signature`, evalua con `delta_k`.
+  - Tests nuevos: `test_exhaustive_k.py` -- k=2 reproduce oraculo en **10/10** (N2A-N6A), k=3
+    cumple monotonicidad `delta_3 <= delta_2` en N2A/N3A/N4A.
+  - Validacion cruzada completa: **BruteForce == ExhaustiveK(k=2) == Oracle** en 10/10 redes.
+- **Gates finales:** `uv run pytest` -> **64 passed**; `ruff check .` -> **All checks passed**; `mypy src`
+  -> **Success (34 archivos)**.
+- **IA:** la IA diseno e implemento el core k-generico, `ExhaustiveK`, pruebas de regresion
+  parametrizadas, validacion cruzada exhaustiva y actualizacion de `PLANNING.md` (Fase 1/2 OK).

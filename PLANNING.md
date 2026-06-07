@@ -113,9 +113,9 @@ KQGMIP/                              # repo/carpeta renombrada (nomenclatura ofi
 | Fase | Nombre                               | Estado                     | Depende de |
 | ---- | ------------------------------------ | -------------------------- | ---------- |
 | 0    | Cimientos y saneamiento              | ✅ Completada              | —          |
-| 1    | Núcleo de dominio k-genérico         | 🟨 En progreso             | 0          |
-| 2    | k-particiones exactas (ground truth) | ⬜ Pendiente               | 1          |
-| 3    | KGeoMIP (geométrico)                 | ⬜ Pendiente               | 1, 2       |
+| 1    | Núcleo de dominio k-genérico         | ✅ Completada              | 0          |
+| 2    | k-particiones exactas (ground truth) | ✅ Completada              | 1          |
+| 3    | KGeoMIP (geométrico)                 | 🟨 En progreso             | 1, 2       |
 | 4    | KQNodes (submodular)                 | ⬜ Pendiente               | 1, 2       |
 | 5    | Baselines comparativos: clustering/espectral (det.) + metaheurísticas (opc.) | ⬜ Pendiente | 1, 2 |
 | 6    | Eficiencia y PCD (paralelismo)       | ⬜ Pendiente               | 3, 4, 5    |
