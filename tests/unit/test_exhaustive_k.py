@@ -33,12 +33,18 @@ def test_exactk_k2_matches_oracle_golden(net: str) -> None:
 
 
 @pytest.mark.parametrize("net", ["N2A", "N3A", "N4A"])
-def test_exactk_k3_is_leq_oracle_k2(net: str) -> None:
-    """Splitting into more blocks can only reduce (or keep) information loss.
+def test_exactk_k3_is_genuine_and_monotone(net: str) -> None:
+    """Strict k-partitions (doc §2.1): k=3 is a genuine 3-way cut.
 
-    For networks whose optimal k=2 δ is > 0, k=3 must reach at most the same
-    value; for networks where the optimal δ is already 0, k=3 must remain 0.
+    Under the EMD-effect δ with product reconstruction, a coarser partition is
+    never worse than a finer one, so the optimal genuine 3-way cut has δ₃ ≥ δ₂
+    (it cannot degenerate to a bipartition by padding with empty blocks). The
+    returned partition must therefore contain exactly 3 non-vacuous blocks.
     """
+    solution_k2 = _run_exact(net, k=2)
     solution_k3 = _run_exact(net, k=3)
-    oracle = ORACLE_LOSS[net]
-    assert solution_k3.loss <= oracle + 1e-4
+
+    # Monotone increasing: a genuine 3-way cut cannot beat the best bipartition.
+    assert solution_k3.loss >= solution_k2.loss - 1e-9
+    # No degenerate (empty) block: the partition is a true 3-way split.
+    assert "∅ | ∅" not in solution_k3.partition

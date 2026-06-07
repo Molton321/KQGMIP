@@ -115,6 +115,25 @@ literales mágicos).
 6. **Docstrings + tipos** en todo método público; tests para componentes nuevos.
 7. **Techo n≈25**: no prometer escalar más; documentar la limitación honestamente.
 
+## Flujo de trabajo por fases (obligatorio)
+
+Cada fase de `PLANNING.md` se entrega en **su propia rama**. Al **terminar** una fase (y solo
+cuando está terminada: código + docstrings/tipos + tests + validación cruzada contra el oráculo,
+con **`pytest`/`ruff`/`mypy` en verde**), seguir este ciclo **antes** de empezar la siguiente:
+
+1. **Rama por fase:** trabajar la fase en `feature/faseN-<slug>` (ej. `feature/fase3-kgeomip`),
+   creada desde el tip de la fase anterior.
+2. **Validar:** `uv run pytest -q && uv run ruff check . && uv run mypy src` en verde; validar el
+   resultado nuevo contra `BruteForce`/exacto y, si aplica, PyPhi (Invariante 3).
+3. **Bitácora:** registrar la fase en `logs/ai_agent_changelog.md` (parámetros reales + uso de IA) y
+   actualizar la tabla de seguimiento de `PLANNING.md` (fase → ✅, siguiente → 🟨).
+4. **Commit:** commits atómicos y descriptivos de **todos** los cambios de la fase (incluida la doc).
+5. **Push + revisión:** `git push -u origin feature/faseN-...`; abrir PR para revisión (no se fusiona
+   a `main` sin aprobación explícita del usuario; ver nota de remote en `PLANNING.md` Anexo A.5).
+6. **Continuar:** crear la rama de la fase siguiente **desde** la rama recién subida y repetir.
+
+No mezclar dos fases en una sola rama; no empezar la fase N+1 con la fase N a medias o en rojo.
+
 ## Bitácora obligatoria (incluye uso de IA)
 
 Registrar **cada** cambio de código, ajuste de parámetros y decisión de diseño en

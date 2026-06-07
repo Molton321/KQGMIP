@@ -24,9 +24,13 @@ class KPartition:
     Validation guarantees:
     - same number of purview/mechanism blocks,
     - at least 2 blocks,
-    - at least 2 non-vacuous blocks (a non-vacuous block has non-empty
-      purview *or* mechanism; this eliminates the trivial "identity"
-      partition and matches the legacy k=2 split constraint),
+    - **all k blocks non-vacuous** (a non-vacuous block has non-empty purview
+      *or* mechanism). This enforces the strict k-partition definition of the
+      official spec (``docs/Proyecto_KQMIP.md`` §2.1: every part S_i is
+      non-empty), so a k-partition has exactly k genuine parts and cannot
+      degenerate to a coarser partition by padding with empty blocks. For k=2
+      this coincides with the legacy bipartition constraint (both sides
+      non-vacuous, excluding the trivial "identity" partition),
     - no duplicates inside each block,
     - disjoint blocks (separately for purview and mechanism),
     - full coverage of the provided universes.
@@ -59,9 +63,11 @@ class KPartition:
 
             normalized_pairs.append((purview_norm, mechanism_norm))
 
-        if non_vacuous_count < 2:
+        total_blocks = len(self.purview_blocks)
+        if non_vacuous_count < total_blocks:
             raise ValueError(
-                f"k-partition must have at least 2 non-vacuous blocks; found {non_vacuous_count}."
+                f"strict k-partition requires all {total_blocks} blocks to be non-vacuous "
+                f"(doc §2.1); found {non_vacuous_count} non-vacuous."
             )
 
         normalized_pairs.sort(key=lambda block: (block[0], block[1]))

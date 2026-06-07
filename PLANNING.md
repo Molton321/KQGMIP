@@ -51,6 +51,9 @@ candidato), evitando construir tablas de costos O(2ⁿ × 2ⁿ) que serían invi
    de `docs/` y la bitácora `logs/ai_agent_changelog.md`.
    > Decisión 2026-06-07 (revierte el "sin comentarios/docstrings" previo): la rúbrica puntúa la
    > completitud de documentación y comentarios, por lo que se documenta el código, pero en inglés.
+9. **Una rama por fase.** Cada fase se entrega en `feature/faseN-<slug>` y, al terminarla
+   (validada y en verde), se hace commit + push + PR antes de iniciar la siguiente en una rama nueva.
+   Detalle del ciclo obligatorio en `CLAUDE.md` §"Flujo de trabajo por fases".
 
 ---
 
@@ -115,8 +118,8 @@ KQGMIP/                              # repo/carpeta renombrada (nomenclatura ofi
 | 0    | Cimientos y saneamiento              | ✅ Completada              | —          |
 | 1    | Núcleo de dominio k-genérico         | ✅ Completada              | 0          |
 | 2    | k-particiones exactas (ground truth) | ✅ Completada              | 1          |
-| 3    | KGeoMIP (geométrico)                 | 🟨 En progreso             | 1, 2       |
-| 4    | KQNodes (submodular)                 | ⬜ Pendiente               | 1, 2       |
+| 3    | KGeoMIP (geométrico)                 | ✅ Completada              | 1, 2       |
+| 4    | KQNodes (submodular)                 | 🟨 En progreso             | 1, 2       |
 | 5    | Baselines comparativos: clustering/espectral (det.) + metaheurísticas (opc.) | ⬜ Pendiente | 1, 2 |
 | 6    | Eficiencia y PCD (paralelismo)       | ⬜ Pendiente               | 3, 4, 5    |
 | 7    | Experimentación y métricas           | ⬜ Pendiente               | 3, 4, 5    |

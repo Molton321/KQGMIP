@@ -349,3 +349,63 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
   -> **Success (34 archivos)**.
 - **IA:** la IA diseno e implemento el core k-generico, `ExhaustiveK`, pruebas de regresion
   parametrizadas, validacion cruzada exhaustiva y actualizacion de `PLANNING.md` (Fase 1/2 OK).
+
+## 2026-06-07 — Fase 3: KGeoMIP (geometrico, k-particiones) + semantica estricta
+
+- **Contexto:** tras cerrar Fase 1/2, se implementa Fase 3 siguiendo `docs/Proyecto_KQMIP.md`
+  (§2.1/§2.3/§3) y `PLANNING.md`. Se valida primero contra la documentacion oficial.
+- **Decision de semantica (doc §2.1) — k-particiones estrictas:**
+  - Evidencia medida: con la semantica debil previa (bloques vacios permitidos),
+    `ExhaustiveK(k=3) == ExhaustiveK(k=2)` en **10/10** redes (el optimo k=3 incluia siempre un
+    bloque `∅|∅`). La δ EMD-efecto con reconstruccion por producto favorece la particion mas
+    gruesa, asi que k>2 degeneraba a la biparticion → grid k∈{2,3,4,5} trivial.
+  - Decision del usuario: **exactamente k partes no vacias** (fiel al doc §2.1). Se endurecio
+    `KPartition.__post_init__` para exigir que **todos** los k bloques sean no vacios (antes ≥2).
+    Para k=2 coincide con la restriccion legacy (ambos lados no vacios) → **regresion k=2 intacta**.
+  - `ExhaustiveK` no necesito cambios: al endurecer `KPartition`, las particiones con bloque vacio
+    se rechazan en `from_blocks` y quedan filtradas. El grid ya es **genuino y monotono creciente**
+    (p.ej. N3A: k2=0.25, k3=0.50, k4=0.75; N3B: 0.469→0.938→0.969).
+  - Tests actualizados: `test_kpartition_validation.py` (rechazo estricto de bloque vacio + acepta
+    k=3 con 3 bloques no vacios), `test_exhaustive_k.py` (k=3 genuino: δ3≥δ2 y sin bloque vacio).
+- **Tabla de costos reutilizable (doc §3 'calcularse una unica vez'):**
+  - `src/funcs/cost_table.py`: clase `CostTable` que extrae de `GeometricSIA` el BFS por niveles de
+    Hamming + factor γ=2^(−dH) y el metodo `candidate_bipartitions()` (pool de cortes geometricos).
+  - `GeometricSIA` refactorizado para construir T una sola vez y delegar candidatos a `CostTable`
+    (regresion k=2 verde: BF==GeoMIP==oraculo en 30/30 casos de test).
+- **KGeoMIP (Fase 3):**
+  - `src/controllers/strategies/kgeomip.py`: `KGeoMIP(SIA)` con k∈{2..5}. Construye T una vez y hace
+    **refinamiento jerarquico voraz**: parte de 1 bloque y aplica k−1 cortes geometricos (proyectando
+    los candidatos de `CostTable` sobre el bloque a dividir), eligiendo en cada paso el corte que
+    minimiza `delta_k`. Para k=2 colapsa a un unico corte → reproduce GeoMIP.
+  - `src/funcs/format.py`: `fmt_kpartition(signature)` compartido (usado por `ExhaustiveK` y
+    `KGeoMIP`); se elimino el formateador duplicado de `ExhaustiveK`.
+  - Validacion cruzada medida: **KGeoMIP(k=2) == GeoMIP == oraculo en 10/10**; **KGeoMIP(k=3) ≥
+    ExhaustiveK(k=3) en 5/5** (optimo exacto en 3/5: N4A/N4B/N5B; subóptimo voraz en N3A 0.75 vs
+    0.50 y N3B 0.969 vs 0.938 — esperado y documentado, doc §2.2 'optimalidad no garantizada').
+  - Tests nuevos: `test_kgeomip.py` (k=2≡oraculo, k=2≡GeoMIP, k3≥exacto, k3 genuino sin bloque
+    vacio, y **T construida una sola vez por run** via mock con `spy.call_count==1`).
+- **Gates finales:** `uv run pytest` -> **94 passed**; `ruff check .` -> **All checks passed**;
+  `mypy src` -> **Success (36 archivos)**.
+- **IA:** la IA verifico la documentacion oficial, midio empiricamente la degeneracion de la
+  semantica debil, propuso/aplico la semantica estricta, extrajo `CostTable`, diseno e implemento
+  `KGeoMIP` (refinamiento jerarquico voraz reutilizando T), las pruebas de validacion cruzada y la
+  actualizacion de `PLANNING.md` (Fase 3 OK, Fase 4 en progreso).
+
+## 2026-06-07 — Revision de audit externo + regla de flujo por fases
+
+- **Regla de proceso (nueva):** se documenta en `CLAUDE.md` §"Flujo de trabajo por fases" y en
+  `PLANNING.md` §2.9 el ciclo obligatorio: **una rama por fase**, al terminar (validada + verde)
+  commit + push + PR, y la fase siguiente arranca en una rama nueva. Aplica desde Fase 3.
+- **Triaje del audit de otro agente (revisado, sin correcciones de codigo necesarias):**
+  - El audit se ejecuto sobre el estado **previo** a Fase 3 (reporta "64 tests", "KGeoMIP/KQNodes
+    no implementados"); ya desactualizado (hoy 94 tests, KGeoMIP implementado).
+  - **No reporta bugs de correctitud.** Las observaciones son de complejidad/eficiencia/cosmetica:
+    - `marginalize` O(2^m), TPM float64, tabla de transiciones O(2^n), QNodes rebuild → todo es
+      **eficiencia, asignada explicitamente a Fase 6** (perfilado/PCD + uint8/float32). No se toca
+      ahora (principio 1: correctitud antes que velocidad).
+    - Complejidad de `geometric.py`/`q_nodes.py` → "algoritmicamente necesaria" (DP / Queyranne);
+      los `type: ignore` de QNodes se revisaran al portar a `KQNodes` (Fase 4).
+    - `__init__.py` vacios, README desactualizado, `tests/integration/` vacio, manuales →
+      cosmetico / **Fase 8** (docs) / pendiente por fase. Sin accion inmediata.
+  - **Conclusion:** ninguna correccion de codigo procede en este momento; los puntos validos ya
+    estan mapeados a sus fases (6 y 8). Se registra para trazabilidad.

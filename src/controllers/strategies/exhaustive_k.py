@@ -20,7 +20,7 @@ from more_itertools import set_partitions
 
 from src.constants.base import COLS_IDX, NET_LABEL
 from src.funcs.emd import delta_k
-from src.funcs.labels import ABECEDARY, LOWER_ABECEDARY
+from src.funcs.format import fmt_kpartition
 from src.middlewares.profile import profiling_manager
 from src.middlewares.slogger import SafeLogger
 from src.models.base.application import application
@@ -112,7 +112,7 @@ class ExhaustiveK(SIA):
             subsystem_distribution=baseline,
             partition_distribution=best_distribution,
             total_time=time.time() - self.sia_start_time,
-            partition=self._format_kpartition(self.best_partition),
+            partition=fmt_kpartition(self.best_partition.signature),
         )
 
     def _candidate_partitions(
@@ -151,15 +151,3 @@ class ExhaustiveK(SIA):
                         continue
                     seen_signatures.add(candidate.signature)
                     yield candidate
-
-    @staticmethod
-    def _format_kpartition(partition: KPartition) -> str:
-        """Render a k-partition in a human-readable block format."""
-        lines: list[str] = []
-        for idx, (purview_block, mechanism_block) in enumerate(partition.signature, start=1):
-            purview_text = "∅" if not purview_block else "".join(ABECEDARY[i] for i in purview_block)
-            mechanism_text = (
-                "∅" if not mechanism_block else "".join(LOWER_ABECEDARY[i] for i in mechanism_block)
-            )
-            lines.append(f"B{idx}: {mechanism_text} | {purview_text}")
-        return "\n".join(lines)

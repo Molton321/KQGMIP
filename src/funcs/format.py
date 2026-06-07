@@ -1,5 +1,30 @@
-from src.constants.base import COLON_DELIM, VOID_STR, WIDTH_PADDING
+from src.constants.base import COLON_DELIM, EMPTY_STR, VOID_STR, WIDTH_PADDING
 from src.funcs.labels import ABECEDARY, LOWER_ABECEDARY
+
+
+def fmt_kpartition(
+    signature: tuple[tuple[tuple[int, ...], tuple[int, ...]], ...],
+) -> str:
+    """Render a k-partition in human-readable block format.
+
+    ``signature`` is a sequence of ``(purview_block, mechanism_block)`` pairs
+    (as produced by ``KPartition.signature``). Each block is shown on its own
+    line as ``Bi: <mechanism> | <purview>``, using upper-case letters for
+    purview (future) indices and lower-case for mechanism (present) indices;
+    an empty side is rendered as ``∅``.
+    """
+    lines: list[str] = []
+    for idx, (purview_block, mechanism_block) in enumerate(signature, start=1):
+        purview_text = (
+            VOID_STR if not purview_block else EMPTY_STR.join(ABECEDARY[i] for i in purview_block)
+        )
+        mechanism_text = (
+            VOID_STR
+            if not mechanism_block
+            else EMPTY_STR.join(LOWER_ABECEDARY[i] for i in mechanism_block)
+        )
+        lines.append(f"B{idx}: {mechanism_text} | {purview_text}")
+    return "\n".join(lines)
 
 
 def fmt_bipartition(
