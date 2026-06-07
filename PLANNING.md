@@ -120,7 +120,7 @@ KQGMIP/                              # repo/carpeta renombrada (nomenclatura ofi
 | 2    | k-particiones exactas (ground truth) | ✅ Completada              | 1          |
 | 3    | KGeoMIP (geométrico)                 | ✅ Completada              | 1, 2       |
 | 4    | KQNodes (submodular)                 | ✅ Completada              | 1, 2       |
-| 5    | Baselines comparativos: clustering/espectral (det.) + metaheurísticas (opc.) | 🟨 En progreso | 1, 2 |
+| 5    | Baselines comparativos: clustering/espectral (det.) ✅ + metaheurísticas (opc., diferidas) | ✅ 5A Completada | 1, 2 |
 | 6    | Eficiencia y PCD (paralelismo)       | ⬜ Pendiente               | 3, 4, 5    |
 | 7    | Experimentación y métricas           | ⬜ Pendiente               | 3, 4, 5    |
 | 8    | Documentación y manuales             | ⬜ Pendiente (incremental) | todas      |

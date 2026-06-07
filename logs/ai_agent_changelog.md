@@ -468,3 +468,43 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
   (reuso de la busqueda submodular + flatten robusto), midio la correccion del defecto N3B y la
   comparacion de calidad, escribio las pruebas y actualizo `PLANNING.md` (Fase 4 OK, Fase 5 en
   progreso).
+
+## 2026-06-07 — Fase 5A: baseline de clustering determinista
+
+- **Prompt del usuario:** «perfecto, continua» (siguiente fase) + respuesta a AskUserQuestion sobre
+  alcance: «Solo 5A clustering (requerido)» (5B metaheuristicas diferidas a trabajo futuro). Durante
+  la fase: «respecto al prompt dado por el usuario tambien los quiero en las vitacoras anteriores»
+  (backfill de prompts, hecho en commit aparte `c59287e`).
+- **Contexto:** Fase 5A en rama propia `feature/fase5-baselines` (flujo por fases). Baseline
+  comparativo **requerido** del portafolio oficial (precedente "Estrategia KM").
+- **Implementacion (`src/controllers/strategies/clustering.py`):**
+  - `ClusteringSIA(SIA)` determinista (semilla `application.numpy_seed`). Trata la k-MIP como
+    particion de grafo: afinidad de **co-comportamiento** entre nodos (fraccion de acuerdo de sus
+    columnas TPM binarizadas sobre una **muestra acotada de filas**, `MAX_AFFINITY_SAMPLE=4096`, lo
+    que mantiene N25 en segundos), corte en k bloques por **clustering espectral** (Laplaciano
+    normalizado `scipy.sparse.csgraph.laplacian` + autovectores `np.linalg.eigh` + `kmeans2`) con
+    **fallback de orden de Fiedler** (split contiguo) que garantiza k grupos no vacios. Variante
+    simple `method="kmeans"` (replica "Estrategia KM").
+  - Particion **node-aligned** (cada nodo aporta su atomo futuro y presente al mismo bloque) →
+    requiere k ≤ n. La calidad se mide con `delta_k` (Fase 1), **no** con la metrica interna del
+    clustering (doc).
+  - Reusa `fmt_kpartition` y el nucleo k-generico (`KPartition`/`delta_k`).
+- **Validacion cruzada (medida):**
+  - **Determinista:** misma δ y misma particion en 2 corridas (N3A/N4A/N5B).
+  - **δ_k ≥ exacto** en todos los casos (cota inferior respetada); k-particiones **genuinas**
+    (k bloques no vacios).
+  - **Comparacion de calidad** (δ vs exacto, k=2/3): KGeoMIP y KQNodes ~= exacto (a menudo iguales);
+    el baseline clustering queda **muy por encima** (p.ej. N4B k2: exacto/KGeoMIP/KQNodes=0.0 vs
+    Cluster=2.1; N3A k2: 0.25 vs 1.25). Es el comportamiento esperado de un baseline determinista
+    rapido: sirve de **punto de comparacion**, confirmando que las estrategias nucleo son muy
+    superiores. La limitacion (afinidad generica + node-aligned no alcanza cortes optimos) queda
+    documentada honestamente.
+- **Tests nuevos:** `test_clustering.py` (determinismo, δ_k ≥ exacto, k genuino, rechazo k>n,
+  variante kmeans).
+- **Alcance:** **5A entregado** (requerido). **5B (GA/SA/Tabu) diferido** a trabajo futuro por
+  decision del usuario (el doc lo marca opcional "solo si hay tiempo").
+- **Gates finales:** `uv run pytest` -> **134 passed**; `ruff check .` -> **All checks passed**;
+  `mypy src` -> **Success (39 archivos)**.
+- **IA:** la IA diseno la afinidad escalable por muestreo, implemento el clustering espectral
+  determinista con fallback de Fiedler, la particion node-aligned puntuada con δ_k, las pruebas de
+  determinismo/cota/genuinidad, midio la comparacion vs nucleo y exacto, y actualizo PLANNING (5A OK).
