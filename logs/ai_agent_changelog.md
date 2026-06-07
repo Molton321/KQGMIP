@@ -4,6 +4,12 @@ Registro cronológico de cada cambio de código, ajuste de parámetros y decisi�
 fecha/hora, acción, parámetros reales probados, justificación y uso de IA. Asistente: Claude Code
 (Opus 4.8). Formato exigido por `CLAUDE.md` y por los criterios oficiales (`docs/Proyecto_KQMIP.md` §4.5).
 
+> **Prompt del usuario (requisito 2026-06-07):** cada entrada incluye el **prompt dado por el
+> usuario**. Las entradas a partir de Fase 3 lo registran de origen; las anteriores se rellenaron
+> retroactivamente (*backfill*) cuando el prompt verbatim consta en la conversación. Las entradas de
+> Fase 0/1/2 marcadas sin prompt corresponden a sesiones previas cuyo prompt no quedó registrado
+> verbatim, por lo que no se reconstruye (no se inventa).
+
 ---
 
 ## 2026-06-06 — Inicio Fase 0: verificación de entorno y línea base
@@ -39,7 +45,7 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
 
 ## 2026-06-07 — Corrección de base: el repo base correcto es 20263
 
-- **Hallazgo (compañero):** la base correcta es `Molton321/projecto-analisis-20263` (rama `main`,
+- **Hallazgo:** la base correcta es `Molton321/projecto-analisis-20263` (rama `main`,
   ya integra `copilot/make-commit-of-claude-info`). El `src/` unificado de este repo se derivó de
   `.core/core_00` (snapshot viejo).
 - **Acción:** clonado y comparación de 20263.
@@ -148,6 +154,11 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
 
 ## 2026-06-07 — Saneamiento del core, migración a inglés y limpieza de código muerto
 
+- **Prompt del usuario:** «review, relaod and continue / perfecto estabamos en la configuracion con
+  el nuevo repo, tambien aunque no lo hicimos la traduccion del proyecto a ingles, tambien quisiera
+  una validacion cruzada de este core de que no exista codigo legacy, codigo inecesario o que no se
+  usa, etc. que el codigo existente es la mejor version posible de si mismo.» (+ decisiones por
+  AskUserQuestion: «Keep both» y «Full migration now»). *(Backfill 2026-06-07.)*
 - **Acción (arranque de sesión):** la base estaba **rota** en el árbol de trabajo. (1) El `.venv`
   se había creado bajo la ruta vieja `projecto-analisis-20261` → shebangs apuntaban a un Python
   inexistente (`mypy` no arrancaba); se recreó con `rm -rf .venv && uv sync --dev`. (2) Una
@@ -352,6 +363,9 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
 
 ## 2026-06-07 — Fase 3: KGeoMIP (geometrico, k-particiones) + semantica estricta
 
+- **Prompt del usuario:** «review, reload and continue / perfecto ahora con que continuamos /
+  recuerda seguir los lineamientos existentes y todo segun la documentacion oficial». *(Backfill
+  2026-06-07.)*
 - **Contexto:** tras cerrar Fase 1/2, se implementa Fase 3 siguiendo `docs/Proyecto_KQMIP.md`
   (§2.1/§2.3/§3) y `PLANNING.md`. Se valida primero contra la documentacion oficial.
 - **Decision de semantica (doc §2.1) — k-particiones estrictas:**
@@ -393,6 +407,11 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
 
 ## 2026-06-07 — Revision de audit externo + regla de flujo por fases
 
+- **Prompt del usuario:** «perfecto me falto incluir en el planeamiento o claude.md que cada vez que
+  termines una fase con validaciones y demas crear una rama, hacer los comits de dichos cambios y
+  revisiones push y continua con la siguiente fase creando la rama, y etc. ademas segun otro agente
+  encontro esto quiero que lo revises y corrigas si es necesario. [audit del otro agente adjunto]».
+  *(Backfill 2026-06-07.)*
 - **Regla de proceso (nueva):** se documenta en `CLAUDE.md` §"Flujo de trabajo por fases" y en
   `PLANNING.md` §2.9 el ciclo obligatorio: **una rama por fase**, al terminar (validada + verde)
   commit + push + PR, y la fase siguiente arranca en una rama nueva. Aplica desde Fase 3.
