@@ -62,8 +62,9 @@ candidato), evitando construir tablas de costos O(2ⁿ × 2ⁿ) que serían invi
 > **Actualización 2026-06-07:** la estructura canónica pasa a ser la **oficial** indicada en
 > `docs/Proyecto_KQMIP.md` §4.1 (línea 119): las estrategias viven en **`src/controllers/strategies/`**,
 > siguiendo el layout del repo base correcto **20263** (`src/controllers/`, `src/models/{base,core,enums}/`,
-> `src/funcs/`, `src/middlewares/`, `src/constants/`). El árbol de abajo es la versión previa
-> (`src/strategies/<nombre>/`) y queda **supersedida**; ver Anexo A.5 para la decisión y el mapeo.
+> `src/funcs/`, `src/middlewares/`, `src/constants/`). La estructura **real implementada** usa
+> **archivos planos** en `src/controllers/strategies/` (no subdirectorios por estrategia), coherente
+> con el repo 20263. El árbol de abajo refleja el **estado actual real** tras Fases 0-5A.
 
 ```text
 KQGMIP/                              # repo/carpeta renombrada (nomenclatura oficial)
@@ -74,39 +75,61 @@ KQGMIP/                              # repo/carpeta renombrada (nomenclatura ofi
 ├── PLANNING.md                  # este documento
 ├── CLAUDE.md                        # guía para agentes (incl. bitácora obligatoria)
 ├── pyphi_config.yml
-├── .core/                          # proyectos originales de Bi-particion, incuyendo la base de este mismo (usar como referencia, no tocar)
+├── .core/                          # proyectos originales de Bi-particion (referencia, no tocar)
 │   └── core_00
 │   └── core_01
 ├── logs/
 │   └── ai_agent_changelog.md        # BITÁCORA: fecha, acción, parámetros reales, justificación
 ├── docs/
 │   ├── (PDFs y .md oficiales — no tocar)
-│   └── manuales/
-│       ├── Manual_Tecnico_KQGMIP.md
-│       └── Manual_Usuario_KQGMIP.md
+│   └── manuales/                    # ENTREGABLES A CREAR en Fase 8 (basados en specs de docs/)
+│       ├── Manual_Tecnico_KQGMIP.tex
+│       └── Manual_Usuario_KQGMIP.tex
 ├── data/
-│   ├── samples/                     # N2A … N10A … N25A (generar) …
+│   ├── samples/                     # N2A … N10A … N25A (generados)
 │   └── results/                     # salidas Excel + métricas
 ├── src/
 │   ├── base/                        # application.py, sia.py
-│   ├── constants/                   # base, errors, tags
+│   ├── constants/                   # base.py, errors.py, tags.py
+│   ├── controllers/
+│   │   ├── manager.py               # carga TPM, genera redes
+│   │   └── strategies/              # 8 ARCHIVOS PLANOS (no subdirectorios)
+│   │       ├── force.py             # BruteForce (k=2 exacto)
+│   │       ├── geometric.py         # GeometricSIA (k=2 legacy)
+│   │       ├── q_nodes.py           # QNodes (k=2 legacy)
+│   │       ├── phi.py               # PyPhi wrapper (validación)
+│   │       ├── exhaustive_k.py      # ExhaustiveK (k=2..5 ground truth) ← FASE 2
+│   │       ├── kgeomip.py           # KGeoMIP (k=2..5 geométrico) ← FASE 3
+│   │       ├── kqnodes.py           # KQNodes (k=2..5 submodular) ← FASE 4
+│   │       └── clustering.py        # ClusteringSIA (k=2..n baseline) ← FASE 5A
+│   ├── funcs/
+│   │   ├── emd.py                   # effect_emd, causal_emd, delta_k, select_emd
+│   │   ├── partitions.py            # generadores biparticiones, subsistemas
+│   │   ├── labels.py                # lil_endian, big_endian, reindex, select_state
+│   │   ├── format.py                # fmt_bipartition, fmt_kpartition
+│   │   ├── cost_table.py            # CostTable (tabla T reusable) ← FASE 3
+│   │   ├── k_refine.py              # greedy_k_partition (motor compartido) ← FASE 3-4
+│   │   ├── accelerate.py            # Numba JIT prep (FASE 6)
+│   │   └── parallel.py              # Joblib/multiprocessing prep (FASE 6)
+│   ├── middlewares/
+│   │   ├── slogger.py               # SafeLogger
+│   │   └── profile.py               # @profile decorator
 │   ├── models/
-│   │   ├── enums/                   # distance, notation, temporal_emd
-│   │   ├── ncube.py · system.py · solution.py
-│   │   └── partition.py             # NUEVO: representación de k-partición
-│   ├── funcs/                       # emd, partitions, labels, format
-│   │   └── cost_table.py            # NUEVO: tabla de costos T reutilizable (BFS modificado)
-│   ├── io/                          # manager, logger, profiler
-│   ├── strategies/
-│   │   ├── brute_force/ q_nodes/ geometric/ pyphi/   # k=2 legacy (referencia/validación)
-│   │   ├── exhaustive_k/            # NUEVO: exacto sobre Stirling S(n,k) → ground truth
-│   │   ├── kgeomip/                 # NUEVO: clase KGeoMIP (geométrico, k-particiones)
-│   │   ├── kqnodes/                 # NUEVO: clase KQNodes (submodular, k-particiones)
-│   │   ├── clustering/              # NUEVO: baseline determinista (espectral/comunidades/KMeans)
-│   │   └── metaheuristics/          # NUEVO (opcional): framework + GA, SA, Tabú
-│   └── viz/                         # NUEVO: visualización hipercubo / k-particiones
+│   │   ├── base/                    # application.py, sia.py
+│   │   ├── core/
+│   │   │   ├── ncube.py
+│   │   │   ├── system.py
+│   │   │   ├── solution.py
+│   │   │   └── partition.py         # KPartition ← FASE 1
+│   │   └── enums/
+│   │       ├── distance.py
+│   │       ├── notation.py
+│   │       └── temporal_emd.py
+│   └── viz/                         # NUEVO: visualización hipercubo / k-particiones (FASE 7)
 └── tests/
-    ├── unit/ · integration/ · fixtures/
+    ├── unit/                        # 142 tests passing
+    ├── integration/                 # (vacío, para Fase 7/9)
+    └── fixtures/                    # golden_k2.py (oráculo PyPhi k=2)
 ```
 
 ---
@@ -121,8 +144,8 @@ KQGMIP/                              # repo/carpeta renombrada (nomenclatura ofi
 | 3    | KGeoMIP (geométrico)                 | ✅ Completada              | 1, 2       |
 | 4    | KQNodes (submodular)                 | ✅ Completada              | 1, 2       |
 | 5    | Baselines comparativos: clustering/espectral (det.) ✅ + metaheurísticas (opc., diferidas) | ✅ 5A Completada | 1, 2 |
-| 6    | Eficiencia y PCD (paralelismo)       | ⬜ Pendiente               | 3, 4, 5    |
-| 7    | Experimentación y métricas           | ⬜ Pendiente               | 3, 4, 5    |
+| 6    | Eficiencia y PCD (paralelismo)       | ✅ Completada              | 3, 4, 5    |
+| 7    | Experimentación y métricas           | 🟨 En progreso             | 3, 4, 5    |
 | 8    | Documentación y manuales             | ⬜ Pendiente (incremental) | todas      |
 | 9    | Validación final y entrega           | ⬜ Pendiente               | todas      |
 
@@ -317,17 +340,25 @@ en verde).
 
 **Objetivo:** cubrir los entregables documentales (40% Manual Técnico, 30% Usuario, 30% transversal).
 
+**Nota importante:** En `docs/` ya existen las **ESPECIFICACIONES** (requisitos) de ambos manuales:
+- `docs/Manual_Técnico_KQMIP.md` → **Spec** del Manual Técnico (no tocar)
+- `docs/Manual_Usuario_KQMIP.md` → **Spec** del Manual Usuario (no tocar)
+
+Los **ENTREGABLES REALES** a crear en `docs/manuales/` son:
+- `docs/manuales/Manual_Tecnico_KQGMIP.tex` → basado en la spec técnica
+- `docs/manuales/Manual_Usuario_KQGMIP.tex` → basado en la spec de usuario
+
 **Tareas**
 
-- `docs/manuales/Manual_Tecnico_KQGMIP.md`: fundamentos matemáticos, **UML** (clases, paquetes,
+- `docs/manuales/Manual_Tecnico_KQGMIP.tex`: fundamentos matemáticos, **UML** (clases, paquetes,
   secuencia), pseudocódigo, análisis de complejidad (temporal/espacial en n y k), resultados
   experimentales, reflexión crítica, **uso de IA generativa**.
-- `docs/manuales/Manual_Usuario_KQGMIP.md`: instalación, uso, parámetros, troubleshooting,
+- `docs/manuales/Manual_Usuario_KQGMIP.tex`: instalación, uso, parámetros, troubleshooting,
   ejemplos, referencia rápida, enlace al **video tutorial**.
-- Reescribir **README.md** alineado (k≤5, nomenclatura KGeoMIP/KQNodes, sin stack ficticio).
+- Reescribir **README.md** alineado (k≤5, nomenclatura KGeoMIP/KQNodes, sin stack ficticio, estructura real plana).
 - Guion de **presentación** (≤15 min) + demo en vivo.
 
-**DoD:** manuales completos y consistentes en nomenclatura; README fiel al código; video grabado.
+**DoD:** manuales completos y consistentes en nomenclatura; README fiel al código real; video grabado.
 
 ---
 
@@ -339,9 +370,15 @@ en verde).
 
 - End-to-end en todos los datasets; verificación de consistencia k=2 con legacy y PyPhi.
 - Revisión de estilo/formato de docs; tabla de resultados final; checklist de criterios oficiales.
-- Limpieza, etiquetado de versión, bitácora al día.
+- **Limpieza y modernización de entry points:**
+  - Actualizar `main_batch.py` para soportar **todas las 7 estrategias** × k=2..5 × grid n×k (FASE 7 runner).
+  - Actualizar `main.py` con ejemplos KGeoMIP(k=3), KQNodes(k=4), Clustering(method=kmeans/spectral).
+  - Verificar `exec.py` dispatcher funciona con nuevas estrategias.
+  - Eliminar `__pycache__`, `.pyc`, archivos temporales del repo (gitignore).
+  - Alinear PLANING.md §3 con estructura real (ya hecho en esta validación).
+- Etiquetado de versión, bitácora al día.
 
-**DoD:** todos los criterios del documento de evaluación cubiertos; tests en verde; entregables listos.
+**DoD:** todos los criterios del documento de evaluación cubiertos; tests en verde; entry points modernizados; entregables listos.
 
 ---
 

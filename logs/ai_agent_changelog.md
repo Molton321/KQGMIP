@@ -508,3 +508,53 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
 - **IA:** la IA diseno la afinidad escalable por muestreo, implemento el clustering espectral
   determinista con fallback de Fiedler, la particion node-aligned puntuada con δ_k, las pruebas de
   determinismo/cota/genuinidad, midio la comparacion vs nucleo y exacto, y actualizo PLANNING (5A OK).
+
+## 2026-06-07 — Fase 6: Eficiencia y PCD (perfilado, vectorizacion, Numba, paralelismo)
+
+- **Prompt del usuario:** «para ejecutar la Fase 6 — Eficiencia y PCD ... perfila con pyinstrument,
+  agota la vectorizacion de NumPy y luego aplica Numba (nogil=True) en bucles calientes. Al
+  paralelizar la evaluacion de candidatos (joblib/multiprocessing), usa obligatoriamente
+  SharedMemory ... y controla la afinidad de hilos ... Sugiere GPU solo si el volumen justifica el
+  costo H2D. DoD: speedup real con microbenchmarks aislados (sin profiler), tests de regresion en
+  verde, reproducibilidad estocastica con control estricto de seeds entre procesos.» (interpretacion
+  de alcance: "hasta K=25" = n=25 nodos; k sigue ≤5).
+- **Perfilado (pyinstrument):** los cuellos reales NO eran numericos sino **overhead de Python**:
+  `np.setdiff1d`/`np.intersect1d` sobre arrays diminutos (~20% del tiempo en KQNodes), y el lookup
+  de notacion (enum `property.__get__`) por nodo en `marginal_distribution`.
+- **Microbench aislado (`scripts/bench_fase6.py`, profiler OFF, min de reps, memo limpiado para
+  medir marginalize en frio).**
+- **Vectorizacion / des-overhead (lever 1 — el de mayor impacto):**
+  - `ncube.py::marginalize` y `system.py::bipartition`: set-membership de Python sobre los index
+    arrays (≤n) en vez de `setdiff1d`/`intersect1d`; `marginal_distribution`: notacion resuelta una
+    vez e indice inline. **Numericamente identico** (regresion intacta).
+  - Speedup medido (profiler off): kernels **marginalize 6.6x / bipartition 8.1x** (N15A),
+    bipartition **7.8x** (N20A); end-to-end **KQNodes 8.9x** (2907→328 ms) y **KGeoMIP 6.0x**
+    (466→78 ms) en N10A k=3.
+- **Numba nogil (lever 2 — `src/funcs/accelerate.py`, extra opcional `perf`):**
+  - Verificado: **Numba 0.65.1 funciona en Python 3.14.5** (llvmlite 0.47). Kernel
+    `batch_effect_emd` con `njit(nogil=True, parallel=True)` + **fallback NumPy puro** (el core no
+    depende de numba; el gate pasa sin el extra). Numericamente identico (test `test_accelerate`).
+- **PCD — paralelismo por procesos (lever 3 — `src/funcs/parallel.py` + `ExhaustiveK(parallel=True)`):**
+  - GIL activo → paralelismo por **procesos** (loky). `ExhaustiveK` reparte el espacio de candidatos
+    dividiendo `future_options`: cada worker **genera y evalua** su rebanada (no solo evalua), porque
+    la generacion dominaba (paralelizar solo la evaluacion daba 1.1x). Rebanadas disjuntas → sin
+    doble evaluacion y **mismo minimo** que secuencial.
+  - **SharedMemory** para los tensores n-cubo (unica estructura pesada), adjuntados read-only por
+    cada worker (evita IPC por tarea). **Afinidad de hilos:** cada worker fija BLAS/OpenMP a 1 hilo
+    (`threadpoolctl` o env vars) para evitar oversubscription. **Seeds por proceso:**
+    `SeedSequence(application.numpy_seed).spawn(n)` → reproducibilidad estocastica entre procesos.
+  - **Speedup medido:** ExhaustiveK N6A k=3 **134.7s → 57s = 2.4x** en 8 nucleos (sublineal por
+    desbalance de carga + generacion + arranque loky; documentado honestamente). **Determinismo:**
+    parallel ≡ sequential (loss y particion identicas; tests `test_parallel`).
+- **GPU (recomendacion, no implementado):** **no justificado** para n≤25 / k≤5. La transferencia
+  H2D seria de los tensores n-cubo (n×2^m floats; ~3.4 GB a n=25), que domina el computo modesto por
+  candidato (medias + suma L1). Revisar GPU (cupy/numba.cuda) **solo** si se aborda la
+  materializacion de la tabla de costos O(2^n) a n grande, donde los tensores quedan residentes y el
+  costo H2D se amortiza sobre muchas evaluaciones. Por ahora el paralelismo por procesos en CPU basta.
+- **Tests nuevos:** `test_accelerate.py` (kernel ≡ referencia), `test_parallel.py` (seeds
+  deterministas, parallel ≡ sequential en N3A/N4A/N5B).
+- **Deps:** extra opcional `perf = [numba>=0.65, threadpoolctl>=3.0]` (no en el gate por defecto).
+- **IA:** la IA perfilo, identifico que el cuello era overhead de Python (no numerico), vectorizo los
+  hot paths preservando numerica exacta, verifico Numba en 3.14.5 e implemento el kernel nogil con
+  fallback, diseno el paralelismo por procesos con SharedMemory + seeds + afinidad, midio todos los
+  speedups en microbenchmarks aislados y razono la recomendacion GPU.

@@ -17,7 +17,7 @@ class NCube:
     index: int
     dims: NDArray[np.int8]
     data: np.ndarray
-    memo: dict[tuple[tuple[int, int], ...], tuple[np.ndarray, NDArray[np.int8]]] = field(
+    memo: dict[tuple[int, ...], tuple[np.ndarray, NDArray[np.int8]]] = field(
         default_factory=dict
     )
 
@@ -57,30 +57,33 @@ class NCube:
         """
         Collapse one or more dimensions while preserving the conditional
         probability (average of the faces over the given axes).
+
+        Hot path: the index set operations are done with plain Python sets over
+        the tiny ``dims`` array (≤ n ints) instead of ``np.intersect1d`` /
+        ``np.setdiff1d``, whose fixed overhead dominates for such small inputs.
+        The ``np.mean`` reduction over the local axes is unchanged, so the
+        result is numerically identical.
         """
-        if tuple(axes) not in self.memo:
-            marginalizable_axes = np.intersect1d(axes, self.dims)
-            if not marginalizable_axes.size:
-                return self
+        key = tuple(int(a) for a in axes)
+        cached = self.memo.get(key)
+        if cached is None:
+            axes_set = set(key)
             num_dims = self.dims.size - 1
+            # Tensor axes (reversed little-endian indexing) of the dims to drop.
             local_axes = tuple(
                 num_dims - dim_idx
                 for dim_idx, axis in enumerate(self.dims)
-                if axis in marginalizable_axes
+                if int(axis) in axes_set
             )
+            if not local_axes:
+                return self
             remaining_dims = np.array(
-                [d for d in self.dims if d not in marginalizable_axes],
+                [d for d in self.dims if int(d) not in axes_set],
                 dtype=np.int8,
             )
-            self.memo[tuple(axes)] = (
-                np.mean(self.data, axis=local_axes, keepdims=False),
-                remaining_dims,
-            )
-        return NCube(
-            data=self.memo[tuple(axes)][0],
-            dims=self.memo[tuple(axes)][1],
-            index=self.index,
-        )
+            cached = (np.mean(self.data, axis=local_axes, keepdims=False), remaining_dims)
+            self.memo[key] = cached
+        return NCube(data=cached[0], dims=cached[1], index=self.index)
 
     def __str__(self) -> str:
         data_str = str(self.data).replace("\n", "\n" + " " * 8)

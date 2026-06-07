@@ -3,7 +3,7 @@ from numpy.typing import NDArray
 
 from src.constants.base import BASE_TWO, COLS_IDX, INT_ZERO
 from src.constants.errors import ERROR_INCOMPATIBLE_SPACES
-from src.funcs.labels import reindex, select_state
+from src.funcs.labels import reindex
 from src.models.base.application import application
 from src.models.core.ncube import NCube
 from src.models.core.partition import KPartition
@@ -101,15 +101,25 @@ class System:
         new_system.memo = self.memo
 
         key = tuple(purview), tuple(mechanism)
-        if key not in self.memo:
-            self.memo[key] = tuple(
-                cube.marginalize(np.setdiff1d(cube.dims, mechanism))
-                if cube.index in purview
+        cached = self.memo.get(key)
+        if cached is None:
+            # Plain-set membership over the tiny index arrays avoids the heavy
+            # fixed cost of np.setdiff1d / numpy ``in`` in this hot loop.
+            purview_set = {int(p) for p in purview}
+            mechanism_set = {int(m) for m in mechanism}
+            cached = tuple(
+                cube.marginalize(
+                    np.array(
+                        [d for d in cube.dims if int(d) not in mechanism_set], dtype=np.int8
+                    )
+                )
+                if int(cube.index) in purview_set
                 else cube.marginalize(mechanism)
                 for cube in self.ncubes
             )
+            self.memo[key] = cached
 
-        new_system.ncubes = self.memo[key]
+        new_system.ncubes = cached
         return new_system
 
     def k_partition(self, partition: KPartition) -> System:
@@ -148,14 +158,22 @@ class System:
         return new_system
 
     def marginal_distribution(self) -> NDArray[np.float32]:
-        """Extract the marginal distribution evaluated at the initial state."""
-        distribution = np.empty(self.ncube_indices.size, dtype=np.float32)
+        """Extract the marginal distribution evaluated at the initial state.
+
+        Hot path: the notation is resolved once (instead of per node inside
+        ``select_state``), and the per-node substate index is built inline. The
+        access order matches ``select_state`` exactly, so the result is
+        unchanged.
+        """
+        distribution = np.empty(len(self.ncubes), dtype=np.float32)
+        little_endian = application.indexing_notation == Notation.LIL_ENDIAN.value
+        state = self.initial_state
         for i, cube in enumerate(self.ncubes):
-            probability = cube.data
             if cube.dims.size:
-                initial = tuple(self.initial_state[j] for j in cube.dims)
-                probability = cube.data[select_state(initial)]
-            distribution[i] = probability
+                substate = tuple(int(state[j]) for j in cube.dims)
+                distribution[i] = cube.data[substate[::-1] if little_endian else substate]
+            else:
+                distribution[i] = cube.data
         return distribution
 
     def __str__(self) -> str:
