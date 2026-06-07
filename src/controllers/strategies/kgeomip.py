@@ -25,8 +25,8 @@ import numpy as np
 
 from src.constants.base import COLS_IDX, NET_LABEL, TYPE_TAG
 from src.funcs.cost_table import CostTable
-from src.funcs.emd import delta_k
 from src.funcs.format import fmt_kpartition
+from src.funcs.k_refine import Block, greedy_k_partition
 from src.middlewares.profile import profile, profiling_manager
 from src.middlewares.slogger import SafeLogger
 from src.models.base.application import application
@@ -37,10 +37,6 @@ from src.models.core.solution import Solution
 KGEOMIP_LABEL: str = "KGeoMIP"
 KGEOMIP_STRATEGY_TAG: str = f"{KGEOMIP_LABEL}_strategy"
 KGEOMIP_ANALYSIS_TAG: str = f"{KGEOMIP_LABEL}_analysis"
-
-# A block pairs a set of future (purview) indices with a set of present
-# (mechanism) indices. A block is non-vacuous when either set is non-empty.
-Block = tuple[frozenset[int], frozenset[int]]
 
 
 class KGeoMIP(SIA):
@@ -70,39 +66,19 @@ class KGeoMIP(SIA):
         future_universe = tuple(int(i) for i in subsystem.ncube_indices.tolist())
         present_universe = tuple(int(i) for i in subsystem.ncube_dims.tolist())
 
-        # A strict k-partition needs at least k non-vacuous parts, so the number
-        # of available atoms (future + present nodes) must be at least k.
-        atoms = len(future_universe) + len(present_universe)
-        if self.k > atoms:
-            raise ValueError(
-                f"k={self.k} exceeds the {atoms} available atoms "
-                f"({len(future_universe)} future + {len(present_universe)} present)."
-            )
-
         # Build the cost table T once; reused for every candidate (doc §3).
         self.cost_table = self._build_cost_table(subsystem)
         cut_pool = self._cut_pool(subsystem)
 
         self.sia_logger.critic("Iniciando búsqueda geométrica k-partita.")
-        blocks: list[Block] = [(frozenset(future_universe), frozenset(present_universe))]
-        while len(blocks) < self.k:
-            refined = self._best_refinement(
-                blocks, cut_pool, future_universe, present_universe, baseline
-            )
-            if refined is None:
-                raise RuntimeError(
-                    f"KGeoMIP could not refine into {self.k} non-vacuous blocks "
-                    f"(stuck at {len(blocks)})."
-                )
-            blocks = refined
-
-        partition = self._to_kpartition(blocks, future_universe, present_universe)
-        loss, distribution = delta_k(subsystem, partition, baseline_distribution=baseline)
+        partition, loss, distribution = greedy_k_partition(
+            subsystem, baseline, cut_pool, future_universe, present_universe, self.k
+        )
         self.best_partition = partition
 
         return Solution(
             strategy=f"{KGEOMIP_LABEL}(k={self.k})",
-            loss=float(loss),
+            loss=loss,
             subsystem_distribution=baseline,
             partition_distribution=distribution,
             total_time=time.time() - self.sia_start_time,
@@ -131,60 +107,3 @@ class KGeoMIP(SIA):
             present_set = frozenset(int(x) for x in dims[present_pos])
             pool.append((effect_set, present_set))
         return pool
-
-    def _best_refinement(
-        self,
-        blocks: list[Block],
-        cut_pool: list[Block],
-        future_universe: tuple[int, ...],
-        present_universe: tuple[int, ...],
-        baseline: np.ndarray,
-    ) -> list[Block] | None:
-        """Return the blocks after the single best (lowest δ_k) geometric split.
-
-        Tries every (block, geometric cut) pairing that divides a block into two
-        non-vacuous sub-blocks, scores the resulting full partition with
-        ``delta_k``, and keeps the minimum. Returns ``None`` if no such split
-        exists (no block can be divided into two non-vacuous parts).
-        """
-        best_loss = np.inf
-        best_blocks: list[Block] | None = None
-
-        for position, (effects_block, present_block) in enumerate(blocks):
-            # A block needs at least two atoms to split into two non-vacuous parts.
-            if len(effects_block) + len(present_block) < 2:
-                continue
-
-            for cut_effects, cut_present in cut_pool:
-                inside: Block = (effects_block & cut_effects, present_block & cut_present)
-                outside: Block = (effects_block - cut_effects, present_block - cut_present)
-
-                # Reject splits that leave a fully empty (vacuous) side.
-                if not (inside[0] or inside[1]) or not (outside[0] or outside[1]):
-                    continue
-
-                candidate_blocks = blocks[:position] + [inside, outside] + blocks[position + 1 :]
-                partition = self._to_kpartition(
-                    candidate_blocks, future_universe, present_universe
-                )
-                loss, _ = delta_k(self.sia_subsystem, partition, baseline_distribution=baseline)
-                if loss < best_loss:
-                    best_loss = loss
-                    best_blocks = candidate_blocks
-
-        return best_blocks
-
-    @staticmethod
-    def _to_kpartition(
-        blocks: list[Block],
-        future_universe: tuple[int, ...],
-        present_universe: tuple[int, ...],
-    ) -> KPartition:
-        """Build a validated ``KPartition`` from the current working blocks."""
-        return KPartition.from_blocks(
-            blocks=[
-                (tuple(sorted(effects)), tuple(sorted(present))) for effects, present in blocks
-            ],
-            future_universe=future_universe,
-            present_universe=present_universe,
-        )

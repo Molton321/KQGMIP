@@ -119,8 +119,8 @@ KQGMIP/                              # repo/carpeta renombrada (nomenclatura ofi
 | 1    | Núcleo de dominio k-genérico         | ✅ Completada              | 0          |
 | 2    | k-particiones exactas (ground truth) | ✅ Completada              | 1          |
 | 3    | KGeoMIP (geométrico)                 | ✅ Completada              | 1, 2       |
-| 4    | KQNodes (submodular)                 | 🟨 En progreso             | 1, 2       |
-| 5    | Baselines comparativos: clustering/espectral (det.) + metaheurísticas (opc.) | ⬜ Pendiente | 1, 2 |
+| 4    | KQNodes (submodular)                 | ✅ Completada              | 1, 2       |
+| 5    | Baselines comparativos: clustering/espectral (det.) + metaheurísticas (opc.) | 🟨 En progreso | 1, 2 |
 | 6    | Eficiencia y PCD (paralelismo)       | ⬜ Pendiente               | 3, 4, 5    |
 | 7    | Experimentación y métricas           | ⬜ Pendiente               | 3, 4, 5    |
 | 8    | Documentación y manuales             | ⬜ Pendiente (incremental) | todas      |
@@ -421,8 +421,7 @@ Solo si hay tiempo tras Fases 0–9. No es requisito del proyecto.
 
 ## Anexo A.5 — Decisiones del 2026-06-07 (rebase a 20263 y convenciones)
 
-Origen: un compañero indicó que la **base correcta es el repo
-`https://github.com/Molton321/projecto-analisis-20263.git`** (rama `main`, que ya integra
+Origen: `https://github.com/Molton321/projecto-analisis-20263.git`** (rama `main`, que ya integra
 `copilot/make-commit-of-claude-info`). El `src/` unificado de 20261 se derivó de un snapshot
 **viejo** (`.core/core_00`); 20263 trae código de algoritmos más reciente.
 

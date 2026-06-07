@@ -136,10 +136,10 @@ No mezclar dos fases en una sola rama; no empezar la fase N+1 con la fase N a me
 
 ## Bitácora obligatoria (incluye uso de IA)
 
-Registrar **cada** cambio de código, ajuste de parámetros y decisión de diseño en
-`logs/ai_agent_changelog.md`: fecha/hora, acción, **parámetros reales** probados (no ejemplos
-figurados), justificación técnica y, cuando aplique, **qué generó o influyó la IA** (los criterios
-oficiales exigen documentar el uso de IA generativa). Hacerlo en el momento, no al final.
+Registrar **cada** cambio de código incluyendo el prompt dado por el usuario, ajuste de parámetros 
+y decisión de diseño en `logs/ai_agent_changelog.md`: fecha/hora, acción, **parámetros reales** 
+probados (no ejemplos figurados), justificación técnica y, cuando aplique, **qué generó o influyó la IA** 
+(los criterios oficiales exigen documentar el uso de IA generativa). Hacerlo en el momento, no al final.
 
 ## Stack real (jun 2026)
 

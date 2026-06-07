@@ -409,3 +409,43 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
       cosmetico / **Fase 8** (docs) / pendiente por fase. Sin accion inmediata.
   - **Conclusion:** ninguna correccion de codigo procede en este momento; los puntos validos ya
     estan mapeados a sus fases (6 y 8). Se registra para trazabilidad.
+
+## 2026-06-07 — Fase 4: KQNodes (submodular, k-particiones) + motor greedy compartido
+
+- **Prompt del usuario:** «perfecto, continua» (continuar con la siguiente fase segun el flujo por
+  fases recien establecido). Requisito anadido a mitad de fase: la bitacora debe incluir el prompt
+  dado por el usuario en cada entrada.
+- **Contexto:** Fase 4 en rama propia `feature/fase4-kqnodes` (flujo por fases). Extiende QNodes a
+  k∈{2..5} reutilizando su busqueda submodular (Queyranne-like) como pool de cortes.
+- **Motor greedy compartido (DRY):**
+  - `src/funcs/k_refine.py`: `greedy_k_partition(subsystem, baseline, cut_pool, universos, k)` con
+    `_best_refinement`/`_to_kpartition` y el tipo `Block`. Es el refinamiento jerarquico voraz
+    (k−1 cortes) que antes vivia dentro de `KGeoMIP`.
+  - `KGeoMIP` refactorizado para delegar en `greedy_k_partition` (se eliminaron ~55 LOC duplicadas;
+    regresion KGeoMIP k=2≡GeoMIP intacta).
+- **KQNodes (Fase 4):**
+  - `src/controllers/strategies/kqnodes.py`: `KQNodes(QNodes)`. Ejecuta `self.algorithm(...)` una vez
+    para poblar `partition_memo`, convierte cada candidato (lado de biparticion) en un corte
+    (`_cut_pool` + `_flatten_vertices` robusto ante anidamiento), y delega en `greedy_k_partition`.
+    Para k=2 colapsa a un unico corte sobre el pool submodular.
+  - **Hallazgo — KQNodes corrige el defecto de QNodes en N3B:** al puntuar el pool con la δ_k
+    consistente (EMD real) en vez del valor-memo interno de QNodes, KQNodes(k=2) alcanza el optimo
+    **0.46875** donde QNodes legacy reporta **0.5** (subóptimo). Medido: **KQNodes(k=2) == oraculo en
+    10/10** redes golden (mejora 9/10 → 10/10), alineado con la mitigacion de riesgo de `PLANNING.md`
+    ("KQNodes heredaria el defecto → decidir fix"). Esto significa que **KQNodes(k=2) NO bit-replica
+    QNodes en N3B** (es estrictamente mejor); el triaje de QNodes (`test_qnodes_triage.py`) sigue
+    fijando el comportamiento *de QNodes* sin cambios.
+  - Validacion: **KQNodes(k=3) ≥ ExhaustiveK(k=3) en 5/5** (cota inferior exacta); k=3 genuino
+    (3 bloques no vacios).
+- **Comparacion de calidad KGeoMIP vs KQNodes (DoD Fase 4)** — δ medida vs exacto (k=3/k=4):
+  ambos cerca del exacto; coinciden en la mayoria; cada uno gana en algun caso (k=4: N3A KGeoMIP
+  0.75=exacto vs KQNodes 1.25; N4B KQNodes 0.875 < KGeoMIP 1.05). Ninguno domina; los dos respetan
+  ≥ exacto.
+- **Tests nuevos:** `test_kqnodes.py` (k=2 ≤ QNodes y ≥ oraculo; fix N3B explicito; k3 ≥ exacto;
+  k3 genuino).
+- **Gates finales:** `uv run pytest` -> **123 passed**; `ruff check .` -> **All checks passed**;
+  `mypy src` -> **Success (38 archivos)**.
+- **IA:** la IA extrajo el motor greedy compartido, refactorizo `KGeoMIP`, implemento `KQNodes`
+  (reuso de la busqueda submodular + flatten robusto), midio la correccion del defecto N3B y la
+  comparacion de calidad, escribio las pruebas y actualizo `PLANNING.md` (Fase 4 OK, Fase 5 en
+  progreso).
