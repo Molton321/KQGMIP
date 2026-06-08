@@ -631,3 +631,32 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
   diferido, de acuerdo. El lever real (float32) lo ejecuté aquí, validado.
 - **IA:** la IA perfiló para fundamentar la decisión, descartó numba con evidencia, aplicó float32,
   validó precisión contra float64 y midió memoria/velocidad.
+
+## 2026-06-07 — Fase 7: Experimentación y métricas
+
+- **Prompt del usuario:** «cierra fase 6 y haz fase 7» (segunda parte). Construida sobre el grid
+  runner que el usuario ya tenía empezado.
+- **Módulo de métricas (`src/funcs/metrics.py`, con tests):** `is_exact_hit`, `exact_hit_rate`,
+  `relative_phi_error` (con fallback a error absoluto cuando el óptimo es ~0), `jaccard_partition_distance`
+  (pair-counting sobre co-asignación de átomos, parser-free — usa `KPartition`, no el string),
+  `speedup`, `scalability_slope` (exponente p de t~size^p por ajuste log-log). 7 tests verdes.
+- **`scripts/validate_correctness.py` (reescrito):** estaba **roto** (referenciaba `KPartition.from_str`
+  inexistente y `subsystem.ncv_indices` typo). Nueva versión usa `strategy.best_partition` (el objeto
+  KPartition, no el string): verifica (1) loss == delta_k recomputado, (2) loss ≥ óptimo exacto
+  (cota inferior), y reporta acierto exacto / error Φ / Jaccard vs ExhaustiveK. Medido: **18/18 checks
+  OK** en N3A/N3B/N4A.
+- **`scripts/run_benchmark.py` (limpiado):** `Tuple→tuple`, `Callable` desde `collections.abc`, imports
+  ordenados → **`ruff check .` ahora en verde** (estaba con 37 errores por estos scripts).
+- **`scripts/make_figures.py` (nuevo):** figuras matplotlib (backend Agg headless) reproducibles desde
+  CSV: escalabilidad (t vs n, log) por estrategia y k; pérdida vs k por red. 5 figuras generadas en
+  `data/results/figures/`.
+- **Grid ejecutado (código float32 actual):** N10A/N15A × k∈{2,3,4} × {KGeoMIP, KQNodes,
+  Clustering_spectral, Clustering_kmeans} → `data/results/benchmark_results.{csv,xlsx}`. Resultado:
+  KGeoMIP≡KQNodes casi-óptimos (δ baja, monótona en k); clustering muy por encima (baseline). Tiempos:
+  KGeoMIP N15 ~1.6s, KQNodes ~4.9s, clustering <25ms.
+- **DoD Fase 7:** tablas + figuras reproducibles desde un comando ✓; métricas (acierto exacto, error Φ,
+  Jaccard, escalabilidad) ✓; validación cruzada de correctitud ✓. (La grilla a n=20/22/25 queda como
+  corrida larga reproducible con `run_benchmark.py --nets ... --max-n 25`.)
+- **Gates:** suite completa verde; `ruff check .` verde (incl. scripts); `mypy src` verde.
+- **IA:** la IA construyó el módulo de métricas + tests, reescribió el validador roto, limpió el
+  runner, creó el generador de figuras, ejecutó el grid y produjo las figuras.

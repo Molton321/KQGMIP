@@ -145,8 +145,8 @@ KQGMIP/                              # repo/carpeta renombrada (nomenclatura ofi
 | 4    | KQNodes (submodular)                 | ✅ Completada              | 1, 2       |
 | 5    | Baselines comparativos: clustering/espectral (det.) ✅ + metaheurísticas (opc., diferidas) | ✅ 5A Completada | 1, 2 |
 | 6    | Eficiencia y PCD (paralelismo)       | ✅ Completada              | 3, 4, 5    |
-| 7    | Experimentación y métricas           | 🟨 En progreso             | 3, 4, 5    |
-| 8    | Documentación y manuales             | ⬜ Pendiente (incremental) | todas      |
+| 7    | Experimentación y métricas           | ✅ Completada              | 3, 4, 5    |
+| 8    | Documentación y manuales             | 🟨 En progreso             | todas      |
 | 9    | Validación final y entrega           | ⬜ Pendiente               | todas      |
 
 Leyenda: ⬜ Pendiente · 🟨 En progreso · ✅ Completada · ⛔ Bloqueada
