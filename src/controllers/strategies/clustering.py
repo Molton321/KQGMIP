@@ -57,7 +57,6 @@ class ClusteringSIA(SIA):
             f"{NET_LABEL}{len(tpm[COLS_IDX])}{application.sample_network_page}"
         )
         self.logger = SafeLogger(CLUSTERING_STRATEGY_TAG)
-        self.network_tpm = tpm
         self.k = k
         self.method = method
         self.best_partition: KPartition | None = None
@@ -107,14 +106,14 @@ class ClusteringSIA(SIA):
         node ``nodes[i]`` across the sampled states. Two nodes that respond
         alike across states are considered similar.
         """
-        n_rows = self.network_tpm.shape[0]
+        n_rows = self.tpm.shape[0]
         rng = np.random.default_rng(application.numpy_seed)
         if n_rows > MAX_AFFINITY_SAMPLE:
-            sample = np.sort(rng.choice(n_rows, MAX_AFFINITY_SAMPLE, replace=False))
+            sample = rng.choice(n_rows, MAX_AFFINITY_SAMPLE, replace=False)
         else:
             sample = np.arange(n_rows)
 
-        columns = self.network_tpm[np.ix_(sample, np.asarray(nodes, dtype=np.intp))]
+        columns = self.tpm[np.ix_(sample, np.asarray(nodes, dtype=np.intp))]
         return (columns > 0.5).astype(np.float64).T
 
     def _affinity(self, features: NDArray[np.float64]) -> NDArray[np.float64]:

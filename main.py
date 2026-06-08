@@ -1,33 +1,45 @@
 """
-Entry point for the analysis of a single subsystem.
+Análisis individual configurando el código (ruta avanzada/manual).
 
-Sets the system's ABCD parameters and chooses the strategy:
-  - BruteForce   → brute force (exact, exponential)
-  - QNodes       → greedy submodular (fast, polynomial)
-  - Phi          → reference pyphi library
-  - GeometricSIA → geometric dynamic programming (GeoMIP)
+La mayoría de usuarios NO necesita este archivo: la forma fácil es la interfaz web
+(``uv run streamlit run streamlit_app.py``) o las banderas de ``exec.py``
+(``uv run exec.py --net N10A --k 3 --strategy kgeomip``), sin editar código.
+
+Este archivo se mantiene para quien quiera fijar a mano el subsistema (estado,
+condición, purview, mecanismo) y la estrategia. Editar los valores de abajo y:
+
+    uv run main.py
 """
 
-from src.controllers.manager import Manager
-from src.controllers.strategies.q_nodes import QNodes
+from src.funcs.runner import load_tpm, run_analysis
+from src.models.base.application import application
 
-# from src.controllers.strategies.phi import Phi
-# from src.controllers.strategies.geometric import GeometricSIA
+# ═══════════════════════════════════════════════════════════════════════════════
+# Parámetros del subsistema (1 bit por nodo; 0 = excluir/condicionar)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+initial_state = "1111011011"  # Estado en t=0 (10 nodos)
+conditions = "1110001100"     # 0 = condicionar (fijar) la variable
+purview = "0011101111"        # 0 = marginalizar el nodo futuro
+mechanism = "1000111111"      # 0 = marginalizar el nodo presente
+k = 3                         # Número de particiones (k >= 2)
+
+# Estrategia (cualquier nombre del registro src/funcs/runner.py): kgeomip, kqnodes,
+# clustering, genetic, annealing, tabu, exhaustive, y las legadas k=2 geometric/qnodes.
+STRATEGY_NAME = "kgeomip"
+PAGE = "A"                    # Página de red (A, B, C, ...)
+METHOD = "spectral"           # Método de clustering (solo estrategia clustering)
 
 
 def run():
-    # ── Subsystem parameters ───────────────────────────────────────────────
-    # Each string holds one bit per node (0 = exclude, 1 = include).
-    initial_state = "1111011011"  # State at t=0
-    conditions = "1110001100"  # Background conditions: 0 → condition the variable
-    purview = "0011101111"  # Future purview:        0 → marginalize the variable
-    mechanism = "1000111111"  # Present mechanism:     0 → marginalize the variable
+    application.set_sample_network_page(PAGE)
+    tpm = load_tpm(initial_state, PAGE)
+    result = run_analysis(
+        tpm, initial_state, STRATEGY_NAME, k,
+        method=METHOD, condition=conditions, purview=purview, mechanism=mechanism,
+    )
+    print(result.solution)
 
-    # ───────────────────────────────────────────────────────────────────────
 
-    manager = Manager(initial_state)
-    tpm = manager.load_network()
-
-    analyzer = QNodes(tpm, initial_state)
-    solution = analyzer.apply_strategy(conditions, purview, mechanism)
-    print(solution)
+if __name__ == "__main__":
+    run()

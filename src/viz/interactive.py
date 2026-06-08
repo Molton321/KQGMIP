@@ -4,7 +4,7 @@ These complement the static matplotlib figures in :mod:`src.viz.partition_plot`
 with browser-interactive equivalents (hover, zoom, toggle traces). Every
 function returns a :class:`plotly.graph_objects.Figure`, so the same code feeds
 both the standalone HTML export (:mod:`scripts.make_interactive`) and the
-Streamlit web UI (``app/streamlit_app.py``).
+Streamlit web UI (``streamlit_app.py``).
 
 Plotly is imported lazily so importing this module never forces the optional
 ``viz`` extra unless an interactive figure is actually requested.
@@ -14,21 +14,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from src.constants.base import BLOCK_PALETTE
 from src.funcs.labels import ABECEDARY, LOWER_ABECEDARY
 from src.models.core.partition import KPartition
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     import pandas as pd
 
-# Qualitative palette shared with the static views for visual consistency.
-_PALETTE = [
-    "#4C72B0", "#DD8452", "#55A868", "#C44E52", "#8172B3", "#937860", "#DA8BC3",
-]
-
 
 def _block_color(block_index: int) -> str:
     """Return the palette colour for a block, wrapping past the palette end."""
-    return _PALETTE[block_index % len(_PALETTE)]
+    return BLOCK_PALETTE[block_index % len(BLOCK_PALETTE)]
 
 
 def plot_kpartition_interactive(partition: KPartition, title: str) -> Any:

@@ -836,3 +836,43 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
   200, sin errores). El sistema se recrea de cero. Clon temporal eliminado tras validar.
 - **IA:** la IA orquestó las corridas del benchmark, midió los tiempos reales a n=20, escribió el
   consolidador reproducible y ejecutó la validación de instalación limpia paso a paso.
+
+---
+
+## 2026-06-08 — Saneamiento, arreglos de auditoría y validación de optimalidad
+
+- **Prompts del usuario:** facilitar el uso (sin editar código), eliminar redundancia/deuda técnica,
+  centralizar constantes, y dos auditorías externas (OOM de N25A, early-exit, dead code).
+- **Facilidad de uso:** `exec.py` por banderas (`--net N10A --k 3 --strategy kgeomip`, sin editar
+  fuente; profiling apagado por defecto); `main.py` simplificado a la ruta avanzada; UI web movida a
+  la **raíz** (`streamlit_app.py`, antes en `app/`) y ahora `uv run python streamlit_app.py` funciona
+  (se re-lanza bajo el runtime de Streamlit); API deprecada `use_container_width` → `width="stretch"`.
+- **Registro único de estrategias (`src/funcs/runner.py`):** `STRATEGY_BUILDERS` + `resolve_strategy`
+  (nombres case-insensitive + alias), `build_strategy`, `parse_net_label`. `exec.py`, `main.py`,
+  `main_batch.py`, `run_benchmark.py`, `make_interactive.py`, `validate_correctness.py` y la UI dejan
+  de duplicar el mapa nombre→constructor y el bucle "construir→redirigir→apply"; todo pasa por aquí.
+- **Constantes centralizadas (`src/constants/base.py`):** `BLOCK_PALETTE` (paleta antes duplicada en
+  `viz/interactive.py` y `viz/partition_plot.py`), `DELTA_K_TOLERANCE`, `PATH_RESULTS`.
+- **Arreglos de auditoría (verificados contra el código):**
+  - 🔴 **OOM N25A — causa real:** `Manager.load_network` cargaba `float64` (np.genfromtxt por defecto)
+    y la conversión a `float32` creaba una copia → pico ~10 GB. Ahora carga `dtype=np.float32`
+    directamente (0/1 exacto; continuos < 1e-6). `main_batch.py` ya no duplica el `genfromtxt`: usa
+    `Manager.load_network`. Resultados idénticos (N10A k3 = 0.942383). El `self.network_tpm` que la
+    1.ª auditoría señalaba era sólo una *referencia* (no copia) — confirmado y eliminado igual (DRY).
+  - 🟡 **Early-exit `δ=0`** añadido al worker paralelo de `ExhaustiveK` (el secuencial ya lo tenía).
+  - 🟢 **Dead code** `BruteForce.analyze_full_network` (+ tag e imports huérfanos) eliminado.
+  - 🟢 `np.sort` innecesario del muestreo de afinidad de `ClusteringSIA` eliminado.
+  - Tests de precisión `float32` ampliados con un caso de **TPM continua** (antes sólo 0/1).
+- **Validación de optimalidad (`scripts/validate_optimality.py`):** ¿son óptimas las particiones?
+  Exacto donde es tratable (n≤4, k≤3: el sistema acierta 4/4) + evidencia convergente a n grande
+  (N10A/N15A: las tres estrategias coinciden en k=2..5). Hallazgo honesto: KGeoMIP/KQNodes son
+  **voraces** (cotas superiores para k≥3, p. ej. N3A k=3 0.75 vs 0.5 exacto); **Tabú** recupera el
+  óptimo. Sale a `optimality_validation.{xlsx,md}`.
+- **Incidente de concurrencia (registrado):** un agente paralelo (`opencode`) reescribió
+  `data/samples/N10A.csv` (formato float, valores distintos) a mitad de sesión; se **detectó por el
+  cambio de dtype/valores**, se restauró el canónico desde git y se reejecutó la verificación contra
+  él. Lección: no correr agentes en paralelo sobre `data/samples/`.
+- **Gates:** `pytest` **207 passed**, `ruff` y `mypy` verdes. Sin commitear manuales, `README.md`
+  (reescritura pendiente) ni `src/models/core/solution.py` (cambio en curso de `opencode`).
+- **IA:** la IA hizo el saneamiento, aplicó los arreglos de ambas auditorías verificándolos contra el
+  código, construyó la validación de optimalidad y detectó/contuvo la corrupción de datos concurrente.

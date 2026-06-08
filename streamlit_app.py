@@ -11,7 +11,7 @@ command line:
    distribution table, and both the static (matplotlib) and interactive
    (Plotly) partition figures, plus the benchmark grid when present.
 
-    uv run streamlit run app/streamlit_app.py
+    uv run streamlit run streamlit_app.py
 
 Requires the optional extras: ``uv sync --extra web`` (Streamlit + Plotly).
 """
@@ -24,7 +24,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from src.controllers.manager import Manager
 from src.funcs.runner import (
@@ -32,12 +32,13 @@ from src.funcs.runner import (
     STRATEGY_HELP,
     available_samples,
     load_tpm,
+    parse_net_label,
     run_analysis,
 )
 from src.models.base.application import application
 from src.viz import plot_kpartition_interactive, plot_loss_vs_k_interactive
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent
 SAMPLES_DIR = PROJECT_ROOT / "data" / "samples"
 RESULTS_CSV = PROJECT_ROOT / "data" / "results" / "benchmark_results_FINAL.csv"
 
@@ -60,7 +61,7 @@ def _sidebar_data() -> tuple[str, str] | None:
         n = st.sidebar.slider("Nodos (n)", 2, 25, 4)
         continuous = st.sidebar.checkbox("Probabilidades continuas", value=False)
         seed = st.sidebar.number_input("Semilla NumPy", value=application.numpy_seed, step=1)
-        if st.sidebar.button("Generar TPM", use_container_width=True):
+        if st.sidebar.button("Generar TPM", width="stretch"):
             application.numpy_seed = int(seed)
             with st.spinner(f"Generando N{n}…"):
                 filename = Manager("1" * n, base_path=SAMPLES_DIR).generate_network(
@@ -74,11 +75,7 @@ def _sidebar_data() -> tuple[str, str] | None:
         return None
 
     label = st.sidebar.selectbox("Red a analizar", samples, index=0)
-    # A sample label is N{n}{page}; recover n (digits) and page (trailing letter).
-    digits = "".join(ch for ch in label if ch.isdigit())
-    page = label[len(digits) + 1:] or "A"
-    n = int(digits)
-    state = "1" * n
+    n, page, state = parse_net_label(label)
     st.sidebar.caption(f"n = {n} nodos · estado inicial = {state}")
     return state, page
 
@@ -142,12 +139,12 @@ def _show_results(result) -> None:
                 result.partition,
                 f"{result.strategy} — k={result.k} (δ_k={result.solution.loss:.4f})",
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.info("Esta estrategia no expone un objeto de partición para graficar.")
     with right:
         st.caption("Distribución marginal reconstruida")
-        st.dataframe(_distribution_table(result), use_container_width=True, height=300)
+        st.dataframe(_distribution_table(result), width="stretch", height=300)
 
 
 def _benchmark_panel() -> None:
@@ -162,9 +159,9 @@ def _benchmark_panel() -> None:
     if not nets:
         return
     net = st.selectbox("Red", nets)
-    st.plotly_chart(plot_loss_vs_k_interactive(df, str(net)), use_container_width=True)
+    st.plotly_chart(plot_loss_vs_k_interactive(df, str(net)), width="stretch")
     with st.expander("Tabla completa"):
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(df, width="stretch")
 
 
 # ---------------------------------------------------------------------------
@@ -185,7 +182,7 @@ def main() -> None:
     state, page = data
     params = _sidebar_strategy(len(state))
 
-    if st.sidebar.button("▶ Ejecutar análisis", type="primary", use_container_width=True):
+    if st.sidebar.button("▶ Ejecutar análisis", type="primary", width="stretch"):
         try:
             tpm = load_tpm(state, page, base_path=SAMPLES_DIR)
         except FileNotFoundError as exc:
@@ -207,7 +204,16 @@ def main() -> None:
     _benchmark_panel()
 
 
-# `streamlit run` executes this script as the main module, so the standard
-# guard fires the app entry point.
 if __name__ == "__main__":
-    main()
+    # Bajo `streamlit run` el runtime existe → renderiza la app. Si se invoca como
+    # `python streamlit_app.py` (sin runtime), se re-lanza a sí mismo con Streamlit
+    # para que ese comando también funcione.
+    from streamlit.runtime import exists as _st_runtime_exists
+
+    if _st_runtime_exists():
+        main()
+    else:
+        from streamlit.web import cli as stcli
+
+        sys.argv = ["streamlit", "run", __file__, *sys.argv[1:]]
+        sys.exit(stcli.main())

@@ -20,22 +20,19 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.controllers.manager import Manager
-from src.controllers.strategies.clustering import ClusteringSIA
-from src.controllers.strategies.exhaustive_k import ExhaustiveK
-from src.controllers.strategies.kgeomip import KGeoMIP
-from src.controllers.strategies.kqnodes import KQNodes
 from src.funcs.emd import delta_k
 from src.funcs.metrics import is_exact_hit, jaccard_partition_distance, relative_phi_error
+from src.funcs.runner import build_strategy, load_tpm, parse_net_label
 from src.models.base.application import application
 
-STRATEGIES = {"KGeoMIP": KGeoMIP, "KQNodes": KQNodes, "Clustering": ClusteringSIA}
+# Strategies validated against the exact optimum (built via the single registry).
+STRATEGIES = ["KGeoMIP", "KQNodes", "Clustering"]
 
 
-def _run(strategy_cls, tpm, state, k):
+def _run(name: str, tpm, state, k):
     """Run a strategy and return (solution, best_partition, subsystem, baseline)."""
     full = "1" * len(state)
-    analyzer = strategy_cls(tpm, state, k=k)
+    analyzer = build_strategy(name, tpm, state, k, "spectral")
     with contextlib.redirect_stdout(io.StringIO()):
         solution = analyzer.apply_strategy(full, full, full)
     return solution, analyzer.best_partition, analyzer.sia_subsystem, analyzer.sia_marginal_dists
@@ -43,10 +40,9 @@ def _run(strategy_cls, tpm, state, k):
 
 def validate_net(net: str, ks: list[int]) -> tuple[int, int]:
     """Validate every strategy/k for one network. Returns (passed, total)."""
-    n = int(net[1:-1])
-    application.set_sample_network_page(net[-1])
-    state = "1" * n
-    tpm = Manager(state).load_network()
+    n, page, state = parse_net_label(net)
+    application.set_sample_network_page(page)
+    tpm = load_tpm(state, page)
     print(f"\n=== {net} (n={n}) ===")
 
     passed = total = 0
@@ -54,12 +50,12 @@ def validate_net(net: str, ks: list[int]) -> tuple[int, int]:
         if k > n:
             continue  # node-aligned clustering needs k <= n
         # Exact ground truth for this (net, k).
-        exact_sol, exact_part, _, _ = _run(ExhaustiveK, tpm, state, k)
+        exact_sol, exact_part, _, _ = _run("ExhaustiveK", tpm, state, k)
 
-        for label, cls in STRATEGIES.items():
+        for label in STRATEGIES:
             total += 1
             try:
-                sol, part, subsystem, baseline = _run(cls, tpm, state, k)
+                sol, part, subsystem, baseline = _run(label, tpm, state, k)
                 recomputed, _ = delta_k(subsystem, part, baseline_distribution=baseline)
                 consistent = abs(float(recomputed) - sol.loss) < 1e-6
                 lower_bounded = sol.loss >= exact_sol.loss - 1e-9

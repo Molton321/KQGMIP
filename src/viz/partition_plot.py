@@ -16,17 +16,13 @@ importing this module never requires a display.
 
 from itertools import combinations
 
+from src.constants.base import BLOCK_PALETTE
 from src.funcs.labels import ABECEDARY, LOWER_ABECEDARY
 from src.models.core.partition import KPartition
 
-# A small qualitative palette; blocks beyond it wrap around.
-_PALETTE = [
-    "#4C72B0", "#DD8452", "#55A868", "#C44E52", "#8172B3", "#937860", "#DA8BC3",
-]
-
 
 def _block_color(block_index: int) -> str:
-    return _PALETTE[block_index % len(_PALETTE)]
+    return BLOCK_PALETTE[block_index % len(BLOCK_PALETTE)]
 
 
 def plot_kpartition(partition: KPartition, title: str, output_path: str) -> str:

@@ -288,6 +288,8 @@ def _exact_search_worker(
                 best_loss = loss
                 best_partition = candidate
                 best_distribution = distribution
+                if loss == 0.0:
+                    break  # δ=0 is provably optimal; stop this slice early
         return best_loss, best_partition, best_distribution
     finally:
         shm.close()

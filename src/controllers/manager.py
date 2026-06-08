@@ -45,13 +45,20 @@ class Manager:
         return self.base_path / f"N{len(self.initial_state)}{self.page}.{CSV_EXTENSION}"
 
     def load_network(self) -> np.ndarray:
-        """Load the TPM file matching the current state and page."""
+        """Load the TPM file matching the current state and page.
+
+        Loaded directly as ``float32`` (not the NumPy default ``float64``): the
+        n-cube tensors are float32 anyway, so this avoids a transient float64
+        copy — the peak that caused the N25A out-of-memory (a float64 TPM is
+        ~6.7 GB at n=25, vs ~3.35 GB in float32). The 0/1 deterministic values
+        are exact in float32 and continuous values deviate < 1e-6.
+        """
         if not self.tpm_filename.exists():
             raise FileNotFoundError(
                 f"TPM no encontrada: {self.tpm_filename}\n"
                 f"Coloca el archivo en {PATH_SAMPLES}/ o define IIT_SAMPLES_DIR."
             )
-        return np.genfromtxt(self.tpm_filename, delimiter=COLON_DELIM)
+        return np.genfromtxt(self.tpm_filename, delimiter=COLON_DELIM, dtype=np.float32)
 
     def generate_network(
         self, dimensions: int, deterministic: bool = True, assume_yes: bool = False

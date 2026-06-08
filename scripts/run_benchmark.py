@@ -11,66 +11,36 @@ Usage:
 """
 
 import argparse
-import contextlib
-import io
 import sys
 import time
-from collections.abc import Callable
 from pathlib import Path
-from typing import Any
 
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.controllers.manager import Manager
+from src.funcs.runner import load_tpm, parse_net_label, run_analysis
 from src.models.base.application import application
 
-StrategyFactory = Callable[[], Any]
-
 # ---------------------------------------------------------------------------
-# Strategy registry: all 7 strategies + legacy k=2 baselines
+# Which strategies to benchmark: (row label, registry key, clustering method)
 # ---------------------------------------------------------------------------
 
-def _make_strategies(
-    net: str, k: int, include_meta: bool = True
-) -> tuple[list[tuple[str, StrategyFactory]], str]:
-    """Return list of (label, strategy_factory) for the given net/k."""
-    from src.controllers.strategies.clustering import ClusteringSIA
-    from src.controllers.strategies.exhaustive_k import ExhaustiveK
-    from src.controllers.strategies.kgeomip import KGeoMIP
-    from src.controllers.strategies.kqnodes import KQNodes
-    from src.controllers.strategies.metaheuristics import (
-        AnnealingSIA,
-        GeneticSIA,
-        TabuSIA,
-    )
-
-    n = int(net[1:-1])
-    application.set_sample_network_page(net[-1])
-    state = "1" * n
-    tpm = Manager(state).load_network()
-    full = "1" * n
-
-    strategies: list[tuple[str, StrategyFactory]] = []
-
-    # --- k-partition strategies (the core deliverables) ---
-    strategies.append(("KGeoMIP", lambda: KGeoMIP(tpm, state, k=k)))
-    strategies.append(("KQNodes", lambda: KQNodes(tpm, state, k=k)))
-    strategies.append(("Clustering_spectral", lambda: ClusteringSIA(tpm, state, k=k, method="spectral")))
-    strategies.append(("Clustering_kmeans", lambda: ClusteringSIA(tpm, state, k=k, method="kmeans")))
-
-    # --- Metaheuristic comparative baselines (GA / SA / Tabu) ---
-    if include_meta:
-        strategies.append(("Genetic", lambda: GeneticSIA(tpm, state, k=k)))
-        strategies.append(("Annealing", lambda: AnnealingSIA(tpm, state, k=k)))
-        strategies.append(("Tabu", lambda: TabuSIA(tpm, state, k=k)))
-
-    # --- ExhaustiveK: ground truth (only for small n) ---
-    if n <= 6:
-        strategies.append(("ExhaustiveK", lambda: ExhaustiveK(tpm, state, k=k)))
-
-    return strategies, full
+def _strategy_specs(n: int, include_meta: bool) -> list[tuple[str, str, str]]:
+    """Return the (label, strategy_key, method) specs to run for an n-node net."""
+    specs = [
+        ("KGeoMIP", "KGeoMIP", "spectral"),
+        ("KQNodes", "KQNodes", "spectral"),
+        ("Clustering_spectral", "Clustering", "spectral"),
+        ("Clustering_kmeans", "Clustering", "kmeans"),
+    ]
+    if include_meta:  # comparative metaheuristics (GA / SA / Tabú)
+        specs += [("Genetic", "Genetic", "spectral"),
+                  ("Annealing", "Annealing", "spectral"),
+                  ("Tabu", "Tabu", "spectral")]
+    if n <= 6:  # exact ground truth only where it is tractable
+        specs.append(("ExhaustiveK", "ExhaustiveK", "spectral"))
+    return specs
 
 
 # ---------------------------------------------------------------------------
@@ -79,29 +49,28 @@ def _make_strategies(
 
 def run_one(net: str, k: int, include_meta: bool = True) -> list[dict]:
     """Run every strategy for (net, k) and return result rows."""
-    n = int(net[1:-1])
+    n, page, state = parse_net_label(net)
+    application.set_sample_network_page(page)
     try:
-        strategies, full = _make_strategies(net, k, include_meta=include_meta)
+        tpm = load_tpm(state, page)
     except FileNotFoundError:
         return [{"strategy": "ALL", "network": net, "n": n, "k": k,
                  "loss": None, "time_s": None, "partition": None, "error": "TPM not found"}]
 
     rows = []
-    for label, factory in strategies:
+    for label, key, method in _strategy_specs(n, include_meta):
         try:
             start = time.perf_counter()
-            with contextlib.redirect_stdout(io.StringIO()):
-                analyzer = factory()
-                solution = analyzer.apply_strategy(full, full, full)
+            result = run_analysis(tpm, state, key, k, method=method)
             elapsed = time.perf_counter() - start
             rows.append({
                 "strategy": label,
                 "network": net,
                 "n": n,
                 "k": k,
-                "loss": round(solution.loss, 6),
+                "loss": round(result.solution.loss, 6),
                 "time_s": round(elapsed, 4),
-                "partition": solution.partition,
+                "partition": result.solution.partition,
                 "error": None,
             })
         except Exception as e:

@@ -27,11 +27,13 @@ from src.controllers.strategies.metaheuristics import AnnealingSIA, GeneticSIA, 
 from src.models.core.partition import KPartition
 from src.models.core.solution import Solution
 
-# A k-strategy constructor: (tpm, state, k, method) -> SIA instance.
+# A strategy constructor: (tpm, state, k, method) -> SIA instance. ``k`` and
+# ``method`` are ignored by the strategies that do not use them.
 StrategyBuilder = Callable[[np.ndarray, str, int, str], Any]
 
-# Registry of every k-partition strategy exposed to the user. ``method`` is only
-# consulted by the clustering baseline; the rest ignore it.
+# Registry of every k-partition strategy exposed to the user (UI dropdown). This
+# is the single source of truth for k-strategy construction; the CLI, the web UI
+# and the scripts all build strategies through it, never re-importing the classes.
 STRATEGY_BUILDERS: dict[str, StrategyBuilder] = {
     "KGeoMIP": lambda tpm, s, k, method: KGeoMIP(tpm, s, k=k),
     "KQNodes": lambda tpm, s, k, method: KQNodes(tpm, s, k=k),
@@ -41,6 +43,21 @@ STRATEGY_BUILDERS: dict[str, StrategyBuilder] = {
     "Tabu": lambda tpm, s, k, method: TabuSIA(tpm, s, k=k),
     "ExhaustiveK": lambda tpm, s, k, method: ExhaustiveK(tpm, s, k=k),
 }
+
+# Legacy bipartition (k=2) strategies — references/baselines, not in the UI list.
+# Lazily imported so the common path never loads PyPhi & friends.
+def _legacy_builders() -> dict[str, StrategyBuilder]:
+    from src.controllers.strategies.force import BruteForce
+    from src.controllers.strategies.geometric import GeometricSIA
+    from src.controllers.strategies.phi import Phi
+    from src.controllers.strategies.q_nodes import QNodes
+
+    return {
+        "BruteForce": lambda tpm, s, k, method: BruteForce(tpm, s),
+        "GeometricSIA": lambda tpm, s, k, method: GeometricSIA(tpm, s),
+        "QNodes": lambda tpm, s, k, method: QNodes(tpm, s),
+        "Phi": lambda tpm, s, k, method: Phi(tpm, s),
+    }
 
 # Human-readable, one-line description of each strategy (for the UI).
 STRATEGY_HELP: dict[str, str] = {
@@ -62,6 +79,38 @@ class AnalysisResult:
     partition: KPartition | None
     strategy: str
     k: int
+
+
+def resolve_strategy(name: str) -> str:
+    """Return the canonical strategy key for a user-typed name (case-insensitive).
+
+    Accepts the canonical keys and lowercase aliases (e.g. ``"kgeomip"`` ->
+    ``"KGeoMIP"``, ``"exhaustive"`` -> ``"ExhaustiveK"``).
+    """
+    lookup = {key.lower(): key for key in STRATEGY_BUILDERS}
+    lookup.update({key.lower(): key for key in _legacy_builders()})
+    lookup["exhaustive"] = "ExhaustiveK"  # friendly short aliases
+    lookup["geometric"] = "GeometricSIA"
+    canonical = lookup.get(name.lower())
+    if canonical is None:
+        raise KeyError(f"Estrategia desconocida: {name!r}. Opciones: {sorted(lookup)}")
+    return canonical
+
+
+def build_strategy(name: str, tpm: np.ndarray, state: str, k: int, method: str) -> Any:
+    """Construct a strategy instance by name (the one place that does so)."""
+    builders = {**STRATEGY_BUILDERS, **_legacy_builders()}
+    return builders[resolve_strategy(name)](tpm, state, k, method)
+
+
+def parse_net_label(net: str) -> tuple[int, str, str]:
+    """Split a ``N{n}{page}`` label into ``(n, page, state)``.
+
+    The canonical parse used everywhere: ``int(net[1:-1])`` nodes and ``net[-1]``
+    page (e.g. ``"N10A"`` -> ``(10, "A", "1111111111")``).
+    """
+    n = int(net[1:-1])
+    return n, net[-1], "1" * n
 
 
 def available_samples(base_path: Path | None = None) -> list[str]:
@@ -109,22 +158,19 @@ def run_analysis(
     Raises:
         KeyError: if ``strategy`` is not a registered builder.
     """
-    if strategy not in STRATEGY_BUILDERS:
-        raise KeyError(f"Estrategia desconocida: {strategy!r}")
-
+    canonical = resolve_strategy(strategy)
     full = "1" * len(state)
     condition = condition or full
     purview = purview or full
     mechanism = mechanism or full
 
-    builder = STRATEGY_BUILDERS[strategy]
     # Strategies print colored progress to stdout; keep the UI/CLI output clean.
     with contextlib.redirect_stdout(io.StringIO()):
-        analyzer = builder(tpm, state, k, method)
+        analyzer = build_strategy(canonical, tpm, state, k, method)
         solution = analyzer.apply_strategy(condition, purview, mechanism)
 
     partition = getattr(analyzer, "best_partition", None)
-    return AnalysisResult(solution=solution, partition=partition, strategy=strategy, k=k)
+    return AnalysisResult(solution=solution, partition=partition, strategy=canonical, k=k)
 
 
 def load_tpm(state: str, page: str, base_path: Path | None = None) -> np.ndarray:

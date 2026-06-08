@@ -13,8 +13,6 @@ open in any browser with hover/zoom/legend-toggle:
 """
 
 import argparse
-import contextlib
-import io
 import sys
 from pathlib import Path
 
@@ -22,8 +20,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.controllers.manager import Manager
-from src.controllers.strategies.kgeomip import KGeoMIP
+from src.funcs.runner import load_tpm, parse_net_label, run_analysis
 from src.models.base.application import application
 from src.viz import (
     plot_kpartition_interactive,
@@ -67,21 +64,15 @@ def main() -> None:
 
     # Partition demo figure (run KGeoMIP live on a small network).
     net = args.demo_net
-    n = int(net[1:-1])
-    application.set_sample_network_page(net[-1])
-    state = "1" * n
-    tpm = Manager(state).load_network()
-    full = "1" * n
-    with contextlib.redirect_stdout(io.StringIO()):
-        analyzer = KGeoMIP(tpm, state, k=args.demo_k)
-        solution = analyzer.apply_strategy(full, full, full)
-    partition = analyzer.best_partition
-    if partition is None:
+    _, page, state = parse_net_label(net)
+    tpm = load_tpm(state, page)
+    result = run_analysis(tpm, state, "KGeoMIP", args.demo_k)
+    if result.partition is None:
         print("  (no partition produced; skipping partition demo)")
         return
-    title = f"KGeoMIP — {net}, k={args.demo_k} (δ_k={solution.loss:.4f})"
+    title = f"KGeoMIP — {net}, k={args.demo_k} (δ_k={result.solution.loss:.4f})"
     _export(
-        plot_kpartition_interactive(partition, title),
+        plot_kpartition_interactive(result.partition, title),
         out / f"partition_KGeoMIP_{net}_k{args.demo_k}.html",
     )
 
