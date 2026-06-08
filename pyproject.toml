@@ -25,6 +25,13 @@ perf = [
     "numba>=0.65",
     "threadpoolctl>=3.0",
 ]
+viz = [
+    "plotly>=5.20.0",
+]
+web = [
+    "plotly>=5.20.0",
+    "streamlit>=1.40.0",
+]
 
 [dependency-groups]
 dev = [

@@ -32,12 +32,19 @@ StrategyFactory = Callable[[], Any]
 # Strategy registry: all 7 strategies + legacy k=2 baselines
 # ---------------------------------------------------------------------------
 
-def _make_strategies(net: str, k: int) -> tuple[list[tuple[str, StrategyFactory]], str]:
+def _make_strategies(
+    net: str, k: int, include_meta: bool = True
+) -> tuple[list[tuple[str, StrategyFactory]], str]:
     """Return list of (label, strategy_factory) for the given net/k."""
     from src.controllers.strategies.clustering import ClusteringSIA
     from src.controllers.strategies.exhaustive_k import ExhaustiveK
     from src.controllers.strategies.kgeomip import KGeoMIP
     from src.controllers.strategies.kqnodes import KQNodes
+    from src.controllers.strategies.metaheuristics import (
+        AnnealingSIA,
+        GeneticSIA,
+        TabuSIA,
+    )
 
     n = int(net[1:-1])
     application.set_sample_network_page(net[-1])
@@ -53,6 +60,12 @@ def _make_strategies(net: str, k: int) -> tuple[list[tuple[str, StrategyFactory]
     strategies.append(("Clustering_spectral", lambda: ClusteringSIA(tpm, state, k=k, method="spectral")))
     strategies.append(("Clustering_kmeans", lambda: ClusteringSIA(tpm, state, k=k, method="kmeans")))
 
+    # --- Metaheuristic comparative baselines (GA / SA / Tabu) ---
+    if include_meta:
+        strategies.append(("Genetic", lambda: GeneticSIA(tpm, state, k=k)))
+        strategies.append(("Annealing", lambda: AnnealingSIA(tpm, state, k=k)))
+        strategies.append(("Tabu", lambda: TabuSIA(tpm, state, k=k)))
+
     # --- ExhaustiveK: ground truth (only for small n) ---
     if n <= 6:
         strategies.append(("ExhaustiveK", lambda: ExhaustiveK(tpm, state, k=k)))
@@ -64,11 +77,11 @@ def _make_strategies(net: str, k: int) -> tuple[list[tuple[str, StrategyFactory]
 # Run a single benchmark
 # ---------------------------------------------------------------------------
 
-def run_one(net: str, k: int) -> list[dict]:
+def run_one(net: str, k: int, include_meta: bool = True) -> list[dict]:
     """Run every strategy for (net, k) and return result rows."""
     n = int(net[1:-1])
     try:
-        strategies, full = _make_strategies(net, k)
+        strategies, full = _make_strategies(net, k, include_meta=include_meta)
     except FileNotFoundError:
         return [{"strategy": "ALL", "network": net, "n": n, "k": k,
                  "loss": None, "time_s": None, "partition": None, "error": "TPM not found"}]
@@ -115,6 +128,7 @@ def main():
     parser.add_argument("--ks", nargs="*", type=int, default=[2, 3, 4, 5], help="k values to test")
     parser.add_argument("--max-n", type=int, default=15, help="Max network size")
     parser.add_argument("--quick", action="store_true", help="Quick mode: N10 only, k=2,3")
+    parser.add_argument("--no-meta", action="store_true", help="Skip metaheuristics (GA/SA/Tabu)")
     parser.add_argument("--output", default="data/results/benchmark_results.csv", help="Output CSV path")
     args = parser.parse_args()
 
@@ -145,7 +159,7 @@ def main():
         for k in ks:
             done += 1
             print(f"[{done}/{total}] {net} k={k} ... ", end="", flush=True)
-            rows = run_one(net, k)
+            rows = run_one(net, k, include_meta=not args.no_meta)
             all_rows.extend(rows)
             # Quick status
             ok = sum(1 for r in rows if r["error"] is None)

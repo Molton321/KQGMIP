@@ -775,3 +775,38 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
   commitear por decisión del usuario) ni el WIP de entrada del usuario (exec/main_batch/CLAUDE).
 - **IA:** la IA diseñó el motor de metaheurísticas y los tests de validación contra el oráculo,
   cableó la EMD causal opcional y la generación de CSV no interactiva.
+
+---
+
+## 2026-06-08 — Fase 9-B/9-C: figuras interactivas (Plotly) + UI web (Streamlit)
+
+- **Prompt del usuario:** «retomemos todo eso que dejamos como opcionales… figuras estáticas e
+  interactivas… UI/UX bien desarrollada». Orden confirmado: algoritmos/base primero, luego UI.
+- **Figuras interactivas `src/viz/interactive.py` (Fase 9-B):** `plot_kpartition_interactive`
+  (diagrama de bloques de dos capas presente/futuro, hover por bloque), `plot_loss_vs_k_interactive`
+  (δ_k vs k, una línea por estrategia), `plot_scalability_interactive` (tiempo vs n, eje y log).
+  Plotly se importa de forma perezosa; `src/viz/__init__.py` reexpone los tres vía `__getattr__`
+  (no fuerza el extra opcional). Export a HTML autocontenido con `scripts/make_interactive.py`
+  (genera `loss_vs_k_*.html`, `scalability_k*.html`, `partition_*_*.html` con plotly.js por CDN).
+  Verificado: 6 HTML generados desde `benchmark_core_meta.csv` + demo KGeoMIP N4A k3.
+- **Registro de estrategias `src/funcs/runner.py`:** centraliza `STRATEGY_BUILDERS` (7 estrategias
+  k-partitas), `STRATEGY_HELP`, `run_analysis(...)` headless (redirige stdout, devuelve `Solution`
+  + `KPartition`), `available_samples()`, `load_tpm()`. Compartido por la UI y los scripts.
+- **UI web `app/streamlit_app.py` (Fase 9-C):** Streamlit de un archivo. (1) Datos: elegir muestra
+  existente o **generar TPM nueva desde el navegador** (0/1 o continua, semilla, `assume_yes=True`);
+  (2) Estrategia: selector de las 7 estrategias + ayuda, slider de k (2..min(5,2n)), método de
+  clustering, máscaras de subsistema avanzadas; (3) Resultados: métrica δ_k/tiempo, partición,
+  diagrama interactivo de la partición, tabla de la distribución marginal, y rejilla benchmark
+  interactiva si existe `benchmark_results_FINAL.csv`. Arranque headless verificado (HTTP 200,
+  `/_stcore/health` 200, sin trazas de error).
+- **Dependencias opcionales (`pyproject.toml`):** extras `viz = [plotly>=5.20]` y
+  `web = [streamlit>=1.40, plotly>=5.20]`. Instaladas vía `uv add --optional`. No bloquean `uv sync`
+  base. Plotly 6.8.0, Streamlit 1.58.0 verificados.
+- **Tests:** `tests/unit/test_runner.py` (registro=ayuda, descubre N10A/N15A, shape N4A, las 7
+  estrategias corren E2E con δ_k finito, ninguna mejora al exacto, nombre inválido → KeyError) y
+  `tests/unit/test_interactive_viz.py` (`importorskip` plotly; cada helper devuelve `go.Figure`,
+  una traza por estrategia, eje log). 13 tests nuevos, en verde.
+- **Gates:** `ruff` verde (incl. `app/`), `mypy src` verde (48 archivos). Sin tocar los manuales
+  (siguen sin commitear) ni el WIP de entrada del usuario.
+- **IA:** la IA diseñó los tres tipos de figura interactiva, el registro headless de estrategias y
+  la UI web completa (generación de CSV + análisis + visualización), con sus tests.
