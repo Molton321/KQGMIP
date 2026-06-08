@@ -1,0 +1,10 @@
+strategy,network,n,k,loss,time_s,partition,error
+KGeoMIP,N20A,20,2,0.499296,83.7664,"B1: abcdefghijklmnopqrst | ABCDEFGHIJKLMNOPQRS
+B2: ∅ | T",
+KGeoMIP,N20A,20,3,0.998684,83.3059,"B1: abcdefghijklmnopqrst | ABCDEFGHIJKLMNOQRS
+B2: ∅ | P
+B3: ∅ | T",
+KGeoMIP,N20A,20,4,1.498185,80.9398,"B1: abcdefghijklmnopqrst | ABCDEFGHIJKLMOQRS
+B2: ∅ | N
+B3: ∅ | P
+B4: ∅ | T",
