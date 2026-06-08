@@ -696,3 +696,82 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
 - **Gates:** `pytest` **146 passed**; `ruff check .` verde; `mypy src` verde (44 archivos).
 - **IA:** la IA auditó cada fase contra el código real con evidencia, cerró el gap real (src/viz),
   consolidó la grilla FINAL y documentó honestamente el techo de escalabilidad y la limitación N25.
+
+---
+
+## 2026-06-08 — Fase 8: Documentación y manuales (LaTeX)
+
+- **Prompt del usuario:** «continuar con la fase 8» + «es en latex verdad, si recuerdas los
+  lineamientos de CLAUDE.md y PLANNING.md tambien los requerimientos oficiales» + «según los
+  requerimientos oficiales se debe justificar, expresar fórmulas matemáticas, recuerda
+  implementarlas».
+- **Entregables creados (rama `feature/fase8-docs`, desde `feature/fase7-metrics`):**
+  - `docs/manuales/Manual_Tecnico.tex` (17 págs) — cubre las secciones §2.1-2.9 de la spec:
+    resumen ejecutivo, fundamentos teóricos (definición formal de k-partición estricta, función
+    objetivo δ_k con ecuaciones, extensión GeoMIP/QNodes, complejidad del espacio S(2n,k)),
+    arquitectura (4 diagramas), diseño algorítmico (pseudocódigo de `GreedyKPartition` y
+    `CostTable`), análisis de complejidad (tabla por componente), implementación, resultados
+    experimentales (tablas desde `benchmark_results_FINAL.csv` + 6 figuras), limitaciones y trabajo
+    futuro, apéndices (demostración k=2⇒bipartición, reproducción, referencias, uso de IA).
+  - `docs/manuales/Manual_Usuario.tex` (~10 págs) — §2.1-2.9: visión general accesible, requisitos,
+    instalación paso a paso (uv), placeholder de video, guía de uso con **salida real capturada**
+    (`uv run main.py` → KGeoMIP k=3 N10A, φ=0.1875), parámetros, troubleshooting, ejemplos,
+    referencia rápida, glosario.
+  - `docs/manuales/preambulo.tex` — preámbulo compartido: Times 11pt carta, babel español
+    (`es-tabla,es-noshorthands`), microtype (justificación), amsmath (fórmulas), listings con
+    `literate` para acentos UTF-8, algorithm/algpseudocode, booktabs, hyperref.
+  - `docs/manuales/diagrams/{01_arquitectura,02_clases,03_paquetes,04_secuencia}.puml` — fuentes UML
+    editables en PlantUML (espejo de los diagramas TikZ del PDF).
+  - `docs/manuales/{Makefile,README.md,.gitignore}` — build (`make`), instrucciones, ignore de
+    artefactos.
+- **Diagramas:** se intentó renderizar PlantUML pero el entorno no tenía `plantuml`/`dot` ni permisos
+  sudo iniciales; se dibujaron los 4 diagramas UML en **TikZ** (autocontenidos en el PDF) +
+  `pgf-umlsd` para el de secuencia. Se conservan los `.puml` como fuente editable.
+- **Verificación de compilación (regla "verificar, no asumir"):** el usuario instaló
+  `texlive-pictures/latexextra/langspanish/mathscience`; ambos manuales **compilan con `pdflatex`**
+  (Manual_Tecnico 17 págs, Manual_Usuario ~10 págs), **0 referencias indefinidas**. Se revisaron
+  visualmente las páginas de diagramas: se corrigieron solapamientos del diagrama de clases y de
+  paquetes (coordenadas explícitas) y una flecha que cruzaba la caja "constants/enums". PDFs
+  compilados versionados como entregables.
+- **Requerimientos oficiales atendidos:** formato carta/Times 11pt, texto justificado (microtype),
+  fórmulas matemáticas con editor LaTeX (Ecs. 1-4: δ_k, EMD analítica, optimización, Stirling),
+  diagramas UML 2.x (clases/paquetes/secuencia/arquitectura), pseudocódigo monoespaciado, tablas
+  numeradas, sección de uso de IA generativa, referencias. README (WIP del usuario) ya apunta a
+  `docs/manuales/`; no se modificó para no pisar sus cambios sin commitear.
+- **Datos reales usados (no inventados):** tablas de pérdida/tiempo desde `benchmark_results_FINAL.csv`
+  (N10A/N15A × k{2,3,4}); cotas de complejidad verificadas contra el código (`CostTable` O(m·2^m),
+  cut pool O(n), δ_k O(2ⁿ), Queyranne O(n³)); salida de consola capturada en vivo.
+- **PLANNING:** Fase 8 → ✅; Fase 9 (validación final/entrega) → 🟨.
+- **IA:** la IA estructuró y redactó ambos manuales, dibujó los diagramas TikZ/PlantUML, extrajo
+  resultados reales del repo y verificó la compilación a PDF iterando sobre los errores de LaTeX.
+
+---
+
+## 2026-06-08 — Fase 9-A: metaheurísticas (GA/SA/Tabú) + integración + pyemd + CSV por comando
+
+- **Prompt del usuario:** «continuemos con la fase 9, además retomemos todo eso que dejamos como
+  opcionales e implementémoslo». Decisiones confirmadas vía AskUserQuestion: orden Algoritmos→UI;
+  metaheurísticas = las tres (GA+SA+Tabú); rejilla = híbrido honesto.
+- **Motor compartido `src/funcs/metaheuristic.py`:** codificación átomo→bloque (vector de etiquetas
+  de longitud |F|+|M|), decodificación a `KPartition` estricta, reparación a factibilidad
+  (surjectiva sobre k bloques), evaluador memoizado con `delta_k`. Algoritmos: `genetic_search`
+  (cruce uniforme + mutación + elitismo + torneo), `simulated_annealing_search` (δ_k como energía,
+  enfriamiento geométrico), `tabu_search` (mejor vecino no tabú + aspiración + tenencia).
+- **Estrategias `src/controllers/strategies/metaheuristics.py`:** `GeneticSIA`, `AnnealingSIA`,
+  `TabuSIA` (heredan de SIA, se puntúan con δ_k, **deterministas** vía `application.numpy_seed=73`).
+  Integradas en el dispatcher de `main.py` (genetic/annealing/tabu).
+- **Tests `tests/unit/test_metaheuristics.py` (21):** δ_k ≥ exacto (ExhaustiveK), alcanzan el óptimo
+  exacto en N3A/N4A (abs 1e-4), determinismo (misma semilla → misma pérdida y partición), partición
+  estricta (sin bloque vacío). Verificado: las tres dan loss=0.125 = óptimo en N4A k=3.
+- **Integración E2E `tests/integration/test_end_to_end.py` (6 → llena tests/integration):** pipeline
+  load→strategy→Solution para las 6 estrategias k-partita; cota heurística ≤ exacto; regresión
+  KGeoMIP(k2)=GeometricSIA; roundtrip generar→cargar→analizar TPM.
+- **pyemd (EMD causal):** ya cableado en `emd.py` (`causal_emd`/`select_emd`); pyemd 2.0.0 presente.
+  `tests/unit/test_emd_causal.py` (3, `importorskip`): EMD=0 idénticas, no-negativa/simétrica,
+  `select_emd` despacha a causal/efecto según `application.emd_time`.
+- **CSV por comando:** `Manager.generate_network(..., assume_yes=False)` (modo no interactivo para
+  CLI/UI) + `scripts/generate_tpm.py` (`--n --continuous --seed --yes`). Verificado en dir temporal.
+- **Gates:** `pytest` **191 passed**; `ruff` verde; `mypy` verde. Sin tocar manuales (siguen sin
+  commitear por decisión del usuario) ni el WIP de entrada del usuario (exec/main_batch/CLAUDE).
+- **IA:** la IA diseñó el motor de metaheurísticas y los tests de validación contra el oráculo,
+  cableó la EMD causal opcional y la generación de CSV no interactiva.

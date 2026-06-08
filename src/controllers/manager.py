@@ -53,12 +53,20 @@ class Manager:
             )
         return np.genfromtxt(self.tpm_filename, delimiter=COLON_DELIM)
 
-    def generate_network(self, dimensions: int, deterministic: bool = True) -> str:
+    def generate_network(
+        self, dimensions: int, deterministic: bool = True, assume_yes: bool = False
+    ) -> str:
         """Generate a random network (TPM) and store it in data/samples/.
 
         Args:
             dimensions: Number of nodes in the system.
             deterministic: True = 0/1 values, False = continuous probabilities.
+            assume_yes: Non-interactive mode (for the CLI/UI). When True, the
+                >1 GB confirmation is skipped and a name collision auto-advances
+                to the next free suffix instead of prompting.
+
+        Returns:
+            The filename written (or an existing one if generation is declined).
         """
         np.random.seed(application.numpy_seed)
 
@@ -70,7 +78,7 @@ class Manager:
         total_gb = (num_states * dimensions * bytes_per_value) / (1024 ** 3)
         print(f"Tamaño estimado: {total_gb:.6f} GB")
 
-        if total_gb > 1:
+        if total_gb > 1 and not assume_yes:
             if input("El sistema ocupará más de 1 GB. ¿Continuar? (s/n): ").lower() != "s":
                 return ""
 
@@ -78,7 +86,7 @@ class Manager:
 
         suffix = ABC_START
         while (self.base_path / f"N{dimensions}{suffix}.{CSV_EXTENSION}").exists():
-            if input(
+            if not assume_yes and input(
                 f"Ya existe N{dimensions}{suffix}.{CSV_EXTENSION}. ¿Generar nueva red? (s/n): "
             ).lower() != "s":
                 return f"N{dimensions}{suffix}.{CSV_EXTENSION}"
