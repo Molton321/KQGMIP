@@ -810,3 +810,29 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
   (siguen sin commitear) ni el WIP de entrada del usuario.
 - **IA:** la IA diseñó los tres tipos de figura interactiva, el registro headless de estrategias y
   la UI web completa (generación de CSV + análisis + visualización), con sus tests.
+
+---
+
+## 2026-06-08 — Fase 9-A (cierre): rejilla híbrida honesta + validación de instalación limpia
+
+- **Rejilla benchmark con metaheurísticas (datos reales medidos, no inventados):**
+  - **Núcleo N10A/N15A × k{2,3,4}** con las 7 estrategias (KGeoMIP, KQNodes, Clustering ×2,
+    GA/SA/Tabú), δ_k real. `scripts/run_benchmark.py --nets N10A N15A --ks 2 3 4`.
+  - **N20A KGeoMIP** k{2,3,4}: δ_k computado en **~82 s/k** (loss 0.4993/0.9987/1.4982). El núcleo
+    geométrico **sí escala a n=20**; KQNodes (Queyranne O(n³·2ⁿ)) y el exacto son impracticables
+    ahí (se intentó la rejilla N20/N22 completa y se canceló por inviable en tiempo de sesión).
+  - **N25A clustering**: propone partición pero δ_k queda en blanco (reconstrucción 2²⁵ excede
+    memoria) → **techo de escalabilidad documentado**.
+  - Consolidado reproducible con `scripts/consolidate_results.py` →
+    `benchmark_results_FINAL.csv/.xlsx` (53 filas). Figuras estáticas + interactivas regeneradas
+    desde el FINAL (escalabilidad ya muestra el punto n=20).
+- **Hallazgo de comparación honesto:** Tabú sigue de cerca el óptimo de KGeoMIP/KQNodes; GA/SA
+  alcanzan el óptimo en k pequeño pero se quedan atrás en k mayor sobre el espacio 4^(2n) con los
+  presupuestos de iteración por defecto (es el comportamiento esperado de una metaheurística).
+- **Validación de instalación limpia (entorno nuevo):** `git clone` a `/tmp` + `uv sync --extra web
+  --extra emd` → (1) **generar CSV por comando** `scripts/generate_tpm.py --n 4 --yes` (creó N4D.csv);
+  (2) análisis headless KGeoMIP N4A k=3 → loss 0.125 + partición; (3) **`pytest` 206 passed**;
+  (4) figuras estáticas e interactivas generadas; (5) **UI web arranca** (HTTP 200, `/_stcore/health`
+  200, sin errores). El sistema se recrea de cero. Clon temporal eliminado tras validar.
+- **IA:** la IA orquestó las corridas del benchmark, midió los tiempos reales a n=20, escribió el
+  consolidador reproducible y ejecutó la validación de instalación limpia paso a paso.
