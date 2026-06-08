@@ -87,7 +87,10 @@ def _best_refinement(
 
     Tries every (block, cut) pairing that divides a block into two non-vacuous
     sub-blocks, scores the resulting full partition with ``delta_k``, and keeps
-    the minimum. Returns ``None`` if no block can be split into two non-vacuous
+    the minimum. The per-step candidate batch is small (~k·|cut_pool|), so the
+    scalar ``delta_k`` path is faster here than a batched kernel (measured); the
+    batch kernel (``accelerate.batch_effect_emd``) is reserved for large-batch
+    consumers. Returns ``None`` if no block can be split into two non-vacuous
     parts with the available cuts.
     """
     best_loss = np.inf
@@ -106,12 +109,12 @@ def _best_refinement(
             if not (inside[0] or inside[1]) or not (outside[0] or outside[1]):
                 continue
 
-            candidate_blocks = blocks[:position] + [inside, outside] + blocks[position + 1 :]
-            partition = _to_kpartition(candidate_blocks, future_universe, present_universe)
+            new_blocks = blocks[:position] + [inside, outside] + blocks[position + 1 :]
+            partition = _to_kpartition(new_blocks, future_universe, present_universe)
             loss, _ = delta_k(subsystem, partition, baseline_distribution=baseline)
             if loss < best_loss:
                 best_loss = loss
-                best_blocks = candidate_blocks
+                best_blocks = new_blocks
 
     return best_blocks
 

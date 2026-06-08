@@ -52,6 +52,12 @@ def _build_batch_emd_kernel() -> Any:  # pragma: no cover - only with numba inst
 
 _BATCH_EMD_KERNEL: Any = _build_batch_emd_kernel() if _HAS_NUMBA else None
 
+# Below this batch size NumPy wins: the Numba kernel's per-call dispatch and
+# thread-spawn overhead costs more than the vectorized L1 sum. Measured on this
+# workload, so the strategies' small per-step batches take the NumPy path while
+# the nogil kernel is reserved for large batches.
+NUMBA_BATCH_THRESHOLD: int = 512
+
 
 def batch_effect_emd(
     distributions: NDArray[np.float32],
@@ -59,17 +65,21 @@ def batch_effect_emd(
 ) -> NDArray[np.float32]:
     """Effect-EMD of each row of ``distributions`` against ``baseline``.
 
+    Dispatches to the Numba nogil kernel only for large batches (see
+    :data:`NUMBA_BATCH_THRESHOLD`); otherwise uses the vectorized NumPy path.
+    The result is numerically identical either way.
+
     Args:
         distributions: ``(batch, n)`` candidate marginal distributions.
         baseline: ``(n,)`` reference (subsystem) distribution.
 
     Returns:
-        ``(batch,)`` array of L1 distances, identical under both backends.
+        ``(batch,)`` array of L1 distances.
     """
     rows = np.ascontiguousarray(distributions, dtype=np.float32)
     reference = np.ascontiguousarray(baseline, dtype=np.float32)
     if rows.ndim != 2:
         rows = rows.reshape(-1, reference.shape[0])
-    if _BATCH_EMD_KERNEL is not None:
+    if _BATCH_EMD_KERNEL is not None and rows.shape[0] >= NUMBA_BATCH_THRESHOLD:
         return np.asarray(_BATCH_EMD_KERNEL(rows, reference), dtype=np.float32)
     return np.abs(rows - reference).sum(axis=1).astype(np.float32)

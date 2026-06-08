@@ -50,12 +50,16 @@ class CostTable:
         state_start: NDArray[np.int8],
         state_end: NDArray[np.int8],
     ) -> None:
-        self.flat_data = flat_data
+        # Stack the per-node rows into a contiguous (num_nodes, 2^m) matrix so a
+        # state's per-node values are a single vectorized column gather.
+        self._flat = np.ascontiguousarray(np.stack(flat_data))
         self.state_start = state_start
         self.state_end = state_end
         self.num_nodes = len(flat_data)
-        self.node_idx = list(range(self.num_nodes))
-        self.transition_table: dict[tuple, list[float]] = {}
+        # Powers of two for the little-endian bit-list -> int conversion (avoids
+        # the per-state ``int("".join(map(str, ...)), 2)`` string formatting).
+        self._powers = (1 << np.arange(state_start.size, dtype=np.int64))
+        self.transition_table: dict[tuple, NDArray[np.float64]] = {}
         self.paths: dict[int, list[list[int]]] = {}
         self._build()
 
@@ -89,19 +93,14 @@ class CostTable:
         whole vector is finally scaled by ``γ = 1 / 2^{d_H}``.
         """
         key = tuple(state_start), tuple(state_end)
-        if key not in self.transition_table:
-            self.transition_table[key] = [None] * self.num_nodes  # type: ignore[list-item]
-
         dh = self._hamming(state_start, state_end)
-        factor = 1 / (2 ** dh)
+        factor = 1.0 / (2 ** dh)
 
-        start_int = int("".join(map(str, state_start[::-1])), 2)
-        end_int = int("".join(map(str, state_end[::-1])), 2)
-        diffs = np.abs(
-            np.array([f[start_int] for f in self.flat_data])
-            - np.array([f[end_int] for f in self.flat_data])
-        )
-        self.transition_table[key] = diffs.tolist()
+        # Little-endian bit list -> flat index via a dot with the powers of two.
+        start_int = int(np.dot(state_start, self._powers))
+        end_int = int(np.dot(state_end, self._powers))
+        # Vectorized per-node absolute difference (single column gather + abs).
+        cost = np.abs(self._flat[:, start_int] - self._flat[:, end_int])
 
         # For multi-bit jumps, accumulate the single-bit neighbor costs.
         if dh > 1:
@@ -109,15 +108,11 @@ class CostTable:
                 if state_start[i] != state_end[i]:
                     neighbor = list(state_end)
                     neighbor[i] = state_start[i]
-                    temp_key = tuple(state_start), tuple(neighbor)
-                    self.transition_table[key] = [
-                        self.transition_table[key][x] + self.transition_table[temp_key][x]
-                        for x in self.node_idx
-                    ]
+                    cost = cost + self.transition_table[(tuple(state_start), tuple(neighbor))]
 
-        self.transition_table[key] = [factor * v for v in self.transition_table[key]]
+        self.transition_table[key] = factor * cost
 
-    def cost(self, state_start: list, state_end: list) -> list[float]:
+    def cost(self, state_start: list, state_end: list) -> NDArray[np.float64]:
         """Return the per-node cost vector for the ``start -> end`` transition."""
         return self.transition_table[(tuple(state_start), tuple(state_end))]
 
