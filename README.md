@@ -1,212 +1,167 @@
-# K_QGMIP — Mínima Partición de Información (MIP) y k-particiones
+# K-QGMIP — Partición de Mínima Información y k-particiones
 
-Proyecto **K_QGMIP** (Teoría de la Información Integrada, IIT) para encontrar la **Minimal
-Information Partition (MIP)** de sistemas binarios y extenderla a **k-particiones** (k ∈ {2..5})
-mediante las estrategias geométrica (GeoMIP → KGeoMIP) y submodular (QNodes → KQNodes).
+Framework de **Teoría de la Información Integrada (IIT)** que encuentra la **Partición de Mínima
+Información (MIP)** de un sistema binario descrito por su **Matriz de Probabilidad de Transición
+(TPM)**. Extiende la bipartición clásica (k=2) a **k-particiones, k ∈ {2,3,4,5}** con dos estrategias
+núcleo —**KGeoMIP** (geométrica) y **KQNodes** (submodular)— y escala hasta **n ≈ 25 nodos**.
 
-> README en reescritura completa en la Fase 8 (ver `PLANNING.md`). El nombre y la hoja de
-> ruta oficiales están en `docs/Proyecto_KQMIP.md`.
+Dado un sistema y su TPM, busca la k-partición que **minimiza la pérdida de información** `δ_k`
+(`δ_k = 0` ⇒ partición perfecta; `δ_k > 0` ⇒ información integrada causalmente).
+
+> Especificación oficial: `docs/Proyecto_KQMIP.md` · Hoja de ruta: `PLANNING.md`
 
 ---
 
-## Estructura del proyecto
+## Inicio rápido
+
+Requisitos: Python 3.14 y [`uv`](https://github.com/astral-sh/uv).
+
+```bash
+git clone <url-del-repo> && cd KQGMIP
+uv sync                     # dependencias base
+uv sync --extra web         # + interfaz web (Streamlit + Plotly)
+```
+
+### 1. Interfaz web (lo más fácil — sin escribir comandos ni código)
+
+```bash
+uv run streamlit run streamlit_app.py     # o:  uv run python streamlit_app.py
+```
+
+Se abre en `http://localhost:8501`. Permite, desde el navegador: **generar una TPM**, elegir
+**estrategia / k / subsistema**, y ver la **partición**, su `δ_k`, la distribución y las **figuras
+estáticas e interactivas**.
+
+### 2. Línea de comandos por banderas (sin editar código)
+
+```bash
+uv run exec.py --net N10A --k 3 --strategy kgeomip
+uv run exec.py --net N4A  --k 2 --strategy kqnodes
+```
+
+Estrategias: `kgeomip`, `kqnodes`, `clustering`, `genetic`, `annealing`, `tabu`, `exhaustivek`.
+Opcionales: `--page B`, `--method kmeans` (clustering), `--condition/--purview/--mechanism`,
+`--profile`. Sin argumentos ejecuta una demostración.
+
+### 3. Ruta avanzada (fijar el subsistema a mano)
+
+Editar los valores al inicio de `main.py` y `uv run main.py`. Para procesar una rejilla de
+subsistemas desde Excel: `uv run exec.py --batch --strategy kqnodes --k 4`.
+
+---
+
+## Estrategias
+
+Todas heredan de `SIA` y se puntúan con la **misma** pérdida `δ_k`.
+
+| Estrategia | Clase | k | Rol |
+|---|---|---|---|
+| **KGeoMIP** | `KGeoMIP` | 2–5 | Núcleo geométrico (cortes sucesivos guiados por la tabla de costos) |
+| **KQNodes** | `KQNodes` | 2–5 | Núcleo submodular (minimización tipo Queyranne) |
+| **Clustering** | `ClusteringSIA` | 2–n | Baseline determinista (espectral / KMeans); sólo *propone* la partición |
+| **Genetic / Annealing / Tabu** | `GeneticSIA` … | 2–5 | Metaheurísticas comparativas (deterministas con la semilla global) |
+| **ExhaustiveK** | `ExhaustiveK` | 2–5 | Óptimo exacto por enumeración — *ground truth* sólo para n pequeño |
+| BruteForce / GeometricSIA / QNodes / Phi | — | 2 | Referencias k=2 (regresión y validación PyPhi) |
+
+**KGeoMIP/KQNodes son heurísticas voraces:** para k=2 dan el óptimo (= legado validado); para k≥3 son
+cotas superiores y a veces subóptimas (la metaheurística **Tabú** suele recuperar el óptimo). Por eso
+conviene tomar el **mínimo entre estrategias**.
+
+---
+
+## Datos (TPM)
+
+`data/samples/N{n}{página}.csv`: `2^n` filas × `n` columnas, little-endian (la fila 0 es `00…0`),
+0/1 deterministas o probabilidades continuas. Se cargan automáticamente por `n` y página.
+
+```bash
+uv run scripts/generate_tpm.py --n 4               # genera N4?.csv (0/1)
+uv run scripts/generate_tpm.py --n 6 --continuous  # probabilidades continuas
+```
+
+…o desde la **interfaz web** (botón «Generar TPM»), sin línea de comandos.
+
+---
+
+## Verificación y experimentación
+
+```bash
+uv run pytest                              # 207 tests (regresión k=2, k=3..5 vs exacto, determinismo…)
+uv run scripts/validate_optimality.py      # ¿son óptimas? exacto (n≤4) + convergencia (N10A/N15A)
+uv run scripts/validate_correctness.py     # δ_k = recomputado, y ≤ exacto, por estrategia
+uv run scripts/run_benchmark.py            # rejilla de estrategias × redes × k -> data/results/
+uv run scripts/make_figures.py             # figuras estáticas (PNG)
+uv run scripts/make_interactive.py         # figuras interactivas (HTML, Plotly)
+```
+
+**Cómo se valida que las particiones son las mejores:** donde el exacto es tratable (n≤4) el sistema
+(mejor estrategia) iguala el óptimo enumerado por fuerza bruta (4/4); a n=10/15, tres búsquedas
+independientes (geométrica, submodular y metaheurística) **convergen** al mismo `δ_k`, lo que es
+fuerte evidencia de óptimo global. El consolidado vive en `data/results/benchmark_results_FINAL.csv`.
+
+---
+
+## Estructura
 
 ```
-projecto-analisis-20261/
-│
-├── exec.py              ← Punto de entrada principal
-├── main.py              ← Configuración para análisis individual
-├── main_batch.py        ← Procesamiento en lote desde Excel
-├── pyproject.toml       ← Dependencias Python (uv)
-├── pyphi_config.yml     ← Configuración de la librería pyphi
-│
+KQGMIP/
+├── streamlit_app.py            # interfaz web (Streamlit)
+├── exec.py                     # CLI por banderas (individual / --batch)
+├── main.py · main_batch.py     # ruta avanzada (config a mano) · lote desde Excel
 ├── src/
-│   ├── base/
-│   │   ├── application.py   ← Singleton de configuración global
-│   │   └── sia.py           ← Clase abstracta base para todas las estrategias
-│   │
-│   ├── constants/
-│   │   ├── base.py          ← Constantes numéricas, rutas y símbolos
-│   │   ├── errors.py        ← Mensajes de error
-│   │   └── tags.py          ← Etiquetas de estrategias y valores dummy
-│   │
-│   ├── models/
-│   │   ├── enums/
-│   │   │   ├── distance.py      ← MetricDistance (Hamming, Manhattan, Euclidiana)
-│   │   │   ├── notation.py      ← Notation (LIL_ENDIAN, BIG_ENDIAN, ...)
-│   │   │   └── temporal_emd.py  ← TimeEMD (EMD_EFECTO, EMD_CAUSA, EMD_INTEGRADA)
-│   │   ├── ncube.py         ← N-cubo n-dimensional (núcleo de datos)
-│   │   ├── system.py        ← Sistema IIT: condicionamiento, substracción, bipartición
-│   │   └── solution.py      ← Representación visual de resultados
-│   │
-│   ├── funcs/
-│   │   ├── emd.py           ← emd_efecto, emd_causal, seleccionar_emd
-│   │   ├── format.py        ← Formateo de biparticiones para consola
-│   │   ├── labels.py        ← Etiquetas alfabéticas, lil_endian, reindexar
-│   │   └── partitions.py    ← Generadores de biparticiones y subsistemas
-│   │
-│   ├── io/
-│   │   ├── manager.py       ← Carga TPMs y gestiona rutas de salida
-│   │   ├── logger.py        ← SafeLogger con colores y archivos .log
-│   │   └── profiler.py      ← Perfil de ejecución HTML (pyinstrument)
-│   │
-│   └── strategies/
-│       ├── brute_force.py   ← Fuerza bruta exhaustiva
-│       ├── q_nodes.py       ← Algoritmo Q-Nodes (greedy submodular)
-│       ├── pyphi_wrapper.py ← Envuelve la librería pyphi (referencia)
-│       └── geometric.py     ← GeoMIP Método 2 (programación dinámica)
-│
-├── data/
-│   ├── README.md        ← Descripción de cada dataset disponible
-│   ├── samples/         ← TPMs en CSV (N2–N8, notación little-endian)
-│   └── results/         ← Salidas de análisis (Excel)
-│
-└── docs/
-    └── algoritmos.md    ← Descripción técnica de cada estrategia
+│   ├── constants/              # constantes centralizadas (base, errors, tags)
+│   ├── controllers/
+│   │   ├── manager.py          # carga/genera TPMs (carga en float32)
+│   │   └── strategies/         # force, geometric, q_nodes, phi, exhaustive_k,
+│   │                           #   kgeomip, kqnodes, clustering, metaheuristics
+│   ├── funcs/                  # emd (δ_k), cost_table, k_refine, metaheuristic,
+│   │                           #   runner (registro único de estrategias), labels…
+│   ├── middlewares/            # slogger (logs), profile (@profile)
+│   ├── models/{base,core,enums}/  # sia/application · ncube/system/solution/partition · enums
+│   └── viz/                    # figuras estáticas (matplotlib) e interactivas (Plotly)
+├── scripts/                    # benchmark, figuras, validación, generación de TPM
+├── data/{samples,results}/     # TPMs CSV · resultados Excel/CSV + figuras
+├── tests/{unit,integration,fixtures}/
+└── docs/                       # especificación oficial + manuales
 ```
+
+`src/funcs/runner.py` es el **único** registro estrategia→constructor: la UI, el CLI y los scripts
+construyen y ejecutan estrategias a través de él (`run_analysis`, `build_strategy`, `parse_net_label`).
 
 ---
 
-## Flujo de funcionamiento
-
-```
-exec.py
-  └─► main.py  (o main_batch.py con --batch)
-        └─► Manager.cargar_red()
-              └─► Lee data/samples/N{n}{página}.csv
-        └─► Estrategia(tpm, estado_inicial)
-              └─► sia_preparar_subsistema(condicion, alcance, mecanismo)
-                    1. System(tpm, estado)       → crea n-cubos desde la TPM
-                    2. system.condicionar()       → aplica condiciones de fondo
-                    3. candidato.substraer()      → genera subsistema objetivo
-              └─► aplicar_estrategia()
-                    → evalúa biparticiones sobre el subsistema
-                    → calcula EMD efecto por partición
-                    → retorna Solution con φ mínimo
-        └─► print(solucion)                       → resultado en consola
-```
-
-### ¿Qué calcula el framework?
-
-Dado un sistema de N nodos con una TPM, el framework encuentra la **bipartición** del subsistema que **minimiza la pérdida de información** (valor φ mínimo).
-
-- `φ = 0` → sistema perfectamente particionable (información separable)
-- `φ > 0` → el sistema integra información causalmente
-
-### Parámetros de entrada (cadenas de bits de longitud N)
-
-| Parámetro       | Bit = 1               | Bit = 0                      |
-|-----------------|-----------------------|------------------------------|
-| `estado_inicial`| nodo activo (ON)      | nodo inactivo (OFF)          |
-| `condiciones`   | variable presente     | variable condicionada (fija) |
-| `alcance`       | futuro incluido       | futuro marginalizado         |
-| `mecanismo`     | presente incluido     | presente marginalizado       |
-
----
-
-## Estrategias disponibles
-
-| Estrategia    | Clase            | Complejidad     | Cuándo usar                        |
-|---------------|------------------|-----------------|------------------------------------|
-| Fuerza Bruta  | `BruteForce`     | O(2^(m+n))      | Sistemas pequeños (N ≤ 6), exacta  |
-| Q-Nodes       | `QNodes`         | Polinomial      | Sistemas medianos, resultado rápido|
-| PyPhi         | `Phi`            | —               | Validación con librería de referencia|
-| GeoMIP        | `GeometricSIA`   | Sub-exponencial | Sistemas grandes, modo batch       |
-
----
-
-## Modo de ejecución
-
-### Requisitos
-
-- Python ≥ 3.11
-- [`uv`](https://github.com/astral-sh/uv) instalado (`pip install uv`)
-
-### Instalación
+## Instalación y extras
 
 ```bash
-git clone <url-del-repo>
-cd projecto-analisis-20261
-uv sync
+uv sync                 # base
+uv sync --extra web     # Streamlit + Plotly (interfaz web + figuras interactivas)
+uv sync --extra viz     # sólo Plotly (figuras interactivas)
+uv sync --extra emd     # pyemd (EMD causal opcional de comprobación)
 ```
 
-### Análisis individual
-
-**1. Configura `main.py`:**
-
-```python
-estado_inicial = "1000"   # 4 nodos, solo A activo
-condiciones    = "1110"   # A, B, C presentes; D condicionado
-alcance        = "1110"   # A, B, C en futuro; D marginalizado
-mecanismo      = "1110"   # A, B, C en presente; D marginalizado
-```
-
-**2. Elige la estrategia (descomenta en `main.py`):**
-
-```python
-analizador = BruteForce(tpm, estado_inicial)
-# analizador = QNodes(tpm, estado_inicial)
-# analizador = GeometricSIA(tpm, estado_inicial)
-```
-
-**3. Ejecuta:**
-
-```bash
-uv run exec.py
-```
-
-La TPM se carga automáticamente desde `data/samples/N4A.csv`
-(4 nodos → N4, página A → configurado en `exec.py`).
-
-### Procesamiento en lote (GeoMIP)
-
-```bash
-# Variables de entorno opcionales
-export IIT_INPUT_XLSX="data/results/Pruebas_Metodo2.xlsx"
-export IIT_OUTPUT_XLSX="data/results/resultados.xlsx"
-export IIT_ESTADO_INI="1000000000"   # 10 nodos
-
-uv run exec.py --batch
-```
-
-### Configuración avanzada en `exec.py`
-
-```python
-from src.base.application import aplicacion
-from src.models.enums.temporal_emd import TimeEMD
-
-aplicacion.set_pagina_red_muestra("B")          # usa N{n}B.csv en lugar de A
-aplicacion.set_tiempo_emd(TimeEMD.EMD_CAUSA)    # EMD causal en lugar de efecto
-aplicacion.desactivar_profiling()               # sin reportes HTML
-```
-
-### Profiling de rendimiento
-
-Reportes HTML de ejecución generados en:
-```
-review/profiling/NET{n}{página}/{DD_MM_YYYY}/{HH}hrs/
-```
-Abre el `.html` en un navegador para analizar costos temporales por función.
-
-### Logs de ejecución
-
-```
-.logs/{DD_MM_YYYY}/{HH}hrs/{nombre}.log
-.logs/last_{nombre}.log   ← última ejecución
-```
+`uv.lock` se versiona. Reportes de profiling: `review/profiling/…` · logs: `logs/…`.
 
 ---
 
-## Agregar una nueva red
+## Stack
 
-**Opción 1 — Generar aleatoriamente:**
-```python
-from src.io.manager import Manager
-Manager("100000").generar_red(6, determinista=False)  # crea data/samples/N6B.csv
-```
+| Componente | Uso |
+|---|---|
+| NumPy 2.4 · SciPy 1.17 · pandas 3.0 | tensores/EMD · clustering espectral · E/S |
+| more_itertools | particiones de Stirling (exacto) |
+| matplotlib · plotly *(extra)* | figuras estáticas · interactivas |
+| streamlit *(extra)* | interfaz web |
+| pyphi *(validación)* · pyemd *(extra)* | oráculo IIT k=2 · EMD causal |
+| joblib · psutil | paralelismo por procesos (PCD) |
+| pytest · ruff · mypy *(dev)* | tests · lint · tipos |
 
-**Opción 2 — Archivo manual:**
+GIL activo → el paralelismo es **por procesos** (no hilos).
 
-Coloca el CSV en `data/samples/` con nombre `N{n}{letra}.csv`.
-- Formato: `2^N filas × N columnas`, separado por comas
-- Indexación little-endian (fila 0 = estado `000...0`, fila 1 = `100...0`)
+---
+
+## Convenciones
+
+- Nomenclatura obligatoria y consistente: **KGeoMIP** y **KQNodes** (la «K» = k-particiones).
+- Código en **inglés** (identificadores, docstrings, comentarios); salidas/logs en español.
+- Toda estrategia hereda de `SIA` y valida contra el oráculo (`BruteForce`/exacto, PyPhi).
+- Techo honesto: **n ≈ 25**; no se promete escalar más.
