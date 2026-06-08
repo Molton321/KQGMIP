@@ -9,6 +9,11 @@ from src.models.core.ncube import NCube
 from src.models.core.partition import KPartition
 from src.models.enums.notation import Notation
 
+# Storage dtype for the n-cube tensors. float32 halves the marginalize memory
+# traffic and the resident footprint; exposed as a module constant so the
+# precision validation test can rebuild the float64 reference.
+NCUBE_DTYPE = np.float32
+
 
 class System:
     """
@@ -26,6 +31,13 @@ class System:
         self.initial_state = initial_state
         self.memo: dict = {}
 
+        # Store the n-cube tensors as float32 (see NCUBE_DTYPE): it halves the
+        # memory traffic of the marginalize reduction (np.mean, the dominant
+        # cost — ~78% of QNodes) and the resident footprint toward the n=25
+        # ceiling. For deterministic 0/1 TPMs the marginal means are dyadic and
+        # exact in float32 for the tested sizes (validated against float64 in
+        # tests/unit/test_float32_precision.py).
+        tpm = np.asarray(tpm, dtype=NCUBE_DTYPE)
         is_little_endian = application.indexing_notation == Notation.LIL_ENDIAN.value
         self.ncubes = tuple(
             NCube(

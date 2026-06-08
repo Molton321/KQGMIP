@@ -602,3 +602,32 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
 - **IA:** la IA verificó cada claim contra el código commiteado con evidencia medida, vectorizó el
   cuello real (CostTable), probó y descartó la integración de Numba por medición, y documentó el
   hallazgo con transparencia.
+
+## 2026-06-07 — Cierre Fase 6: tensores n-cubo en float32 (validado)
+
+- **Prompt del usuario:** «cierra fase 6 y haz fase 7» (tras analizar una 2da evaluación que proponía
+  más optimizaciones; decidí, con perfilado, que el lever real y amplio era float32, no numba).
+- **Perfilado que guió la decisión (microbench, profiler off):** KGeoMIP N15 k=2 → **85%** en
+  `CostTable` build; KQNodes N15 k=2 → **78%** en `np.mean` (`ufunc.reduce`, reducción NumPy ya
+  óptima, sin overhead Python tras la vectorización previa). Conclusión: numba NO ayuda (no le gana a
+  `np.mean`); el lever que toca ese cuello es el **dtype**.
+- **Cambio:** `System` almacena los tensores n-cubo en **float32** (`NCUBE_DTYPE`, constante de
+  módulo). `marginal_distribution` ya era float32; ahora toda la cadena es float32 y consistente.
+- **Correctitud (validada, no asumida):**
+  - Regresión completa en verde: en las redes golden (n≤6, datos 0/1, m chico) los promedios
+    marginales son **diádicos y exactos en float32** → invariantes estrictas (BF≡Geo, KGeoMIP≡GeoMIP
+    a `abs=1e-9`) intactas.
+  - `tests/unit/test_float32_precision.py`: compara la δ end-to-end **float32 vs float64**
+    (reconstruyendo los cubos en float64 vía `NCUBE_DTYPE`) en N10A/N15A → coinciden a **abs=1e-5**.
+- **Beneficio medido:**
+  - **Memoria (el lever clave para el techo n=25):** un cubo N25 pasa de 268 MB→134 MB; el sistema
+    completo de **~6.7 GB (float64, > RAM libre ~6.6 GB) → ~3.35 GB** → **n=25 ahora cabe en RAM**.
+  - **Velocidad:** marginalize N20A **6.27→4.80 ms (1.3×)** fuera de caché (mayor a n=25); en n=15 el
+    tensor cabe en caché → ganancia chica (cache-bound), honestamente reportado.
+- **Sobre la 2da evaluación (otro punto de vista, no ataque):** útil — confirmó techo en KQNodes/
+  CostTable. Pero el perfilado refutó 2 de 4 propuestas: **P1** (batch EMD en greedy) imposible (EMD
+  <1% de KGeoMIP); **P3** (numba en `submodular_function`) no aplica (cuello = `np.mean` numpy-óptimo).
+  **P2** (vectorizar CostTable) válido pero acotado por el muro O(2ⁿ). **P4** (rediseño paralelo)
+  diferido, de acuerdo. El lever real (float32) lo ejecuté aquí, validado.
+- **IA:** la IA perfiló para fundamentar la decisión, descartó numba con evidencia, aplicó float32,
+  validó precisión contra float64 y midió memoria/velocidad.
