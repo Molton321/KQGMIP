@@ -660,3 +660,39 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
 - **Gates:** suite completa verde; `ruff check .` verde (incl. scripts); `mypy src` verde.
 - **IA:** la IA construyó el módulo de métricas + tests, reescribió el validador roto, limpió el
   runner, creó el generador de figuras, ejecutó el grid y produjo las figuras.
+
+## 2026-06-08 — Auditoría Fases 0-7 + cierre real de Fase 7 (src/viz)
+
+- **Prompt del usuario:** «antes de crear la documentación, revisar, evaluar, confirmar que las
+  fases 0-7 están completas y al 100%» + evaluación externa (Nemotron) señalando gaps.
+- **Verificación contra el código real (no contra reportes):** la evaluación externa volvía a correr
+  sobre estado **obsoleto** (commit f105158, sin float32 27756e7 ni Fase 7 74e162c). Confirmado con
+  evidencia: `metrics.py` existe (exact_hit/Φ-error/Jaccard/speedup/slope), `test_float32_precision.py`
+  pasa, `validate_correctness.py` reescrito y verde (18/18), `run_benchmark.py` limpio. Esos "gaps"
+  ya estaban cerrados.
+- **Gap real confirmado y cerrado:** **`src/viz/`** (visualización de k-particiones, spec §4.4) no
+  existía. Implementado:
+  - `src/viz/partition_plot.py`: `plot_kpartition` (diagrama por capas presente/futuro, átomos
+    coloreados por bloque — general para cualquier n,k) y `plot_hypercube_partition` (proyección del
+    hipercubo de nodos para n≤4, la "k regiones" del §2.3; cae a block-diagram si n>4).
+  - `scripts/make_viz.py`: genera ambas figuras desde el `best_partition` de una estrategia.
+  - `tests/unit/test_viz.py` (2 tests, smoke). Figuras demo generadas (KGeoMIP N4A k=3).
+- **Grilla FINAL (híbrida honesta, alineada con §3.3 "para n grande solo heurísticas viables"):**
+  consolidada en `benchmark_results_FINAL.{csv,xlsx}`. Núcleo (KGeoMIP/KQNodes/Clustering/ExhaustiveK)
+  **con δ_k medido** en N10A/N15A × k{2,3,4}; Clustering escalado a **N25A** vía muestreo streaming
+  (4096 filas del CSV, evita System/NCubes que serían ~10 GB → OOM). **Limitación honesta
+  documentada:** las filas N25A de clustering tienen **partición propuesta + tiempo (<5 ms) pero δ_k
+  vacío** — puntuar δ_k a n=25 requiere el System completo (OOM); a n=25 solo se demuestra la
+  *propuesta* de partición, no su calidad. Figuras regeneradas desde el FINAL (7 figuras).
+- **Techo de escalabilidad (medido, para Manual Técnico §2.8):** KGeoMIP/KQNodes limitados por
+  CostTable O(2ⁿ) y Queyranne O(n³) → techo práctico n≈15-20; n=25 solo baseline Clustering
+  (propuesta). Tiempos: KGeoMIP N20A k=2 ~52-84 s; KQNodes N20A k=2 ~348 s; Clustering streaming
+  N25A <5 s.
+- **Sobre k>5:** el core no tiene límite hardcoded (KPartition/greedy soportan k≤átomos); la spec
+  fija k∈{2..5}. Se documenta; no se añade guard rígido (el alcance se controla en los runners).
+- **Estado confirmado (honesto):** **Fases 0-6 = 100%**, **Fase 7 = 100%** (métricas + validación +
+  figuras + viz + grilla híbrida honesta). **5B (metaheurísticas) diferida** por decisión previa.
+  Listo para Fase 8 (documentación).
+- **Gates:** `pytest` **146 passed**; `ruff check .` verde; `mypy src` verde (44 archivos).
+- **IA:** la IA auditó cada fase contra el código real con evidencia, cerró el gap real (src/viz),
+  consolidó la grilla FINAL y documentó honestamente el techo de escalabilidad y la limitación N25.

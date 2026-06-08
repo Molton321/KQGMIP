@@ -14,16 +14,16 @@
 
 ## 1. Contexto y diferencia entre lo actual y lo solicitado
 
-| Dimensión               | Estado actual (plantilla)                     | Objetivo (documento oficial)                                 |
-| ----------------------- | --------------------------------------------- | ------------------------------------------------------------ |
-| Particiones             | Solo **k=2** (biparticiones)                  | **k ∈ {2,3,4,5}**                                            |
-| Estrategias             | `GeometricSIA`, `QNodes`, `BruteForce`, `Phi` | **`KGeoMIP`**, **`KQNodes`** (+ exacto y PyPhi para validar) |
-| Escala `n`              | Probado n≤10                                  | n>5 obligatorio; debe resolver **N25A** y mayores            |
+| Dimensión               | Estado actual (plantilla)                     | Objetivo (documento oficial)                                                                |
+| ----------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Particiones             | Solo **k=2** (biparticiones)                  | **k ∈ {2,3,4,5}**                                                                           |
+| Estrategias             | `GeometricSIA`, `QNodes`, `BruteForce`, `Phi` | **`KGeoMIP`**, **`KQNodes`** (+ exacto y PyPhi para validar)                                |
+| Escala `n`              | Probado n≤10                                  | n>5 obligatorio; debe resolver **N25A** y mayores                                           |
 | Búsqueda                | Greedy / geométrica exacta                    | + **baseline clustering/espectral** (determinista) y **GA / SA / Tabú** opcional (n grande) |
-| Tabla de costos         | Parcial (solo desde estado inicial)           | Calculada y **reutilizada para todo k**                      |
-| Tests / logs / bitácora | No hay tests; logs básicos                    | **Tests + logs + bitácora** obligatorios                     |
-| Nomenclatura            | `projecto-analisis-20261`                     | **KGeoMIP / KQNodes** consistente                            |
-| Documentación           | README desalineado                            | Manual Técnico + Manual Usuario + video + presentación       |
+| Tabla de costos         | Parcial (solo desde estado inicial)           | Calculada y **reutilizada para todo k**                                                     |
+| Tests / logs / bitácora | No hay tests; logs básicos                    | **Tests + logs + bitácora** obligatorios                                                    |
+| Nomenclatura            | `projecto-analisis-20261`                     | **KGeoMIP / KQNodes** consistente                                                           |
+| Documentación           | README desalineado                            | Manual Técnico + Manual Usuario + video + presentación                                      |
 
 **Aclaración de alcance clave:** `k` se mantiene pequeño (≤5); lo que crece es `n`. Por eso
 las metaheurísticas operan sobre el espacio de **asignaciones de nodos a k grupos** (en las
@@ -136,18 +136,18 @@ KQGMIP/                              # repo/carpeta renombrada (nomenclatura ofi
 
 ## 4. Seguimiento de fases
 
-| Fase | Nombre                               | Estado                     | Depende de |
-| ---- | ------------------------------------ | -------------------------- | ---------- |
-| 0    | Cimientos y saneamiento              | ✅ Completada              | —          |
-| 1    | Núcleo de dominio k-genérico         | ✅ Completada              | 0          |
-| 2    | k-particiones exactas (ground truth) | ✅ Completada              | 1          |
-| 3    | KGeoMIP (geométrico)                 | ✅ Completada              | 1, 2       |
-| 4    | KQNodes (submodular)                 | ✅ Completada              | 1, 2       |
-| 5    | Baselines comparativos: clustering/espectral (det.) ✅ + metaheurísticas (opc., diferidas) | ✅ 5A Completada | 1, 2 |
-| 6    | Eficiencia y PCD (paralelismo)       | ✅ Completada              | 3, 4, 5    |
-| 7    | Experimentación y métricas           | ✅ Completada              | 3, 4, 5    |
-| 8    | Documentación y manuales             | 🟨 En progreso             | todas      |
-| 9    | Validación final y entrega           | ⬜ Pendiente               | todas      |
+| Fase | Nombre                                                                                     | Estado           | Depende de |
+| ---- | ------------------------------------------------------------------------------------------ | ---------------- | ---------- |
+| 0    | Cimientos y saneamiento                                                                    | ✅ Completada    | —          |
+| 1    | Núcleo de dominio k-genérico                                                               | ✅ Completada    | 0          |
+| 2    | k-particiones exactas (ground truth)                                                       | ✅ Completada    | 1          |
+| 3    | KGeoMIP (geométrico)                                                                       | ✅ Completada    | 1, 2       |
+| 4    | KQNodes (submodular)                                                                       | ✅ Completada    | 1, 2       |
+| 5    | Baselines comparativos: clustering/espectral (det.) ✅ + metaheurísticas (opc., diferidas) | ✅ 5A Completada | 1, 2       |
+| 6    | Eficiencia y PCD (paralelismo)                                                             | ✅ Completada    | 3, 4, 5    |
+| 7    | Experimentación y métricas                                                                 | ✅ Completada    | 3, 4, 5    |
+| 8    | Documentación y manuales                                                                   | 🟨 En progreso   | todas      |
+| 9    | Validación final y entrega                                                                 | ⬜ Pendiente     | todas      |
 
 Leyenda: ⬜ Pendiente · 🟨 En progreso · ✅ Completada · ⛔ Bloqueada
 
@@ -328,9 +328,9 @@ en verde).
 - Runner batch sobre malla (n, k, estrategia) con timeout, exportando a Excel/CSV.
 - Métricas: **tasa de acierto exacto, error relativo en Φ, distancia Jaccard, speedup vs PyPhi,
   escalabilidad (tiempo vs n / vs k), uso de memoria** (umbrales del Cuadro 5.1 del PDF).
-- Gráficas (matplotlib): escalabilidad, precisión, comparativa KGeoMIP vs KQNodes vs baseline
+- Gráficas interativas si es posible: escalabilidad, precisión, comparativa KGeoMIP vs KQNodes vs baseline
   clustering vs metaheurísticas (si se implementaron).
-- `src/viz/`: visualización de k-particiones sobre el hipercubo (k−1 hiperplanos) para la demo.
+- `src/viz/`: visualización de k-particiones sobre el hipercubo (k−1 hiperplanos) para la demo interactiva.
 
 **DoD:** tablas y figuras reproducibles desde un comando; resultados para N≤25 y k∈{2..5}.
 
@@ -341,10 +341,12 @@ en verde).
 **Objetivo:** cubrir los entregables documentales (40% Manual Técnico, 30% Usuario, 30% transversal).
 
 **Nota importante:** En `docs/` ya existen las **ESPECIFICACIONES** (requisitos) de ambos manuales:
+
 - `docs/Manual_Técnico_KQMIP.md` → **Spec** del Manual Técnico (no tocar)
 - `docs/Manual_Usuario_KQMIP.md` → **Spec** del Manual Usuario (no tocar)
 
 Los **ENTREGABLES REALES** a crear en `docs/manuales/` son:
+
 - `docs/manuales/Manual_Tecnico_KQGMIP.tex` → basado en la spec técnica
 - `docs/manuales/Manual_Usuario_KQGMIP.tex` → basado en la spec de usuario
 
@@ -460,21 +462,21 @@ Solo si hay tiempo tras Fases 0–9. No es requisito del proyecto.
 
 Origen: `https://github.com/Molton321/projecto-analisis-20263.git`** (rama `main`, que ya integra
 `copilot/make-commit-of-claude-info`). El `src/` unificado de 20261 se derivó de un snapshot
-**viejo** (`.core/core_00`); 20263 trae código de algoritmos más reciente.
+**viejo\*\* (`.core/core_00`); 20263 trae código de algoritmos más reciente.
 
 ### Hechos verificados (empíricos, esta sesión)
 
-| Hecho | Evidencia |
-| --- | --- |
-| Samples idénticos 20261 vs 20263 | `cmp` byte a byte en N3A–N15B → golden δ no se invalidan |
-| BF y GeoMIP equivalentes (20263 ≡ src actual ≡ oráculo) | δ coinciden en **8/8** (N3A–N6A) |
-| **QNodes de 20263 casi correcto** | acierta **7/8** vs oráculo (solo falla N3B 0.5 vs 0.46875) |
-| **QNodes del src actual defectuoso** | acierta solo **2/8**; confirma el defecto heredado de la base vieja |
-| 20263 tiene deuda menor | `force.py` usa `np.infty` (removido en NumPy 2.0) → falla en el stack actual |
-| N25A generado y techo medido | uint8: 57 s / pico 1.64 GB; NCubes float64 ~6.25 GB > RAM libre 6.6 GB |
-| Estructura oficial = `src/controllers/strategies/` | `docs/Proyecto_KQMIP.md` §4.1 línea 119 |
-| La rúbrica exige docstrings + comentarios | `docs/Proyecto_KQMIP.md` §4.1 línea 123 y §4.5 línea 155 |
-| Nombre oficial del proyecto | **K_QGMIP** (título de `docs/Proyecto_KQMIP.md`) |
+| Hecho                                                   | Evidencia                                                                    |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Samples idénticos 20261 vs 20263                        | `cmp` byte a byte en N3A–N15B → golden δ no se invalidan                     |
+| BF y GeoMIP equivalentes (20263 ≡ src actual ≡ oráculo) | δ coinciden en **8/8** (N3A–N6A)                                             |
+| **QNodes de 20263 casi correcto**                       | acierta **7/8** vs oráculo (solo falla N3B 0.5 vs 0.46875)                   |
+| **QNodes del src actual defectuoso**                    | acierta solo **2/8**; confirma el defecto heredado de la base vieja          |
+| 20263 tiene deuda menor                                 | `force.py` usa `np.infty` (removido en NumPy 2.0) → falla en el stack actual |
+| N25A generado y techo medido                            | uint8: 57 s / pico 1.64 GB; NCubes float64 ~6.25 GB > RAM libre 6.6 GB       |
+| Estructura oficial = `src/controllers/strategies/`      | `docs/Proyecto_KQMIP.md` §4.1 línea 119                                      |
+| La rúbrica exige docstrings + comentarios               | `docs/Proyecto_KQMIP.md` §4.1 línea 123 y §4.5 línea 155                     |
+| Nombre oficial del proyecto                             | **K_QGMIP** (título de `docs/Proyecto_KQMIP.md`)                             |
 
 ### Decisiones consolidadas
 
@@ -482,7 +484,7 @@ Origen: `https://github.com/Molton321/projecto-analisis-20263.git`** (rama `main
    (sobre todo el **QNodes corregido**; también las optimizaciones de GeoMIP: matriz precomputada,
    early-exit `emd==0`). Re-validar golden tras portar.
 2. **Convención de código:** **inglés** + docstrings completos + comentarios en secciones complejas
-   + tests (revisa §2.8). La premisa "QNodes defectuoso 62%" aplica al **código viejo**, no al de 20263.
+   - tests (revisa §2.8). La premisa "QNodes defectuoso 62%" aplica al **código viejo**, no al de 20263.
 3. **Estructura objetivo:** layout oficial **`src/controllers/strategies/`** (= 20263); reorganizar
    el `src/` actual a ese layout (supersede §3).
 4. **Nombre:** renombrar el paquete/proyecto a **K_QGMIP** según la documentación.
