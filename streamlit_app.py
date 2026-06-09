@@ -177,11 +177,31 @@ class StreamlitApp:
             st.session_state.tpm_loaded = None
             return False
         label = st.sidebar.selectbox("Red a analizar", samples, index=0)
-        n, page, state = self._parse_net_label(label)
-        st.sidebar.caption(f"n = {n} nodos · estado inicial = {state}")
+        n, page, default_state = self._parse_net_label(label)
+        state = self._render_initial_state(n, default_state)
+        st.sidebar.caption(f"n = {n} nodos · página {page}")
         st.session_state.tpm_loaded = (state, page)
         self._render_strategy_section(n)
         return True
+
+    def _render_initial_state(self, n: int, default_state: str) -> str:
+        """Render the editable initial-state field; fall back to all-ones if invalid.
+
+        The state is a binary string of ``n`` digits that conditions the analysis
+        (it is not hardcoded to all-ones, mirroring the ``--state`` CLI flag). The
+        ``value`` re-derives from ``n`` so switching networks resets a stale state.
+        """
+        state = st.sidebar.text_input(
+            "Estado inicial",
+            value=default_state,
+            help="Cadena binaria de n dígitos que condiciona el análisis.",
+        )
+        if len(state) != n or any(char not in "01" for char in state):
+            st.sidebar.error(
+                f"El estado debe ser {n} dígitos binarios; usando {default_state}."
+            )
+            return default_state
+        return state
 
     def _handle_tpm_generation(self, mode: str) -> None:
         """Render the 'generate a new TPM' controls when that mode is selected."""
