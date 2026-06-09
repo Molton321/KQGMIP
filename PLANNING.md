@@ -136,34 +136,22 @@ KQGMIP/                              # repo/carpeta renombrada (nomenclatura ofi
 
 ## 4. Seguimiento de fases
 
-| Fase | Nombre                                                                                     | Estado           | Depende de |
-| ---- | ------------------------------------------------------------------------------------------ | ---------------- | ---------- |
-| 0    | Cimientos y saneamiento                                                                    | ✅ Completada    | —          |
-| 1    | Núcleo de dominio k-genérico                                                               | ✅ Completada    | 0          |
-| 2    | k-particiones exactas (ground truth)                                                       | ✅ Completada    | 1          |
-| 3    | KGeoMIP (geométrico)                                                                       | ✅ Completada    | 1, 2       |
-| 4    | KQNodes (submodular)                                                                       | ✅ Completada    | 1, 2       |
-| 5    | Baselines comparativos: clustering/espectral (det.) ✅ + metaheurísticas (opc., diferidas) | ✅ 5A Completada | 1, 2       |
-| 6    | Eficiencia y PCD (paralelismo)                                                             | ✅ Completada    | 3, 4, 5    |
-| 7    | Experimentación y métricas                                                                 | ✅ Completada    | 3, 4, 5    |
-| 8    | Documentación y manuales                                                                   | ✅ Completada    | todas      |
-| 9    | Validación final y entrega                                                                 | 🟨 En progreso   | todas      |
-| 10   | Pulido: --state CLI/UI, validación cruzada vs .core/core_00, tuning GA, rejilla oficial #30 | 🟨 En progreso   | todas      |
+| Fase | Nombre                                                                                                                                | Estado           | Depende de  |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ----------- |
+| 0    | Cimientos y saneamiento                                                                                                               | ✅ Completada    | —           |
+| 1    | Núcleo de dominio k-genérico                                                                                                          | ✅ Completada    | 0           |
+| 2    | k-particiones exactas (ground truth)                                                                                                  | ✅ Completada    | 1           |
+| 3    | KGeoMIP (geométrico)                                                                                                                  | ✅ Completada    | 1, 2        |
+| 4    | KQNodes (submodular)                                                                                                                  | ✅ Completada    | 1, 2        |
+| 5    | Baselines comparativos: clustering/espectral (det.) ✅ + metaheurísticas (opc., diferidas)                                            | ✅ 5A Completada | 1, 2        |
+| 6    | Eficiencia y PCD (paralelismo)                                                                                                        | ✅ Completada    | 3, 4, 5     |
+| 7    | Experimentación y métricas                                                                                                            | ✅ Completada    | 3, 4, 5     |
+| 8    | Documentación y manuales                                                                                                              | ✅ Completada    | todas       |
+| 9    | Validación final y entrega                                                                                                            | 🟨 En progreso   | todas       |
+| 10   | Pulido: --state CLI/UI, validación cruzada vs .core/core_00, tuning GA, rejilla oficial #30                                           | 🟨 En progreso   | todas       |
 | 11   | Escala N25 (rejilla exige QNodes+Geometric a n=25): CostTable vectorizada por niveles, marginal local, cache por k, I/O xlsx estándar | 🟨 En progreso   | 3, 4, 6, 10 |
 
 Leyenda: ⬜ Pendiente · 🟨 En progreso · ✅ Completada · ⛔ Bloqueada
-
-> **Fase 10 (#30 rejilla oficial):** `DatosPruebas2026_1.xlsx` → `Resultados_DatosPruebas2026_1.xlsx`
-> (la plantilla nunca se sobrescribe). **N10A (49/49) y N15B (50/50)** llenados con KQNodes/KGeoMIP
-> (k=2..5) y validados: k=2 reproduce el GeoMIP oficial de `Pruebas_Metodo2.xlsx`. **n≥20 documentado
-> como techo práctico** (medido: ~103 s/celda KGeoMIP a n=20, OOM a n=25 → Invariante 7); celdas
-> vacías con nota al pie, no inventadas.
-
-> **Fase 11 (escala N25):** el techo n≥20 de la Fase 10 **no era fundamental**: era el dict de tuplas
-> Python de la CostTable (~30+ GB de overhead a m=25) y el `np.mean` sobre el tensor completo en cada
-> evaluación de QNodes. Prototipos validados (2026-06-09): tabla vectorizada por niveles **exacta
-> (err 0.0)** vs legacy, m=25 en ~120 s / 3.36 GB / pico 7.4 GB; marginal local 894 ms → 1–60 ms por
-> bipartición a n=25. Ver FASE 11 abajo.
 
 ---
 
@@ -440,6 +428,18 @@ en Fase 10, que era de implementación (estructura de datos y orden de operacion
 **DoD:** tests de igualdad en verde + regresión k=2 intacta; smoke N25 (KGeoMIP y KQNodes) corre
 dentro de la RAM disponible; rejilla oficial n≥20 llenada; `pytest`/`ruff`/`mypy` en verde;
 bitácora al día.
+
+> **Fase 10 (#30 rejilla oficial):** `DatosPruebas2026_1.xlsx` → `Resultados_DatosPruebas2026_1.xlsx`
+> (la plantilla nunca se sobrescribe). **N10A (49/49) y N15B (50/50)** llenados con KQNodes/KGeoMIP
+> (k=2..5) y validados: k=2 reproduce el GeoMIP oficial de `Pruebas_Metodo2.xlsx`. **n≥20 documentado
+> como techo práctico** (medido: ~103 s/celda KGeoMIP a n=20, OOM a n=25 → Invariante 7); celdas
+> vacías con nota al pie, no inventadas.
+
+> **Fase 11 (escala N25):** el techo n≥20 de la Fase 10 **no era fundamental**: era el dict de tuplas
+> Python de la CostTable (~30+ GB de overhead a m=25) y el `np.mean` sobre el tensor completo en cada
+> evaluación de QNodes. Prototipos validados (2026-06-09): tabla vectorizada por niveles **exacta
+> (err 0.0)** vs legacy, m=25 en ~120 s / 3.36 GB / pico 7.4 GB; marginal local 894 ms → 1–60 ms por
+> bipartición a n=25. Ver FASE 11 abajo.
 
 ---
 
