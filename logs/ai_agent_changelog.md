@@ -1093,3 +1093,30 @@ misión: implementación **óptima/eficiente** y verificada. Se **verificó cada
   escala el baseline de Clustering, que no está en las columnas QNodes/Geometric).
 - **Estado #30:** N10A (49/49) y N15B (50/50) completos y validados contra el ground truth oficial;
   n≥20 documentado como límite práctico. La plantilla oficial nunca se sobrescribió.
+
+## 2026-06-09 — FASE 11: escala N25 (apertura de fase)
+
+**Prompt:** "perfecto, te creo realiza las implementaciones… estas correcciones son de una nueva
+fase recuerda ponerlas en PLANNING.md… ve desarrollando e implementando por nivel de importancia."
+Contexto previo: "si revisas bien la documentación oficial y además los .xlsx, piden N=25 tanto en
+QNodes como con GeoMIP, así que sí, debe haber una manera para que esos 2 lleguen a tales N."
+
+- **Verificación de la spec (no asumida):** `DatosPruebas2026_1.xlsx` hoja `25A-Elementos` tiene
+  columnas QNodes **y** Geometric para k=2,3,4,5 (50 pruebas). El techo n≥20 de Fase 10 incumple
+  la rejilla → se abre FASE 11 (rama `feature/fase11-escala-n25`).
+- **Prototipos medidos antes de decidir (parámetros reales):**
+  - CostTable vectorizada por niveles (`/tmp/proto_vect_cost_table.py`): igualdad **exacta
+    (max_abs_err = 0.0)** vs `CostTable` legacy con float32 en m=8/10/12; m=20 en 1.6 s;
+    **m=25 en 119.8 s, T=3.36 GB, pico RAM 7.4 GB** (máquina: 15 GiB, 8 cores). El cuello real
+    era el `dict[tuple, ndarray]` (~1 KB/entrada × 2^25 ≈ 30+ GB), no la matemática.
+  - Marginal local a n=25: una bipartición de 25 cubos pasa de **894 ms** (marginalize completo
+    actual) a **1.2–60 ms** (slice al estado + media del bloque) en el rango |W_p|∈[5,20].
+  - Bug detectado en el diff sin commitear del working tree (`NCUBE_DTYPE=uint8` y propagación):
+    `np.abs(uint8−uint8)` wraparound → costo corrupto **127** (medido con la legacy sobre flat
+    uint8); cast uint8 de `marginal_distribution` trunca 0.5→0. **Se descartó el diff** con
+    `git restore` (6 ficheros) en vez de commitearlo; la idea de memoria (raíz uint8) se podrá
+    retomar sólo con casts float32 explícitos antes de toda aritmética.
+- **PLANNING.md:** fila Fase 11 en la tabla de seguimiento + sección FASE 11 con motivación
+  verificada, tareas y DoD.
+- **IA:** la IA cuestionó su propio veredicto previo ("KQNodes inviable a n=25") al releer la
+  rejilla oficial por mandato del usuario, y lo refutó con prototipos medidos antes de implementar.

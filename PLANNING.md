@@ -149,6 +149,7 @@ KQGMIP/                              # repo/carpeta renombrada (nomenclatura ofi
 | 8    | Documentación y manuales                                                                   | ✅ Completada    | todas      |
 | 9    | Validación final y entrega                                                                 | 🟨 En progreso   | todas      |
 | 10   | Pulido: --state CLI/UI, validación cruzada vs .core/core_00, tuning GA, rejilla oficial #30 | 🟨 En progreso   | todas      |
+| 11   | Escala N25 (rejilla exige QNodes+Geometric a n=25): CostTable vectorizada por niveles, marginal local, cache por k, I/O xlsx estándar | 🟨 En progreso   | 3, 4, 6, 10 |
 
 Leyenda: ⬜ Pendiente · 🟨 En progreso · ✅ Completada · ⛔ Bloqueada
 
@@ -157,6 +158,12 @@ Leyenda: ⬜ Pendiente · 🟨 En progreso · ✅ Completada · ⛔ Bloqueada
 > (k=2..5) y validados: k=2 reproduce el GeoMIP oficial de `Pruebas_Metodo2.xlsx`. **n≥20 documentado
 > como techo práctico** (medido: ~103 s/celda KGeoMIP a n=20, OOM a n=25 → Invariante 7); celdas
 > vacías con nota al pie, no inventadas.
+
+> **Fase 11 (escala N25):** el techo n≥20 de la Fase 10 **no era fundamental**: era el dict de tuplas
+> Python de la CostTable (~30+ GB de overhead a m=25) y el `np.mean` sobre el tensor completo en cada
+> evaluación de QNodes. Prototipos validados (2026-06-09): tabla vectorizada por niveles **exacta
+> (err 0.0)** vs legacy, m=25 en ~120 s / 3.36 GB / pico 7.4 GB; marginal local 894 ms → 1–60 ms por
+> bipartición a n=25. Ver FASE 11 abajo.
 
 ---
 
@@ -388,6 +395,51 @@ Los **ENTREGABLES REALES** a crear en `docs/manuales/` son:
 - Etiquetado de versión, bitácora al día.
 
 **DoD:** todos los criterios del documento de evaluación cubiertos; tests en verde; entry points modernizados; entregables listos.
+
+---
+
+## FASE 11 — Escala N25 (CostTable vectorizada, marginal local, cache por k, I/O xlsx)
+
+**Objetivo:** cumplir la rejilla oficial `DatosPruebas2026_1.xlsx` hoja `25A-Elementos`, que exige
+columnas **QNodes y Geometric** para k∈{2,3,4,5} a n=25. Elimina el techo práctico n≥20 documentado
+en Fase 10, que era de implementación (estructura de datos y orden de operaciones), no algorítmico.
+
+**Motivación verificada (2026-06-09, prototipos en esta máquina: 15 GiB RAM, 8 cores):**
+
+- La CostTable legacy materializa un `dict[tuple, ndarray]` con una entrada por vértice del
+  hipercubo: a m=25 son 2^25 ≈ 33.5 M entradas con overhead de objetos Python (~30+ GB) → OOM.
+  La misma DP por niveles de Hamming sobre un array `(2^m, n)` float32 indexado por entero de
+  estado da **igualdad exacta (error 0.0)** en m=8/10/12 y construye m=25 en **~120 s, 3.36 GB,
+  pico de RAM 7.4 GB**.
+- `QNodes.submodular_function` marginaliza el tensor completo O(2^n) por cubo y evaluación
+  (~894 ms por bipartición a n=25 × ~20k evaluaciones ≈ 9+ h). La marginal **local** (fijar las
+  dimensiones conservadas al estado inicial y promediar el bloque restante, O(2^descartadas))
+  baja a **1–60 ms** en el rango medio; es lo que este plan ya prescribía en §3 ("fitness con
+  marginal local O(2^dims), no recalcular sobre el tensor completo").
+- El experimento `NCUBE_DTYPE=uint8` del working tree (sin commitear) se **descartó por bug**:
+  `np.abs(uint8 − uint8)` hace wraparound (0−1=255 → costo corrupto 127, medido) y el cast uint8
+  de la marginal trunca 0.5→0. La motivación de memoria era válida; la ejecución, incorrecta.
+
+**Tareas**
+
+- CostTable vectorizada por niveles (array `(2^m, n)` float32, orden popcount, gathers numpy),
+  manteniendo la API (`cost`, `candidate_bipartitions`) y el **orden lexicográfico** de enumeración
+  de candidatos del BFS legacy (mismo desempate en `argmin`). Test de igualdad exacta vs legacy.
+- Marginal local en `NCube`/`System` (slice al estado inicial + media del bloque, memoizada por
+  kept-set) y uso en `QNodes.submodular_function`. Test de igualdad vs `bipartition()` +
+  `marginal_distribution()` (valores diádicos exactos en TPM 0/1).
+- Cache del trabajo caro entre k=2..5 por subsistema (la propia spec de `cost_table.py`:
+  "computed once per system … independently of k"); aplica a CostTable y a la secuencia Queyranne.
+- I/O `.xlsx` estandarizado en un módulo único: lector del formato oficial (hojas
+  `N{n}{página}-Elementos` con Estado inicial / Alcance / Mecanismo) y escritor de la rejilla de
+  salida (Partición/Pérdida/Tiempo × estrategia × k), compartido por `main_batch.py`,
+  `scripts/fill_official_grid.py` y la UI Streamlit.
+- Llenado de `20A/22A/25A-Elementos` en `Resultados_DatosPruebas2026_1.xlsx` (reemplaza la nota
+  de techo de Fase 10).
+
+**DoD:** tests de igualdad en verde + regresión k=2 intacta; smoke N25 (KGeoMIP y KQNodes) corre
+dentro de la RAM disponible; rejilla oficial n≥20 llenada; `pytest`/`ruff`/`mypy` en verde;
+bitácora al día.
 
 ---
 
