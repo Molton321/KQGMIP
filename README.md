@@ -45,7 +45,7 @@ Opcionales: `--page B`, `--method kmeans` (clustering), `--condition/--purview/-
 
 ### 3. Ruta avanzada (fijar el subsistema a mano)
 
-Editar los valores al inicio de `main.py` y `uv run main.py`. Para procesar una rejilla de
+Editar los valores al inicio de `main.py` y `uv run main.py`. Para procesar una tabla de
 subsistemas desde Excel: `uv run exec.py --batch --strategy kqnodes --k 4`.
 
 ---
@@ -89,7 +89,7 @@ uv run scripts/generate_tpm.py --n 6 --continuous  # probabilidades continuas
 uv run pytest                              # 207 tests (regresión k=2, k=3..5 vs exacto, determinismo…)
 uv run scripts/validate_optimality.py      # ¿son óptimas? exacto (n≤4) + convergencia (N10A/N15A)
 uv run scripts/validate_correctness.py     # δ_k = recomputado, y ≤ exacto, por estrategia
-uv run scripts/run_benchmark.py            # rejilla de estrategias × redes × k -> data/results/
+uv run scripts/run_benchmark.py            # tabla de estrategias × redes × k -> data/results/
 uv run scripts/make_figures.py             # figuras estáticas (PNG)
 uv run scripts/make_interactive.py         # figuras interactivas (HTML, Plotly)
 ```

@@ -149,7 +149,7 @@ KQGMIP/                              # repo/carpeta renombrada (nomenclatura ofi
 | 8    | Documentación y manuales                                                                                                              | ✅ Completada    | todas       |
 | 9    | Validación final y entrega                                                                                                            | 🟨 En progreso   | todas       |
 | 10   | Pulido: --state CLI/UI, validación cruzada vs .core/core_00, tuning GA, rejilla oficial #30                                           | 🟨 En progreso   | todas       |
-| 11   | Escala N25 (rejilla exige QNodes+Geometric a n=25): CostTable vectorizada por niveles, marginal local, cache por k, I/O xlsx estándar | 🟨 En progreso   | 3, 4, 6, 10 |
+| 11   | Escala N25 (la tabla de evaluación oficial exige QNodes+Geometric a n=25): CostTable vectorizada por niveles, marginal local, cache por k, I/O xlsx estándar | 🟨 En progreso   | 3, 4, 6, 10 |
 
 Leyenda: ⬜ Pendiente · 🟨 En progreso · ✅ Completada · ⛔ Bloqueada
 
@@ -388,7 +388,7 @@ Los **ENTREGABLES REALES** a crear en `docs/manuales/` son:
 
 ## FASE 11 — Escala N25 (CostTable vectorizada, marginal local, cache por k, I/O xlsx)
 
-**Objetivo:** cumplir la rejilla oficial `DatosPruebas2026_1.xlsx` hoja `25A-Elementos`, que exige
+**Objetivo:** cumplir la tabla de evaluación oficial `DatosPruebas2026_1.xlsx` hoja `25A-Elementos`, que exige
 columnas **QNodes y Geometric** para k∈{2,3,4,5} a n=25. Elimina el techo práctico n≥20 documentado
 en Fase 10, que era de implementación (estructura de datos y orden de operaciones), no algorítmico.
 
@@ -419,14 +419,14 @@ en Fase 10, que era de implementación (estructura de datos y orden de operacion
 - Cache del trabajo caro entre k=2..5 por subsistema (la propia spec de `cost_table.py`:
   "computed once per system … independently of k"); aplica a CostTable y a la secuencia Queyranne.
 - I/O `.xlsx` estandarizado en un módulo único: lector del formato oficial (hojas
-  `N{n}{página}-Elementos` con Estado inicial / Alcance / Mecanismo) y escritor de la rejilla de
+  `N{n}{página}-Elementos` con Estado inicial / Alcance / Mecanismo) y escritor de la tabla de
   salida (Partición/Pérdida/Tiempo × estrategia × k), compartido por `main_batch.py`,
   `scripts/fill_official_grid.py` y la UI Streamlit.
 - Llenado de `20A/22A/25A-Elementos` en `Resultados_DatosPruebas2026_1.xlsx` (reemplaza la nota
   de techo de Fase 10).
 
 **DoD:** tests de igualdad en verde + regresión k=2 intacta; smoke N25 (KGeoMIP y KQNodes) corre
-dentro de la RAM disponible; rejilla oficial n≥20 llenada; `pytest`/`ruff`/`mypy` en verde;
+dentro de la RAM disponible; tabla de evaluación oficial n≥20 llenada; `pytest`/`ruff`/`mypy` en verde;
 bitácora al día.
 
 > **Fase 10 (#30 rejilla oficial):** `DatosPruebas2026_1.xlsx` → `Resultados_DatosPruebas2026_1.xlsx`
@@ -488,7 +488,7 @@ Regla del proyecto: nada crítico avanza sobre un supuesto sin probar.
 | NumPy admite hasta 64 dims                              | `reshape((2,)*n)` ok hasta n=64; barrera = memoria                                         |
 | GIL activo (no free-threaded)                           | `sys._is_gil_enabled()=True` → PCD por procesos                                            |
 | Capacidad medida                                        | GeoMIP 0.06 s@n10, 2.5 s@n15; QNodes 0.41/0.03 s                                           |
-| Datos oficiales presentes                               | `Pruebas_Metodo2` (ground truth PyPhi), `DatosPruebas2026_1` (rejilla k×n)                 |
+| Datos oficiales presentes                               | `Pruebas_Metodo2` (ground truth PyPhi), `DatosPruebas2026_1` (tabla de evaluación k×n)                 |
 | Stirling: herramienta correcta                          | `more_itertools.set_partitions` (NO graphillion)                                           |
 
 ### A.2 Pendiente de probar (no asumir)
@@ -506,7 +506,7 @@ Regla del proyecto: nada crítico avanza sobre un supuesto sin probar.
 - **PCD por procesos** (`joblib`/`multiprocessing`); GIL activo descarta hilos.
 - **Memoria:** TPM `uint8`, distribuciones `float32`; techo realista n≈25.
 - Añadir **`matplotlib`** (gráficas). `numba` opcional según perfilado.
-- **Formato de salida = rejilla oficial** `DatosPruebas2026_1` (Partición/Pérdida/Tiempo por k
+- **Formato de salida = tabla de evaluación oficial** `DatosPruebas2026_1` (Partición/Pérdida/Tiempo por k
   y estrategia), comparable contra `Pruebas_Metodo2` (PyPhi) para métricas.
 - Oráculo de validación: `BruteForce`/exacto (primario) + PyPhi (cross-check 6–10 nodos).
 

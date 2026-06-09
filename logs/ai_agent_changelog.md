@@ -1202,3 +1202,12 @@ QNodes como con GeoMIP, así que sí, debe haber una manera para que esos 2 lleg
   hojas sin anclas, contrato de reanudación de `missing_ks`, y `fill_grid` end-to-end sobre una
   plantilla sintética N3A (la plantilla queda intacta).
 - **Gates:** suite completa en verde; `ruff check .` y `mypy src` limpios (52 ficheros).
+
+### Continuación (2026-06-09): FASE 11 — terminología ("rejilla" → "tabla de evaluación/resultados") y docs
+
+- **Observación del PM aceptada con verificación:** la spec oficial (`docs/Proyecto_KQMIP.md`)
+  nunca usa "rejilla"; usa "tabla de costos" y "hojas". Se adopta **"tabla de evaluación oficial"**
+  (entrada) y **"tabla de resultados"** (salida) en strings de UI/CLI y docs vivos (PLANNING.md,
+  CLAUDE.md, README.md, Streamlit, main_batch). Los identificadores de código permanecen en inglés
+  (`grid`, convención del proyecto); las entradas históricas de la bitácora no se reescriben.
+- **CLAUDE.md:** contador de tests 142 → 269; referencia al módulo único `src/funcs/grid.py`.

@@ -381,14 +381,14 @@ class StreamlitApp:
         if not GRID_TEMPLATE_XLSX.exists():
             return
         st.divider()
-        st.subheader("Rejilla oficial (.xlsx)")
+        st.subheader("Tabla de evaluación oficial (.xlsx)")
         st.caption(
             f"Entrada: `{GRID_TEMPLATE_XLSX.name}` · Salida: `{GRID_RESULTS_XLSX.name}` "
             "(la plantilla nunca se modifica; las celdas ya llenas se omiten)."
         )
         sheets = grid_sheet_names(GRID_TEMPLATE_XLSX)
         chosen = st.multiselect("Hojas a llenar", sheets, default=[])
-        if st.button("▶ Llenar rejilla", disabled=not chosen):
+        if st.button("▶ Llenar tabla", disabled=not chosen):
             log_box = st.empty()
             lines: list[str] = []
 
@@ -397,18 +397,18 @@ class StreamlitApp:
                 lines.append(line)
                 log_box.code("\n".join(lines[-15:]))
 
-            with st.spinner("Ejecutando KQNodes + KGeoMIP sobre la rejilla…"):
+            with st.spinner("Ejecutando KQNodes + KGeoMIP sobre la tabla de evaluación…"):
                 fill_grid(
                     GRID_TEMPLATE_XLSX, GRID_RESULTS_XLSX, sheet_names=chosen, progress=report
                 )
-            st.success(f"Rejilla guardada en {GRID_RESULTS_XLSX}")
+            st.success(f"Tabla de resultados guardada en {GRID_RESULTS_XLSX}")
 
     def _render_benchmark(self) -> None:
         """Render the δ_k-vs-k benchmark grid when a FINAL CSV is present."""
         if not BENCHMARK_CSV.exists():
             return
         st.divider()
-        st.subheader("Rejilla de benchmark (δ_k vs k)")
+        st.subheader("Tabla de benchmark (δ_k vs k)")
         df = pd.read_csv(BENCHMARK_CSV)
         valid_nets = [
             n

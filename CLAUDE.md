@@ -49,7 +49,7 @@ Gestión con [`uv`](https://github.com/astral-sh/uv) (Python 3.14.5).
 uv sync                  # instalar dependencias
 uv run exec.py           # análisis individual (configurado en main.py)
 uv run exec.py --batch   # análisis por lotes desde Excel (main_batch.py)
-uv run pytest            # tests (142 tests passing: regresión k=2, validación k=3..5, determinismo)
+uv run pytest            # tests (269 tests: regresión k=2, igualdad CostTable vectorizada/legacy, marginal local, validación k=3..5, determinismo)
 uv run ruff check . && uv run mypy src   # lint + tipos
 ```
 
@@ -102,8 +102,8 @@ literales mágicos).
 - `data/samples/N{n}{letra}.csv`: TPM determinista 0/1, `2^N` filas × `N` cols, little-endian
   (fila 0 = `000…0`). Generar con `Manager(state).generate_network(n, deterministic=...)`.
 - `data/results/`: datos oficiales — `Pruebas_Metodo2.xlsx` (ground truth PyPhi k=2),
-  `DatosPruebas2026_1.xlsx` (**rejilla de evaluación** k∈{2,3,4,5} × n∈{10,15,20,22,25}),
-  `pruebas_Metodo1.xlsx` (plantilla de métricas). El formato de salida debe replicar esta rejilla.
+  `DatosPruebas2026_1.xlsx` (**tabla de evaluación oficial** k∈{2,3,4,5} × n∈{10,15,20,22,25}),
+  `pruebas_Metodo1.xlsx` (plantilla de métricas). El formato de salida debe replicar esta tabla (módulo único: `src/funcs/grid.py`).
 - Generados (`review/`, `.logs/`, `*.log`) están en `.gitignore`.
 
 ## Invariantes (reglas que no se rompen)
