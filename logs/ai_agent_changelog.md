@@ -1211,3 +1211,26 @@ QNodes como con GeoMIP, así que sí, debe haber una manera para que esos 2 lleg
   CLAUDE.md, README.md, Streamlit, main_batch). Los identificadores de código permanecen en inglés
   (`grid`, convención del proyecto); las entradas históricas de la bitácora no se reescriben.
 - **CLAUDE.md:** contador de tests 142 → 269; referencia al módulo único `src/funcs/grid.py`.
+
+### Continuación (2026-06-09): FASE 11 — validación P0 (N25A k=2..5) y respuesta al informe del PM
+
+- **P0 validado (exigencia del PM: "<1 hora"):** subsistema completo de N25A, ambas estrategias,
+  k=2..5 con `apply_strategy_for_ks`:
+  - **KQNodes: 124.7 s total, pico RAM 3.4 GB** (k=2: 124.1 s; k=3/4/5: 0.1–0.2 s c/u).
+  - **KGeoMIP: 238.4 s total, pico RAM 9.6 GB** (k=2: 237.7 s; k=3/4/5: 0.1–0.2 s c/u).
+  - **Validación cruzada entre estrategias:** ambas hallan k=2 loss=0.49980736 (idéntico).
+  - **P-5 del PM resuelto:** k=5 no degrada — el refinamiento greedy cuesta 0.2 s, no horas.
+- **P-1 del PM (paralelizar `_best_refinement`) — RECHAZADO con datos:** medido en N20A, el
+  refinamiento k=3..5 cuesta **0.08–0.2 s** frente a 7–8 s de preparación (<2% del tiempo);
+  además `joblib` con procesos picklearía el subsistema (GB). Optimizar ese 2% viola KISS.
+- **P-3 del PM (filas en paralelo en `fill_grid`) — RECHAZADO con datos para n≥22:** un worker
+  KGeoMIP a n=25 usa 9.6 GB (máquina: 15 GiB) → 1 worker posible, paralelismo nulo. Para n≤20
+  la hoja completa toma ~12 min secuencial (50 filas × ~15 s) — beneficio marginal frente a la
+  complejidad de paralelizar el escritor reanudable. Se mantiene secuencial + reanudable.
+- **P-4 del PM (chunks de CostTable en paralelo) — DIFERIDO:** el build está limitado por ancho
+  de banda de memoria (gathers aleatorios sobre 3.36 GB), no por CPU; procesos copiarían la tabla.
+  La palanca real identificada: cargar la TPM determinista como uint8 (0.84 GB vs 3.36 GB) con
+  cast float32 en los cubos — anotada como optimización futura con tests propios.
+- **P-6 del PM (cambios sin commitear) — RESUELTO:** todo commiteado en la rama de fase.
+- **Llenado de la tabla oficial n≥20 lanzado:** `fill_official_grid.py --sheets 20A/22A/25A`
+  en background (`logs/fill_grid_n20_25.log`), reanudable por celda.
