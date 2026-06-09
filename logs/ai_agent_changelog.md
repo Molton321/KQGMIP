@@ -1120,3 +1120,24 @@ QNodes como con GeoMIP, así que sí, debe haber una manera para que esos 2 lleg
   verificada, tareas y DoD.
 - **IA:** la IA cuestionó su propio veredicto previo ("KQNodes inviable a n=25") al releer la
   rejilla oficial por mandato del usuario, y lo refutó con prototipos medidos antes de implementar.
+
+### Continuación (2026-06-09): FASE 11 — CostTable vectorizada por niveles (producción)
+
+- **`src/funcs/cost_table.py` reescrito:** `CostTable` pasa a ser la versión vectorizada
+  (array `(2^m, num_nodes)` float32 indexado por entero little-endian del estado; DP por niveles
+  de Hamming con gathers numpy, chunking `COST_TABLE_CHUNK_ROWS = 1<<20` en
+  `src/constants/strategies.py` — constante centralizada a petición del usuario, SOLID/KISS/DRY).
+  Sin copia apilada `(n, 2^m)` (ahorra ~3.4 GB a m=n=25). La implementación original se conserva
+  íntegra como `LegacyCostTable` (referencia ejecutable para tests; docstring advierte OOM n≳20).
+- **Reproducción exacta garantizada (Invariante 1):** `candidate_bipartitions` replica el orden
+  BFS legacy — verificado empíricamente que `paths[level]` legacy == orden lexicográfico de
+  combinaciones de bits volteados (m=6/8/10, todos los niveles); el vectorizado lo realiza con
+  máscaras bit-reversed descendentes + `argmin` (primera ocurrencia = desempate `<` estricto del
+  legacy); acumulación float64 secuencial en el mismo orden que el bucle Python.
+- **Tests nuevos `tests/unit/test_cost_table_vectorized.py` (38 casos):** igualdad bit a bit de
+  tabla completa, pool de candidatos (incluye TPMs deterministas 0/1, propensas a empates exactos)
+  y `cost()`, vs `LegacyCostTable`, en m=4/6/8/10 + caso rectangular (9 nodos × 6 dims).
+- **Gates:** 38/38 nuevos + regresión k=2 (`test_regression_k2`, `test_kgeomip`,
+  `test_delta_k_k2_equivalence`: 62/62) en verde; `ruff` y `mypy` limpios.
+- **IA:** la IA verificó la propiedad de orden BFS≡lex antes de depender de ella y mantuvo la
+  legacy como especificación ejecutable en lugar de borrarla.

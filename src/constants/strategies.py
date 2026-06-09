@@ -19,6 +19,12 @@ BRUTEFORCE_ANALYSIS_TAG: str = f"{BRUTEFORCE_LABEL}_analysis"
 GEOMETRIC_LABEL: str = "Geometric"
 GEOMETRIC_STRATEGY_TAG: str = f"{GEOMETRIC_LABEL}_strategy"
 GEOMETRIC_ANALYSIS_TAG: str = f"{GEOMETRIC_LABEL}_analysis"
+COST_TABLE_CHUNK_ROWS: int = 1 << 20
+"""Row-chunk size for the vectorized CostTable (build and candidate scan).
+
+Bounds each temporary ``(rows, num_nodes)`` float32 gather to roughly
+``COST_TABLE_CHUNK_ROWS · num_nodes · 4`` bytes (~100 MB at n=25) instead of
+materializing whole Hamming mid-levels (C(25,12) ≈ 5.2M rows ≈ 1 GB)."""
 
 
 KGEOMIP_LABEL: str = "KGeoMIP"
