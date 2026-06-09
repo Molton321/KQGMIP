@@ -1056,3 +1056,25 @@ misión: implementación **óptima/eficiente** y verificada. Se **verificó cada
 - **Gates:** `ruff check` y `mypy src` en verde (50 archivos); `test_metaheuristics.py` 22/22.
 - **IA:** la IA verificó las afirmaciones del otro modelo con mediciones (no asumió), implementó las
   dos mejoras netas (GA, docs), y **rechazó con datos** las dos sin beneficio/riesgosas.
+
+### Continuación (2026-06-09): #30 rejilla oficial — llenado de DatosPruebas2026_1 (N10A validado)
+
+**Prompt:** "update BENCHMARK_CSV" + continuar con #30 (rejilla oficial).
+
+- **BENCHMARK_CSV refrescado:** sólo las filas de `Genetic` de `benchmark_results_FINAL.csv` se
+  re-corrieron con el GA 60/80 (el resto de estrategias son deterministas, no cambian → no se re-corre
+  por eficiencia). Mejoras grandes: N15A k=3 0.556→0.054, N10A k=3 2.38→0.96, N10A k=4 3.88→2.39.
+- **Convención de la rejilla validada (no asumida):** la rejilla `DatosPruebas2026_1.xlsx` da por
+  subsistema sólo `Alcance (purview)` y `Mecanismo`, sin condición de fondo. Se dedujo y **verificó**
+  contra `Pruebas_Metodo2.xlsx` (losses GeoMIP/PyPhi conocidos para N10A, estado `1000000000`):
+  estado = "Estado inicial" de la hoja, **condición = todo-unos**, máscaras desde las letras. Mi
+  `GeometricSIA` reproduce 4/4 casos de prueba exactos (0.47265625, 0.0048828125, 0.015625, 0.00390625).
+- **Script `scripts/fill_official_grid.py`:** lee la plantilla oficial y escribe en un fichero
+  **separado** (`Resultados_DatosPruebas2026_1.xlsx`, la plantilla nunca se sobrescribe); corre
+  `KQNodes` (columna QNodes) y `KGeoMIP` (columna Geometric) para k=2,3,4,5 por subsistema; guarda fila
+  a fila (reanudable). Mapeo de columnas por bloque de k documentado en `K_BASE_COLUMN`.
+- **N10A llenado (49 filas) y validado:** k=2 Geometric **y** k=2 QNodes igualan el GeoMIP oficial en
+  **49/49** subsistemas. k=3/4/5 son las cotas heurísticas (upper bounds validados por la suite).
+- **Gates:** `ruff check` limpio en el script nuevo.
+- **IA:** la IA dedujo la convención faltante (condición) y la **verificó contra ground truth** antes
+  de llenar, evitando producir una rejilla incorrecta.
