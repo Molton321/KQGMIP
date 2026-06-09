@@ -148,8 +148,15 @@ KQGMIP/                              # repo/carpeta renombrada (nomenclatura ofi
 | 7    | Experimentación y métricas                                                                 | ✅ Completada    | 3, 4, 5    |
 | 8    | Documentación y manuales                                                                   | ✅ Completada    | todas      |
 | 9    | Validación final y entrega                                                                 | 🟨 En progreso   | todas      |
+| 10   | Pulido: --state CLI/UI, validación cruzada vs .core/core_00, tuning GA, rejilla oficial #30 | 🟨 En progreso   | todas      |
 
 Leyenda: ⬜ Pendiente · 🟨 En progreso · ✅ Completada · ⛔ Bloqueada
+
+> **Fase 10 (#30 rejilla oficial):** `DatosPruebas2026_1.xlsx` → `Resultados_DatosPruebas2026_1.xlsx`
+> (la plantilla nunca se sobrescribe). **N10A (49/49) y N15B (50/50)** llenados con KQNodes/KGeoMIP
+> (k=2..5) y validados: k=2 reproduce el GeoMIP oficial de `Pruebas_Metodo2.xlsx`. **n≥20 documentado
+> como techo práctico** (medido: ~103 s/celda KGeoMIP a n=20, OOM a n=25 → Invariante 7); celdas
+> vacías con nota al pie, no inventadas.
 
 ---
 

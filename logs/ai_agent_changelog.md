@@ -1078,3 +1078,18 @@ misión: implementación **óptima/eficiente** y verificada. Se **verificó cada
 - **Gates:** `ruff check` limpio en el script nuevo.
 - **IA:** la IA dedujo la convención faltante (condición) y la **verificó contra ground truth** antes
   de llenar, evitando producir una rejilla incorrecta.
+
+### Continuación (2026-06-09): #30 — N15B validado + techo honesto para n≥20
+
+- **N15B llenado (50 filas) y validado:** k=2 Geometric y QNodes igualan el GeoMIP oficial **50/50**
+  (`Pruebas_Metodo2.xlsx`, hoja "15B elementos").
+- **Decisión de alcance (datos duros, no asumidos):** se midió `KGeoMIP` sobre el subsistema completo
+  de N20A = **~103 s por celda** (la construcción de la CostTable O(2^20) domina); a n=25 hace **OOM**.
+  Llenar N20A/22A/25A completos serían horas/días e infactible a n=25 — contra el mandato de
+  eficiencia. Por decisión del usuario se **detiene en N15B** y se documenta el techo (Invariante 7).
+- **Anotación honesta en el workbook de resultados:** las hojas `20A/22A/25A-Elementos` de
+  `Resultados_DatosPruebas2026_1.xlsx` quedan con las celdas de resultado **vacías (no inventadas)** y
+  una nota al pie explicando la restricción de cómputo (~103 s/celda a n=20, OOM a n=25; para n=25 sólo
+  escala el baseline de Clustering, que no está en las columnas QNodes/Geometric).
+- **Estado #30:** N10A (49/49) y N15B (50/50) completos y validados contra el ground truth oficial;
+  n≥20 documentado como límite práctico. La plantilla oficial nunca se sobrescribió.
