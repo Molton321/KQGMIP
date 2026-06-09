@@ -47,7 +47,7 @@ STRATEGY_BUILDERS: dict[str, StrategyBuilder] = {
     "Genetic": lambda tpm, s, k, method: GeneticSIA(tpm, s, k=k),
     "Annealing": lambda tpm, s, k, method: AnnealingSIA(tpm, s, k=k),
     "Tabu": lambda tpm, s, k, method: TabuSIA(tpm, s, k=k),
-    "ExhaustiveK": lambda tpm, s, k, method: ExhaustiveK(tpm, s, k=k),
+    "ExhaustiveK": lambda tpm, s, k, method: ExhaustiveK(tpm, s, k=k, parallel=True),
 }
 
 _LEGACY_STRATEGIES: dict[str, tuple[str, str]] = {

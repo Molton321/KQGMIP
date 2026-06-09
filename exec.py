@@ -61,6 +61,10 @@ class ExecApp:
         )
         parser.add_argument("--page", help="Página de la red (A, B, ...).")
         parser.add_argument(
+            "--state",
+            help="Estado inicial binario, p. ej. 1000 (por defecto todo en 1).",
+        )
+        parser.add_argument(
             "--method", default="spectral", choices=self._METHOD_CHOICES
         )
         parser.add_argument("--condition")
@@ -78,7 +82,13 @@ class ExecApp:
             application.disable_profiling()
 
     def _run_single(self, args: argparse.Namespace) -> None:
-        _, default_page, state = parse_net_label(args.net.upper())
+        n, default_page, default_state = parse_net_label(args.net.upper())
+        state = args.state or default_state
+        if len(state) != n:
+            self._parser.error(
+                f"--state debe tener {n} dígitos para {args.net.upper()} "
+                f"(recibido: {state!r})."
+            )
         page = args.page or default_page
         tpm = load_tpm(state, page)
         result = run_analysis(

@@ -68,6 +68,17 @@ class QNodes(SIA):
         """
         phase_vertices = vertices
 
+        # Edge case: ≤ 2 vertices cannot go through the phase cycling loop
+        # (which needs at least 3).  Directly evaluate every singleton side
+        # so that partition_memo is populated for _cut_pool() downstream.
+        if len(phase_vertices) <= 2:
+            for i, v in enumerate(phase_vertices):
+                side = (v,)
+                complement = [other for j, other in enumerate(phase_vertices) if j != i]
+                _, emd, dist = self.submodular_function(v, complement)
+                self.partition_memo[side] = (emd, dist)
+            return min(self.partition_memo, key=lambda k: self.partition_memo[k][0])
+
         for _ in range(len(phase_vertices) - 2):
             cycle_omegas = [phase_vertices[0]]
             cycle_deltas = phase_vertices[1:]

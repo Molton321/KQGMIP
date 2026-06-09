@@ -38,7 +38,7 @@ class Manager:
                 f"TPM no encontrada: {self.tpm_filename}\nColoca el archivo en {PATH_SAMPLES}/"
             )
 
-        return np.genfromtxt(self.tpm_filename, delimiter=COLON_DELIM, dtype=np.float32)
+        return np.loadtxt(self.tpm_filename, delimiter=COLON_DELIM, dtype=np.float32)
 
     def generate_network(
         self, dimensions: int, deterministic: bool = True, assume_yes: bool = False

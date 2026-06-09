@@ -68,7 +68,7 @@ class Solution:
         t_min = f"{self.execution_time / 60:.1f}"
         t_sec = f"{self.execution_time:.4f}"
 
-        k_match = re.search(r"\(k=(\d+)\)", self.strategy)
+        k_match = re.search(r"k=(\d+)", self.strategy)
         k_str = f"{k_match.group(1)}-" if k_match else "Bi-"
 
         return (

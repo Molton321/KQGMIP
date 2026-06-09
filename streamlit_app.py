@@ -353,7 +353,7 @@ class StreamlitApp:
         if not BENCHMARK_CSV.exists():
             return
         st.divider()
-        st.subheader("Rejilla de experimentación")
+        st.subheader("Rejilla de benchmark (δ_k vs k)")
         df = pd.read_csv(BENCHMARK_CSV)
         valid_nets = [
             n
@@ -364,7 +364,7 @@ class StreamlitApp:
             return
         net = st.selectbox("Red", valid_nets)
         st.plotly_chart(self._plot_loss_k(df, str(net)), width="stretch")
-        with st.expander("Tabla completa"):
+        with st.expander("Tabla de resultados"):
             st.dataframe(df, width="stretch")
 
 
