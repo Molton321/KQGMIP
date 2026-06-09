@@ -1164,3 +1164,22 @@ QNodes como con GeoMIP, así que sí, debe haber una manera para que esos 2 lleg
   `delta_marginal_vector` (se revirtió antes de commitear).
 - **Gates:** 115 tests (local_marginal + regression_k2 + kqnodes + qnodes_triage +
   delta_k_k2 + kgeomip) en verde; `ruff` y `mypy src` limpios.
+
+### Continuación (2026-06-09): FASE 11 — cache del trabajo caro entre k=2..5 + smoke N25 QNodes
+
+- **Hito medido:** QNodes sobre el subsistema completo de **N25A: 107 s, pico RAM 3.4 GB**
+  (loss=0.49980735778808594). El "techo n≈20" de la Fase 10 queda eliminado para la columna
+  QNodes de la rejilla oficial.
+- **`apply_strategy_for_ks(condition, purview, mechanism, ks)`** en `KGeoMIP` y `KQNodes`:
+  la preparación cara (subsistema + CostTable / secuencia Queyranne + cut pool) se ejecuta una
+  vez y cada k corre solo su refinamiento greedy — materializa el contrato de la spec de la
+  tabla T ("computed once per system … independently of k"). `apply_strategy` delega con
+  `(self.k,)` (sin duplicación, DRY). Tiempo por k honesto: la preparación compartida se carga
+  al primer k; los siguientes reportan solo su refinamiento (suman al wall-clock real).
+- **`scripts/fill_official_grid.py`:** `_run_cell` → `_run_family`: una corrida por familia
+  (QNodes/Geometric) por fila llena todas las k faltantes (~4× menos cómputo); reanudación por
+  celda de pérdida intacta.
+- **Tests `tests/unit/test_apply_strategy_for_ks.py`:** igualdad exacta (loss y partición) entre
+  la corrida compartida y las corridas individuales por k en N5A/N6A × ambas estrategias;
+  rechazo de k<2; deduplicación de ks.
+- **Gates:** 66 tests (for_ks + kgeomip + kqnodes) en verde; `ruff`/`mypy src` limpios.

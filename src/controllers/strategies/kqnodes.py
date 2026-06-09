@@ -36,10 +36,29 @@ class KQNodes(QNodes):
     @profile(context={TYPE_TAG: KQNODES_ANALYSIS_TAG})
     def apply_strategy(self, condition: str, purview: str, mechanism: str) -> Solution:
         """Search for a low-loss k-partition using the submodular candidate pool."""
-        self.sia_prepare_subsystem(condition, purview, mechanism)
+        return self.apply_strategy_for_ks(condition, purview, mechanism, (self.k,))[self.k]
 
-        if self.k < 2:
+    def apply_strategy_for_ks(
+        self,
+        condition: str,
+        purview: str,
+        mechanism: str,
+        ks: tuple[int, ...],
+    ) -> dict[int, Solution]:
+        """Solve the same subsystem for several k values sharing the Queyranne run.
+
+        Mirrors ``KGeoMIP.apply_strategy_for_ks``: the submodular sequence (the
+        expensive part, independent of k) runs once to produce the candidate
+        pool, then each requested k runs only its greedy refinement. The
+        reported per-k time charges the shared preparation to the first k and
+        the refinement to each k.
+        """
+        ks = tuple(dict.fromkeys(ks))
+        if not ks or min(ks) < 2:
             raise ValueError("k must be >= 2.")
+
+        prep_begin = time.perf_counter()
+        self.sia_prepare_subsystem(condition, purview, mechanism)
 
         subsystem = self.sia_subsystem
         baseline = self.sia_marginal_dists
@@ -52,21 +71,28 @@ class KQNodes(QNodes):
 
         self.algorithm(list(present + future))
         cut_pool = self._cut_pool()
+        prep_seconds = time.perf_counter() - prep_begin
 
         self.sia_logger.critic("Iniciando búsqueda submodular k-partita.")
-        partition, loss, distribution = greedy_k_partition(
-            subsystem, baseline, cut_pool, future_universe, present_universe, self.k
-        )
-        self.best_partition = partition
-
-        return Solution(
-            strategy=f"{KQNODES_LABEL}(k={self.k})",
-            loss=loss,
-            subsystem_distribution=baseline,
-            partition_distribution=distribution,
-            total_time=time.time() - self.sia_start_time,
-            partition=fmt_kpartition(partition.signature),
-        )
+        solutions: dict[int, Solution] = {}
+        for position, k in enumerate(ks):
+            refine_begin = time.perf_counter()
+            partition, loss, distribution = greedy_k_partition(
+                subsystem, baseline, cut_pool, future_universe, present_universe, k
+            )
+            elapsed = time.perf_counter() - refine_begin
+            if position == 0:
+                elapsed += prep_seconds
+            self.best_partition = partition
+            solutions[k] = Solution(
+                strategy=f"{KQNODES_LABEL}(k={k})",
+                loss=loss,
+                subsystem_distribution=baseline,
+                partition_distribution=distribution,
+                total_time=elapsed,
+                partition=fmt_kpartition(partition.signature),
+            )
+        return solutions
 
     def _cut_pool(self) -> list[Block]:
         """

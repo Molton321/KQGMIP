@@ -26,7 +26,6 @@ import contextlib
 import io
 import string
 import sys
-import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -80,14 +79,27 @@ def _find_anchors(sheet) -> tuple[str, int]:
     return initial_state, header_row
 
 
-def _run_cell(tpm, state: str, key: str, k: int, condition: str, purview: str, mechanism: str):
-    """Run one strategy and return ``(partition_str, loss, seconds)``."""
-    start = time.perf_counter()
+def _run_family(
+    tpm, state: str, key: str, ks: tuple[int, ...], condition: str, purview: str, mechanism: str
+) -> dict[int, tuple[str, float, float]]:
+    """Run one strategy family for every missing k sharing the expensive part.
+
+    Uses ``apply_strategy_for_ks`` (FASE 11): the cost table / Queyranne
+    sequence is computed once per subsystem and reused for every k, as the
+    official spec demands. Returns ``{k: (partition_str, loss, seconds)}``
+    where the first k's time includes the shared preparation.
+    """
     with contextlib.redirect_stdout(io.StringIO()):
-        analyzer = build_strategy(key, tpm, state, k, "spectral")
-        solution = analyzer.apply_strategy(condition, purview, mechanism)
-    elapsed = time.perf_counter() - start
-    return solution.partition, round(float(solution.loss), 8), round(elapsed, 4)
+        analyzer = build_strategy(key, tpm, state, ks[0], "spectral")
+        solutions = analyzer.apply_strategy_for_ks(condition, purview, mechanism, ks)
+    return {
+        k: (
+            solution.partition,
+            round(float(solution.loss), 8),
+            round(float(solution.execution_time), 4),
+        )
+        for k, solution in solutions.items()
+    }
 
 
 def fill_sheet(template_book, output_book, sheet_name: str) -> None:
@@ -110,17 +122,21 @@ def fill_sheet(template_book, output_book, sheet_name: str) -> None:
             break
         purview = letters_to_mask(purview_letters, n)
         mechanism = letters_to_mask(mechanism_letters, n)
-        for k in K_VALUES:
-            base = K_BASE_COLUMN[k]
-            for offset, family in ((0, "QNodes"), (3, "Geometric")):
-                loss_col = base + offset + 1
-                if dst.cell(row=row, column=loss_col).value not in (None, ""):
-                    continue
-                partition, loss, seconds = _run_cell(
-                    tpm, state, STRATEGY_KEY[family], k, condition, purview, mechanism
-                )
+        for offset, family in ((0, "QNodes"), (3, "Geometric")):
+            missing_ks = tuple(
+                k
+                for k in K_VALUES
+                if dst.cell(row=row, column=K_BASE_COLUMN[k] + offset + 1).value in (None, "")
+            )
+            if not missing_ks:
+                continue
+            results = _run_family(
+                tpm, state, STRATEGY_KEY[family], missing_ks, condition, purview, mechanism
+            )
+            for k, (partition, loss, seconds) in results.items():
+                base = K_BASE_COLUMN[k]
                 dst.cell(row=row, column=base + offset).value = partition
-                dst.cell(row=row, column=loss_col).value = loss
+                dst.cell(row=row, column=base + offset + 1).value = loss
                 dst.cell(row=row, column=base + offset + 2).value = seconds
         output_book.save(OUTPUT)
         filled_rows += 1
