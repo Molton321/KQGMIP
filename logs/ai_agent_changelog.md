@@ -1019,3 +1019,40 @@ necesarios y recuerda los `.xlsx` y `Pruebas*.xlsx`".
 - **Tests:** suite completa `uv run pytest -q` en verde (204 tests).
 - **IA:** la IA orquestó la batería cruzada (corriendo el proyecto original en su venv), comparó TPMs
   y losses, leyó la estructura de `Pruebas_Metodo2.xlsx` y verificó la cadena de validación.
+
+### Continuación (2026-06-09): evaluación de los hallazgos de otro modelo (tuning GA, docs ExhaustiveK, rechazo de híbrido y streaming)
+
+**Prompt:** el usuario compartió 4 propuestas de otro modelo (híbrido KQNodes→Tabu, tuning de
+Genetic, documentar ExhaustiveK parallel, streaming CostTable) y delegó la decisión, recordando la
+misión: implementación **óptima/eficiente** y verificada. Se **verificó cada afirmación** (Invariante
+4) antes de actuar; varias eran inexactas.
+
+- **Tuning de Genetic (implementado).** Defaults reales eran `30/40` (no `30/50`). Medición directa
+  contra el óptimo exacto en N6A k=3: `GA 30/40 = 1.0625` (**11.5%** de error, coincide con el
+  hallazgo del otro modelo) vs `GA 60/80 = 0.95312` (**0.0%**, alcanza el óptimo). Se subió a
+  `60/80`. Para cumplir la regla "constantes sólo en `src/constants/`" se creó
+  `src/constants/metaheuristics.py` con **todos** los hiperparámetros de GA/SA/Tabu centralizados y
+  documentados; `src/funcs/metaheuristic.py` los lee como defaults. Nuevo test de convergencia
+  `test_genetic_converges_near_exact_after_tuning` (N6A k=3, error relativo < 2%).
+- **Docs de ExhaustiveK (implementado).** Afirmación del otro modelo inexacta: el default real es
+  `parallel=False, n_jobs=-1` (no `True`/`4`); el `parallel=True` ya estaba cableado en el registro
+  (`runner.py`). Se mejoró el docstring del módulo y de `__init__` con uso, semántica de
+  `parallel`/`n_jobs`, y la nota de complejidad `S(2n,k)` super-exponencial + speedup empírico ~2-3×
+  con 4 procesos para n≥6 (doc §4.2).
+- **Híbrido KQNodes→Tabu (RECHAZADO con evidencia).** Se añadió temporalmente un hook
+  `initial_labels` a `tabu_search` y se midió Tabu **sembrado con KQNodes** vs Tabu **aleatorio** vs
+  KQNodes solo, en N6A/N10A/N15A k=3,4,5. Resultado: **la siembra no aporta** (Tabu_seed ≈ Tabu_rand
+  en todos los casos; única "mejora" en N15A k=4 fue 0.00002, ruido). Además **Tabu ya supera a
+  KQNodes** sin sembrar (N6A k=5: 1.50 vs 1.94). Conclusión: una clase nueva `HybridKQNodesTabu` sería
+  complejidad sin beneficio medible sobre `TabuSIA` (viola KISS y la misión de eficiencia). Se
+  **revirtió** el hook `initial_labels` (sin caller = código muerto). El hallazgo honesto: Tabu es el
+  mejor refinador; KQNodes es un buen *upper bound* greedy que Tabu mejora en k alto.
+- **Streaming CostTable (DIFERIDO).** Riesgo de cambiar resultados vs la versión eager; el techo n≈25
+  ya está documentado honestamente; baja prioridad según el propio otro modelo. No se implementa.
+- **Pendiente derivado:** el tuning de GA deja **obsoletas las cifras de Genetic** en los CSV de
+  benchmark publicados (ahora GA es mejor). La rejilla se regenerará en la tarea #30 (rejilla oficial);
+  las estrategias pesadas (KGeoMIP/KQNodes en n=15/20) no cambian, así que no se re-corre aún por
+  eficiencia.
+- **Gates:** `ruff check` y `mypy src` en verde (50 archivos); `test_metaheuristics.py` 22/22.
+- **IA:** la IA verificó las afirmaciones del otro modelo con mediciones (no asumió), implementó las
+  dos mejoras netas (GA, docs), y **rechazó con datos** las dos sin beneficio/riesgosas.

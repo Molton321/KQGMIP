@@ -47,6 +47,19 @@ def test_metaheuristic_finds_exact_on_small(strategy_cls, net: str) -> None:
     assert meta.loss == pytest.approx(exact.loss, abs=1e-4)
 
 
+def test_genetic_converges_near_exact_after_tuning() -> None:
+    """The tuned GA budget (60/80) converges near the exact optimum on N6A k=3.
+
+    With the previous 30/40 budget GA returned 1.0625 vs the exact 0.95312
+    (~11.5% relative error); the larger budget closes that gap to under 2%. This
+    locks the tuning documented in ``src/constants/metaheuristics.py``.
+    """
+    exact = _run("N6A", ExhaustiveK, k=3)
+    genetic = _run("N6A", GeneticSIA, k=3)
+    relative_error = abs(genetic.loss - exact.loss) / abs(exact.loss)
+    assert relative_error < 0.02
+
+
 @pytest.mark.parametrize("strategy_cls", STRATEGIES)
 def test_metaheuristic_is_deterministic(strategy_cls) -> None:
     """Same seed -> identical loss and partition (reproducibility)."""

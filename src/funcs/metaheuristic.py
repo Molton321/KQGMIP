@@ -29,6 +29,18 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
+from src.constants.metaheuristics import (
+    ANNEALING_COOLING,
+    ANNEALING_INITIAL_TEMP,
+    ANNEALING_ITERATIONS,
+    GENETIC_GENERATIONS,
+    GENETIC_MUTATION_RATE,
+    GENETIC_POPULATION_SIZE,
+    GENETIC_TOURNAMENT,
+    TABU_ITERATIONS,
+    TABU_NEIGHBORS_PER_STEP,
+    TABU_TENURE,
+)
 from src.funcs.emd import delta_k
 from src.models.core.partition import KPartition
 from src.models.core.system import System
@@ -167,10 +179,10 @@ def genetic_search(
     k: int,
     rng: np.random.Generator,
     *,
-    population_size: int = 30,
-    generations: int = 40,
-    mutation_rate: float = 0.2,
-    tournament: int = 3,
+    population_size: int = GENETIC_POPULATION_SIZE,
+    generations: int = GENETIC_GENERATIONS,
+    mutation_rate: float = GENETIC_MUTATION_RATE,
+    tournament: int = GENETIC_TOURNAMENT,
 ) -> SearchResult:
     """Genetic Algorithm over label vectors (uniform crossover + relabel mutation)."""
     a = len(future_universe) + len(present_universe)
@@ -216,9 +228,9 @@ def simulated_annealing_search(
     k: int,
     rng: np.random.Generator,
     *,
-    iterations: int = 1500,
-    initial_temp: float = 1.0,
-    cooling: float = 0.995,
+    iterations: int = ANNEALING_ITERATIONS,
+    initial_temp: float = ANNEALING_INITIAL_TEMP,
+    cooling: float = ANNEALING_COOLING,
 ) -> SearchResult:
     """Simulated Annealing with ``delta_k`` as the energy to minimize."""
     a = len(future_universe) + len(present_universe)
@@ -250,9 +262,9 @@ def tabu_search(
     k: int,
     rng: np.random.Generator,
     *,
-    iterations: int = 200,
-    neighbors_per_step: int = 20,
-    tenure: int = 10,
+    iterations: int = TABU_ITERATIONS,
+    neighbors_per_step: int = TABU_NEIGHBORS_PER_STEP,
+    tenure: int = TABU_TENURE,
 ) -> SearchResult:
     """Tabu Search: best non-tabu neighbor each step, with a move tabu list.
 

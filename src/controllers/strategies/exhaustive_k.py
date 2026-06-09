@@ -7,6 +7,22 @@ constrained by using weak Stirling partitions, which allow empty blocks and thus
 include the legacy semantics of sub_purview=∅ or sub_mechanism=∅. The strategy can
 be run in parallel across multiple CPU cores, with an early exit if a perfect
 partition (δ_k = 0) is found.
+
+This is the *ground truth*: only feasible for small systems (it is the exact
+optimum used to validate the heuristics), so it is the reference, not a production
+strategy. The number of k-partitions of ``2n`` atoms grows as the Stirling number
+of the second kind ``S(2n, k)``, which is super-exponential — hence the ``n <= 6``
+ceiling in practice (doc §4.2). ``parallel=True`` distributes the candidate stream
+across ``n_jobs`` processes (GIL is active, so processes not threads) with a shared
+δ=0 early-exit, giving an empirical ~2-3x speedup with 4 jobs for ``n >= 6``; it
+does not change the result, only the wall time.
+
+Usage::
+
+    # exact reference for a small network (serial)
+    ExhaustiveK(tpm, state, k=3).apply_strategy(cond, purview, mechanism)
+    # same result, parallel across 4 processes
+    ExhaustiveK(tpm, state, k=3, parallel=True, n_jobs=4).apply_strategy(...)
 """
 
 import os
@@ -166,6 +182,16 @@ class ExhaustiveK(SIA):
         parallel: bool = False,
         n_jobs: int = -1,
     ) -> None:
+        """Build the exact strategy.
+
+        Args:
+            tpm: transition probability matrix of the candidate system.
+            initial_state: binary initial state string.
+            k: number of blocks of the k-partition to search for.
+            parallel: distribute the candidate stream across processes when True
+                (same result, lower wall time for ``n >= 6``).
+            n_jobs: number of worker processes when ``parallel`` (``-1`` = all cores).
+        """
         super().__init__(tpm, initial_state)
         profiling_manager.start_session(
             f"{NET_LABEL}{len(tpm[COLS_IDX])}{application.sample_network_page}"
