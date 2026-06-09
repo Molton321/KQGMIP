@@ -1,8 +1,15 @@
+"""
+Geometric SIA strategy that uses a reusable transition-cost table built
+from the Hamming distances between states to identify optimal bipartition
+candidates without exhaustively evaluating every combination.
+"""
+
 import time
 
 import numpy as np
 
 from src.constants.base import ACTUAL, COLS_IDX, EFECTO, NET_LABEL, TYPE_TAG
+from src.constants.strategies import GEOMETRIC_ANALYSIS_TAG, GEOMETRIC_LABEL, GEOMETRIC_STRATEGY_TAG
 from src.funcs.cost_table import CostTable
 from src.funcs.emd import effect_emd
 from src.funcs.format import fmt_bipartition_q
@@ -12,18 +19,11 @@ from src.models.base.application import application
 from src.models.base.sia import SIA
 from src.models.core.solution import Solution
 
-GEOMETRIC_LABEL: str = "Geometric"
-GEOMETRIC_STRATEGY_TAG: str = f"{GEOMETRIC_LABEL}_strategy"
-GEOMETRIC_ANALYSIS_TAG: str = f"{GEOMETRIC_LABEL}_analysis"
-
 
 class GeometricSIA(SIA):
     """
-    GeoMIP strategy - Method 2 (Dynamic Programming).
-
-    Uses a reusable transition-cost table (:class:`CostTable`) built from the
-    Hamming distances between states to identify optimal bipartition candidates
-    without exhaustively evaluating every combination.
+    Geometric strategy: uses the transition table to find the bipartition
+    that minimizes the EMD against the original subsystem.
     """
 
     def __init__(self, tpm: np.ndarray, initial_state: str):
@@ -34,12 +34,13 @@ class GeometricSIA(SIA):
         self.logger = SafeLogger(GEOMETRIC_STRATEGY_TAG)
         self.cost_table: CostTable
         self.vertices: set[tuple]
+        self.state_start: np.ndarray
+        self.state_end: np.ndarray
         self.partition_memo: dict[tuple, tuple[float, np.ndarray]] = {}
 
     @profile(context={TYPE_TAG: GEOMETRIC_ANALYSIS_TAG})
-    def apply_strategy(
-        self, condition: str, purview: str, mechanism: str
-    ) -> Solution:
+    def apply_strategy(self, condition: str, purview: str, mechanism: str) -> Solution:
+        """Use the transition table to find the bipartition that minimizes the EMD."""
         self.sia_prepare_subsystem(condition, purview, mechanism)
 
         future = tuple((EFECTO, idx) for idx in self.sia_subsystem.ncube_indices)
@@ -51,9 +52,6 @@ class GeometricSIA(SIA):
         dims = self.sia_subsystem.ncube_dims
         self.state_start = self.sia_subsystem.initial_state[dims]
         self.state_end = 1 - self.state_start
-
-        # Build the cost table T once; it is reusable for any k (official spec
-        # docs/Proyecto_KQMIP.md §3) and is shared with KGeoMIP.
         self.cost_table = CostTable(flat_data, self.state_start, self.state_end)
 
         mip = self.find_mip()

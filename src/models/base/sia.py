@@ -1,3 +1,11 @@
+"""Abstract base (Template Method) for every IIT analysis strategy.
+
+:class:`SIA` owns the shared subsystem-preparation pipeline — build the
+:class:`System` from the TPM, apply background conditioning, subtract the
+purview/mechanism, and cache the resulting subsystem and its marginal
+distribution — leaving only the partition search to each concrete strategy.
+"""
+
 import time
 from abc import ABC, abstractmethod
 
@@ -31,9 +39,7 @@ class SIA(ABC):
         self.sia_start_time: float = FLOAT_ZERO
 
     @abstractmethod
-    def apply_strategy(
-        self, condition: str, purview: str, mechanism: str
-    ) -> Solution:
+    def apply_strategy(self, condition: str, purview: str, mechanism: str) -> Solution:
         """Implement the MIP search algorithm."""
 
     def sia_prepare_subsystem(self, condition: str, purview: str, mechanism: str) -> None:
@@ -56,9 +62,7 @@ class SIA(ABC):
         conditioned_dims = np.array(
             [i for i, b in enumerate(condition) if b == STR_ZERO], dtype=np.int8
         )
-        purview_dims = np.array(
-            [i for i, b in enumerate(purview) if b == STR_ZERO], dtype=np.int8
-        )
+        purview_dims = np.array([i for i, b in enumerate(purview) if b == STR_ZERO], dtype=np.int8)
         mechanism_dims = np.array(
             [i for i, b in enumerate(mechanism) if b == STR_ZERO], dtype=np.int8
         )

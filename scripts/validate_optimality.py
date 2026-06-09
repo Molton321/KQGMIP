@@ -30,16 +30,24 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# isort: split
 from src.constants.base import DELTA_K_TOLERANCE as TOL
 from src.funcs.runner import load_tpm, parse_net_label, run_analysis
 from src.models.base.application import application
 
-# Por defecto: oráculo (n ≤ 6, exacto viable) + redes grandes (evidencia convergente).
 DEFAULT_NETS = ["N3A", "N4A", "N5B", "N6A", "N10A", "N15A"]
+"""Oráculo por defecto: n ≤ 6 (exacto viable) + redes grandes (evidencia convergente)."""
 
 
 def evaluate(net: str, k: int, with_exact: bool) -> dict:
-    """Run the strategies for one (net, k) and judge optimality."""
+    """Run the strategies for one (net, k) and judge optimality.
+
+    El sistema entrega la MEJOR partición entre sus estrategias (mínimo δ_k) y el
+    veredicto se juzga sobre eso: con exacto disponible es ``OPTIMO`` si la mejor
+    iguala al exacto; sin exacto, si las tres búsquedas independientes convergen
+    es ``CONVERGENTE`` (fuerte evidencia de óptimo global), si no se reporta la
+    mejor (Tabú suele ganar).
+    """
     n, page, state = parse_net_label(net)
     application.set_sample_network_page(page)
     tpm = load_tpm(state, page)
@@ -52,7 +60,6 @@ def evaluate(net: str, k: int, with_exact: bool) -> dict:
     row["KQNodes"] = losses["KQNodes"]
     row["Tabu"] = losses["Tabu"]
 
-    # El sistema entrega la MEJOR partición entre sus estrategias (mínimo δ_k).
     best = min(losses.values())
     row["mejor"] = round(best, 6)
 
@@ -65,21 +72,26 @@ def evaluate(net: str, k: int, with_exact: bool) -> dict:
     row["convergen"] = "sí" if spread <= TOL else "no"
 
     if exact is not None:
-        # El veredicto se juzga sobre lo que el sistema ENTREGA (la mejor estrategia).
         row["veredicto"] = "OPTIMO" if abs(best - exact) <= TOL else "SUBOPTIMO"
     else:
-        # Sin exacto: si las tres búsquedas independientes convergen, es fuerte
-        # evidencia de óptimo global; si no, se reporta la mejor (Tabú suele ganar).
         row["veredicto"] = "CONVERGENTE" if spread <= TOL else "MEJOR=TABU"
     return row
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Validación de optimalidad de k-particiones")
-    parser.add_argument("--nets", nargs="*", default=None, help="Redes (por defecto: oráculo + N10A/N15A)")
+    parser.add_argument(
+        "--nets",
+        nargs="*",
+        default=None,
+        help="Redes (por defecto: oráculo + N10A/N15A)",
+    )
     parser.add_argument("--ks", nargs="*", type=int, default=[2, 3, 4, 5], help="Valores de k")
-    parser.add_argument("--out", default="data/results/optimality_validation",
-                        help="Ruta base de salida (.xlsx + .md)")
+    parser.add_argument(
+        "--out",
+        default="data/results/optimality_validation",
+        help="Ruta base de salida (.xlsx + .md)",
+    )
     args = parser.parse_args()
     application.disable_profiling()
 
@@ -90,11 +102,12 @@ def main() -> None:
         n, _, _ = parse_net_label(net)
         for k in args.ks:
             if k > 2 * n:
-                continue  # no caben k bloques no vacíos sobre 2n átomos
-            # El exacto (ExhaustiveK) sólo es tratable con pocos átomos y k bajo;
-            # más allá, su enumeración S(2n,k) explota (de ahí la evidencia convergente).
+                continue
             with_exact = n <= 4 and k <= 3
-            print(f"  {net} k={k} {'(exacto)' if with_exact else '(convergente)'} ...", flush=True)
+            print(
+                f"  {net} k={k} {'(exacto)' if with_exact else '(convergente)'} ...",
+                flush=True,
+            )
             rows.append(evaluate(net, k, with_exact))
 
     df = pd.DataFrame(rows)
@@ -102,7 +115,6 @@ def main() -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     df.to_excel(out.with_suffix(".xlsx"), index=False)
 
-    # Métricas de la conclusión (juzgando lo que el SISTEMA entrega: la mejor estrategia).
     exact_rows = df[df["exacto"] != "intratable"]
     exact_opt = int((exact_rows["veredicto"] == "OPTIMO").sum())
     conv_rows = df[df["exacto"] == "intratable"]
@@ -113,9 +125,11 @@ def main() -> None:
     print("\n" + df.to_string(index=False))
     print(f"\nExcel  -> {out.with_suffix('.xlsx')}")
     print(f"Informe-> {out.with_suffix('.md')}")
-    print(f"\nSistema (mejor estrategia) óptimo: {exact_opt}/{len(exact_rows)} casos exactos; "
-          f"convergencia total: {conv_ok}/{len(conv_rows)}; "
-          f"KGeoMIP solo óptimo en {greedy_opt}/{len(df)}.")
+    print(
+        f"\nSistema (mejor estrategia) óptimo: {exact_opt}/{len(exact_rows)} casos exactos; "
+        f"convergencia total: {conv_ok}/{len(conv_rows)}; "
+        f"KGeoMIP solo óptimo en {greedy_opt}/{len(df)}."
+    )
 
 
 def _markdown_table(df: pd.DataFrame) -> str:
@@ -130,8 +144,14 @@ def _markdown_table(df: pd.DataFrame) -> str:
     return "\n".join([header, sep, *body])
 
 
-def _write_report(path: Path, df: pd.DataFrame, exact_hits: int, exact_total: int,
-                  conv_ok: int, conv_total: int) -> None:
+def _write_report(
+    path: Path,
+    df: pd.DataFrame,
+    exact_hits: int,
+    exact_total: int,
+    conv_ok: int,
+    conv_total: int,
+) -> None:
     """Escribe el informe Markdown con la conclusión lógica."""
     lines = [
         "# Validación de optimalidad de las k-particiones (K-QGMIP)",

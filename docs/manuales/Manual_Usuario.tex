@@ -1,0 +1,416 @@
+\documentclass[11pt,letterpaper]{article}
+\input{preambulo}
+
+\begin{document}
+
+% ====================== PORTADA ======================
+\begin{titlepage}
+\centering
+\vspace*{1.5cm}
+{\large\textbf{Universidad de Caldas}}\\[0.2cm]
+{\normalsize Facultad de Inteligencia Artificial e Ingenierías}\\[0.2cm]
+{\normalsize Análisis y Diseño de Algoritmos — 2026-1}\\[2.5cm]
+{\Huge\textbf{Proyecto K-QGMIP}}\\[0.6cm]
+{\LARGE\textbf{Manual de Usuario}}\\[0.4cm]
+{\large Análisis de $k$-particiones de mínima información}\\[0.3cm]
+{\large Estrategias \textbf{KGeoMIP} y \textbf{KQNodes}}\\[3cm]
+{\small\itshape Guía de instalación y uso para usuarios finales}\\[2cm]
+{\small \today}
+\vfill
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% ====================== 1. INTRODUCCIÓN ======================
+\section{Introducción y visión general}
+
+\subsection{¿Qué hace el software?}
+K-QGMIP analiza un \textbf{sistema} de variables binarias (descrito por una matriz
+de transición) y encuentra la mejor manera de \textbf{dividirlo en $k$ partes}
+perdiendo la menor cantidad de información posible. En pocas palabras: responde a
+la pregunta \emph{``si tuviera que romper este sistema en $k$ pedazos, ¿por dónde
+lo cortaría para que el corte ``duela'' lo menos posible?''}.
+
+\subsection{¿Para qué sirve?}
+Es una herramienta de \textbf{Teoría de la Información Integrada} (IIT), usada para
+medir cuán ``integrado'' está un sistema (cuánto depende el todo de sus partes).
+Aplicaciones típicas: análisis de redes neuronales o genéticas, estudio de
+modularidad de sistemas dinámicos, y experimentación académica sobre IIT.
+
+\subsection{Conceptos básicos}
+\begin{itemize}
+  \item \textbf{Sistema:} conjunto de $n$ nodos que pueden estar en $0$ o $1$.
+  \item \textbf{$k$-partición:} una división del sistema en exactamente $k$ grupos
+  (bloques). Con $k=2$ es un solo corte; con $k=3,4,5$ son cortes múltiples.
+  \item \textbf{Partición de mínima información (MIP):} la división que menos
+  información destruye. El número que mide ese ``daño'' se llama \textbf{pérdida}
+  (símbolo $\varphi$ o $\dk$): \emph{cuanto más pequeño, mejor partición}.
+\end{itemize}
+
+\begin{quote}\small
+\textbf{Idea clave:} el programa prueba muchos cortes posibles y se queda con el
+que produce la \emph{pérdida más baja}. Ese es el resultado que usted busca.
+\end{quote}
+
+\subsection{Capacidades y limitaciones}
+\begin{itemize}
+  \item \textbf{Sí puede:} analizar sistemas pequeños y medianos
+  ($n \le 15$–$20$ nodos) con las estrategias exactas y rápidas KGeoMIP/KQNodes,
+  para cualquier $k\in\{2,3,4,5\}$.
+  \item \textbf{Con cuidado:} sistemas grandes ($n \approx 25$) solo con la
+  estrategia de \emph{clustering}, que \emph{propone} una división rápida pero no
+  calcula la pérdida exacta (requiere demasiada memoria).
+  \item \textbf{No puede:} garantizar la partición óptima global en sistemas
+  grandes (usa heurísticas), ni manejar $n \gg 25$ en un equipo común.
+\end{itemize}
+
+% ====================== 2. REQUISITOS ======================
+\section{Requisitos del sistema}
+
+\begin{table}[H]
+\centering\small
+\caption{Requisitos mínimos y recomendados.}
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & Mínimo & Recomendado \\
+\midrule
+Sistema operativo & Linux / macOS / Windows 10+ & Linux (probado en Arch) \\
+Python & 3.14 & 3.14.5 \\
+RAM & 4 GB ($n\le 12$) & 8–16 GB ($n\le 20$); 8 GB+ para $n=25$ \\
+Disco & 500 MB & 2 GB (incluye muestras grandes) \\
+CPU & 2 núcleos & 4+ núcleos (paralelismo PCD) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Software necesario:} el gestor de paquetes
+\href{https://github.com/astral-sh/uv}{\texttt{uv}} (instala Python y las
+dependencias automáticamente). Las bibliotecas (numpy, scipy, pandas, matplotlib,
+etc.) se declaran en \texttt{pyproject.toml} y se instalan con un solo comando.
+
+% ====================== 3. INSTALACIÓN ======================
+\section{Instalación paso a paso}
+
+\paragraph{Paso 1 — Obtener el código.} Clonar el repositorio o descargar el
+\texttt{.zip}:
+\begin{lstlisting}[style=sh]
+git clone <URL-del-repositorio> KQGMIP
+cd KQGMIP
+\end{lstlisting}
+
+\paragraph{Paso 2 — Instalar uv} (si aún no lo tiene):
+\begin{lstlisting}[style=sh]
+curl -LsSf https://astral.sh/uv/install.sh | sh   # Linux / macOS
+# Windows (PowerShell):
+# powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+\end{lstlisting}
+
+\paragraph{Paso 3 — Instalar dependencias.} Desde la carpeta del proyecto:
+\begin{lstlisting}[style=sh]
+uv sync
+\end{lstlisting}
+Esto crea el entorno virtual y descarga todas las bibliotecas. No es necesario
+activar el entorno: cada comando se ejecuta con \texttt{uv run}.
+
+\paragraph{Paso 4 — Verificar la instalación.}
+\begin{lstlisting}[style=sh]
+uv run pytest -q        # debe terminar con todos los tests en verde
+uv run exec.py          # ejecuta un análisis de ejemplo
+\end{lstlisting}
+
+\begin{quote}\small
+\textbf{Nota.} Si \texttt{uv run pytest} pasa, el software quedó correctamente
+instalado. El primer \texttt{uv sync} puede tardar varios minutos según la red.
+\end{quote}
+
+% ====================== 4. VIDEO ======================
+\section{Video tutorial de instalación y uso}
+
+Se incluye un video demostrativo (formato MP4, 8–15 min) que cubre la instalación
+desde cero, la configuración y un ejemplo completo de ejecución e interpretación.
+
+\begin{center}
+\fbox{\parbox{0.8\textwidth}{\centering\vspace{4mm}
+\textbf{Video tutorial:} \href{run:./video/tutorial_KQGMIP.mp4}{\texttt{video/tutorial\_KQGMIP.mp4}}\\[1mm]
+\small (Enlace alternativo en línea: \emph{pendiente de publicación})\\[4mm]
+}}
+\end{center}
+
+\noindent Contenido del video: (1) instalación de \texttt{uv} y
+\texttt{uv sync}; (2) edición de parámetros en \texttt{main.py}; (3) ejecución con
+distintos valores de $k$; (4) interpretación de la salida; (5) generación de
+figuras.
+
+% ====================== 5. USO BÁSICO ======================
+\section{Guía de uso básico}
+
+\subsection{Preparación de los datos de entrada}
+El sistema se describe con una \textbf{TPM} (matriz de transición) en un archivo
+CSV: \texttt{data/samples/N\{n\}\{página\}.csv}, con $2^n$ filas y $n$ columnas de
+$0$/$1$, en orden \emph{little-endian} (la fila $0$ es el estado $00\dots0$). El
+programa la carga automáticamente según el número de nodos y la página.
+
+\noindent Si no tiene una TPM, puede generar una desde la \textbf{línea de comandos}
+con el script dedicado (no interactivo con \texttt{--yes}):
+\begin{lstlisting}[style=sh]
+uv run scripts/generate_tpm.py --n 4              # determinista 0/1 (N4?.csv)
+uv run scripts/generate_tpm.py --n 6 --continuous # probabilidades continuas
+uv run scripts/generate_tpm.py --n 10 --seed 7 --yes
+\end{lstlisting}
+El archivo se guarda en \texttt{data/samples/} con el siguiente sufijo libre
+(\texttt{A}, \texttt{B}, \dots). También puede generarlo \textbf{desde la interfaz
+web} (§\ref{sec:webui}), sin línea de comandos.
+
+\subsection{Ejecución básica}
+El análisis individual se configura en \texttt{main.py} y se lanza con
+\texttt{exec.py}. Los parámetros principales están al inicio de \texttt{main.py}:
+
+\begin{lstlisting}[style=py]
+initial_state = "1111011011"  # Estado en t=0 (10 nodos)
+conditions    = "1110001100"  # 0 = condicionar (fijar) la variable
+purview       = "0011101111"  # 0 = marginalizar el nodo futuro
+mechanism     = "1000111111"  # 0 = marginalizar el nodo presente
+k = 3                         # Numero de particiones (k >= 2)
+
+STRATEGY_NAME = "kgeomip"     # kgeomip | kqnodes | clustering | exhaustive
+PAGE = "A"                    # Pagina de red (A, B, C, ...)
+\end{lstlisting}
+
+\noindent Luego:
+\begin{lstlisting}[style=sh]
+uv run exec.py
+\end{lstlisting}
+
+\subsection{Interpretación de resultados}
+La salida muestra la estrategia usada, las distribuciones, la $k$-partición
+encontrada (bloques \texttt{B1, B2, \dots}) y la \textbf{pérdida mínima}
+($\varphi$). Ejemplo real (KGeoMIP, $k=3$, red N10A):
+
+\begin{lstlisting}[style=sh]
+KGeoMIP(k=3) fue la estrategia de solucion.
+Distancia metrica: distancia-hamming
+Notacion indexado: little-endian
+
+Distribucion marginal del Subsistema:
+[ 0.2500 0.5000 1.0000 ]
+Distribucion marginal de la Particion:
+[ 0.4062 0.4688 1.0000 ]
+
+Mejor particion:
+B1:  | C
+B2:  | G
+B3: agh | H
+Perdida minima ( phi ) = 0.1875
+
+Tiempos de ejecucion:
+Horas: 0.00 = Minutos: 0.0 = Segundos: 0.0036
+\end{lstlisting}
+
+\noindent\textbf{Cómo leerlo:}
+\begin{itemize}
+  \item \textbf{Bloques B1–B3:} cada bloque es \texttt{futuro | presente}. Las
+  letras minúsculas son nodos de efecto ($t{+}1$); las mayúsculas, de mecanismo
+  ($t$). Un lado vacío significa que ese bloque no aporta átomos de ese tiempo.
+  \item \textbf{Pérdida mínima ($\varphi$):} $0{,}1875$. Es el indicador clave:
+  \emph{más bajo es mejor}. Sirve para comparar estrategias o valores de $k$.
+  \item \textbf{Tiempo:} cuánto tardó el análisis.
+\end{itemize}
+
+\subsection{Casos de uso típicos}
+\begin{enumerate}
+  \item \textbf{Una $3$-partición de un sistema pequeño:} ponga
+  \texttt{STRATEGY\_NAME="kgeomip"}, \texttt{k=3}, y ejecute \texttt{uv run exec.py}.
+  \item \textbf{Comparar $k=2,3,4$:} cambie \texttt{k} y vuelva a ejecutar; anote
+  la pérdida de cada uno (crecerá con $k$).
+  \item \textbf{Comparar estrategias:} repita con
+  \texttt{STRATEGY\_NAME="kqnodes"} y con \texttt{"clustering"} sobre el mismo
+  sistema.
+\end{enumerate}
+
+% ====================== 6. OPCIONES AVANZADAS ======================
+\section{Opciones y parámetros avanzados}
+
+\subsection{Parámetros de configuración}
+\begin{table}[H]
+\centering\small
+\caption{Parámetros ajustables.}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Parámetro & Dónde & Valores & Por defecto \\
+\midrule
+\texttt{k} & main.py / \texttt{IIT\_K} & entero $\ge 2$ (2–5) & 3 \\
+\texttt{STRATEGY\_NAME} & main.py & kgeomip, kqnodes, clustering, exhaustive, genetic, annealing, tabu & kgeomip \\
+\texttt{method} & main.py / \texttt{IIT\_METHOD} & spectral, kmeans (solo clustering) & spectral \\
+\texttt{PAGE} & main.py & A, B, C, \dots & A \\
+\texttt{initial\_state} & main.py & cadena de $0$/$1$ de longitud $n$ & --- \\
+semilla & application.py & entero & 73 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Modos de operación}
+\begin{itemize}
+  \item \textbf{Individual} (\texttt{uv run exec.py}): un sistema, configurado en
+  \texttt{main.py}.
+  \item \textbf{Por lotes} (\texttt{uv run exec.py --batch}): procesa una rejilla
+  desde Excel, controlado por variables de entorno:
+\begin{lstlisting}[style=sh]
+IIT_STRATEGY=kqnodes IIT_K=4 IIT_METHOD=spectral uv run exec.py --batch
+\end{lstlisting}
+  \item \textbf{Exacto} (\texttt{STRATEGY\_NAME="exhaustive"}): \emph{ground truth}
+  por enumeración; úselo solo en sistemas pequeños ($n \le 6$).
+\end{itemize}
+
+\subsection{Opciones de salida y visualización}
+\begin{lstlisting}[style=sh]
+uv run scripts/run_benchmark.py        # rejilla -> CSV/Excel en data/results/
+uv run scripts/run_benchmark.py --no-meta   # sin metaheuristicas (mas rapido)
+uv run scripts/make_figures.py         # graficas estaticas (PNG): escalabilidad/perdida
+uv run scripts/make_interactive.py     # graficas interactivas (HTML, Plotly)
+uv run scripts/make_viz.py --net N4A --k 3 --strategy KGeoMIP   # dibuja la particion
+\end{lstlisting}
+Las gráficas \textbf{estáticas} (PNG) quedan en \texttt{data/results/figures/} y las
+\textbf{interactivas} (HTML, navegables con \emph{zoom} y \emph{hover}) en
+\texttt{data/results/figures/interactive/}.
+
+\subsection{Optimización de rendimiento}
+\begin{itemize}
+  \item Para sistemas grandes, prefiera \texttt{kgeomip} (más rápido que
+  \texttt{kqnodes}).
+  \item Desactive el \emph{profiling} para medir tiempos reales
+  (\texttt{application.disable\_profiling()}).
+  \item El paralelismo por procesos se activa en las rutas que lo soportan; evite
+  sobre-suscribir núcleos (el software ya fija \texttt{OMP\_NUM\_THREADS=1} en los
+  trabajadores).
+\end{itemize}
+
+% ====================== 6B. INTERFAZ WEB ======================
+\section{Interfaz web (sin línea de comandos)}
+\label{sec:webui}
+Para quien prefiera no tocar \texttt{main.py}, el proyecto incluye una
+\textbf{interfaz web} (Streamlit) que cubre todo el flujo desde el navegador.
+Requiere los extras opcionales:
+\begin{lstlisting}[style=sh]
+uv sync --extra web        # instala streamlit + plotly
+uv run streamlit run app/streamlit_app.py
+\end{lstlisting}
+Se abre en \texttt{http://localhost:8501}. La interfaz tiene tres pasos:
+\begin{enumerate}
+  \item \textbf{Datos.} Elija una muestra existente o \emph{genere una TPM nueva}
+  (nodos~$n$, determinista o continua, semilla) con un botón; el CSV se crea en
+  \texttt{data/samples/}.
+  \item \textbf{Estrategia.} Seleccione la estrategia (KGeoMIP, KQNodes,
+  Clustering, Genética, Recocido, Tabú, ExhaustiveK), el número de bloques~$k$ y,
+  si lo necesita, las máscaras de subsistema (condición, \emph{purview},
+  mecanismo).
+  \item \textbf{Resultados.} Al pulsar \emph{Ejecutar} verá la pérdida $\dk$, la
+  $k$-partición de mínima información, su distribución marginal en tabla, y el
+  diagrama \textbf{interactivo} de la partición. Si existe la rejilla de
+  \emph{benchmark}, se muestra además la gráfica interactiva $\dk$ vs $k$.
+\end{enumerate}
+\noindent\textit{Sugerencia de captura:} para el manual/vídeo, capture (a) el panel
+de generación de TPM, (b) la selección de estrategia y $k$, y (c) el panel de
+resultados con el diagrama interactivo.
+
+% ====================== 7. SOLUCIÓN DE PROBLEMAS ======================
+\section{Solución de problemas}
+
+\begin{table}[H]
+\centering\small
+\caption{Errores comunes y solución.}
+\begin{tabular}{@{}p{4.4cm}p{4.0cm}p{4.6cm}@{}}
+\toprule
+Síntoma & Causa & Solución \\
+\midrule
+\texttt{FileNotFoundError: N\{n\}\{page\}.csv} & No existe la muestra para ese $n$/página & Generar la red o ajustar \texttt{PAGE}/\texttt{initial\_state} \\
+\texttt{ValueError: k must be >= 2} & $k<2$ & Usar $k\ge 2$ \\
+\texttt{ValueError: strict k-partition \dots} & La partición dejaría un bloque vacío & Reducir $k$ (no caben tantos bloques no vacíos) \\
+\texttt{MemoryError} / proceso ``muerto'' & $n$ demasiado grande (RAM) & Bajar $n$, o usar \texttt{clustering} \\
+\texttt{ModuleNotFoundError} & Dependencias no instaladas & Ejecutar \texttt{uv sync} \\
+\texttt{ModuleNotFoundError: streamlit / plotly} & Faltan los extras de la UI web & Ejecutar \texttt{uv sync --extra web} \\
+Comando \texttt{uv} no encontrado & \texttt{uv} no instalado/PATH & Reinstalar \texttt{uv} y reabrir la terminal \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Problemas de instalación.} Si \texttt{uv sync} falla, verifique
+la conexión y la versión de Python (\texttt{uv python install 3.14}). En Windows,
+ejecute la terminal como usuario normal (no se requieren permisos de
+administrador).
+
+\noindent\textbf{Datos de entrada problemáticos.} La TPM debe tener exactamente
+$2^n$ filas y $n$ columnas con solo $0$/$1$. Las cadenas
+\texttt{initial\_state}/\texttt{conditions}/\texttt{purview}/\texttt{mechanism}
+deben tener longitud $n$.
+
+% ====================== 8. EJEMPLOS ======================
+\section{Ejemplos y tutoriales}
+
+\subsection{Tutorial básico (4 nodos)}
+\begin{enumerate}
+  \item En \texttt{main.py}: \texttt{initial\_state="1111"},
+  \texttt{conditions="1111"}, \texttt{purview="1111"}, \texttt{mechanism="1111"},
+  \texttt{k=3}, \texttt{STRATEGY\_NAME="kgeomip"}, \texttt{PAGE="A"}.
+  \item Ejecutar \texttt{uv run exec.py}.
+  \item Leer la pérdida y los bloques. Dibujar la partición:
+  \texttt{uv run scripts/make\_viz.py -{}-net N4A -{}-k 3 -{}-strategy KGeoMIP}.
+\end{enumerate}
+
+\subsection{Caso intermedio (10 nodos, varios $k$)}
+Con la red N10A, ejecute KGeoMIP para $k=2,3,4$ y compare la pérdida (debe crecer):
+$0{,}47 \to 0{,}94 \to 1{,}42$. Repita con \texttt{kqnodes} para confirmar que
+obtiene la misma calidad.
+
+\subsection{Ejemplo avanzado (rejilla completa)}
+\begin{lstlisting}[style=sh]
+uv run scripts/run_benchmark.py        # genera la rejilla n x k
+uv run scripts/validate_correctness.py # valida contra el exacto
+uv run scripts/make_figures.py         # produce las graficas
+\end{lstlisting}
+Los resultados quedan en \texttt{data/results/} (CSV/Excel) y las figuras en
+\texttt{data/results/figures/}.
+
+% ====================== 9. REFERENCIA RÁPIDA ======================
+\section{Referencia rápida}
+
+\subsection{Comandos principales}
+\begin{table}[H]
+\centering\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Comando & Descripción \\
+\midrule
+\texttt{uv sync} & Instalar dependencias \\
+\texttt{uv run exec.py} & Análisis individual (config.\ en \texttt{main.py}) \\
+\texttt{uv run exec.py -{}-batch} & Análisis por lotes (Excel) \\
+\texttt{uv run pytest} & Ejecutar los tests \\
+\texttt{uv run scripts/run\_benchmark.py} & Rejilla de resultados \\
+\texttt{uv run scripts/make\_viz.py} & Visualizar una partición \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Glosario}
+\begin{description}
+  \item[TPM] Matriz de probabilidad de transición que describe el sistema.
+  \item[$k$-partición] División del sistema en $k$ bloques no vacíos.
+  \item[Pérdida ($\varphi$ / $\dk$)] Información destruida por una partición; menor
+  es mejor.
+  \item[KGeoMIP] Estrategia geométrica (rápida, recomendada por defecto).
+  \item[KQNodes] Estrategia submodular (más robusta, más lenta).
+  \item[Clustering] Baseline rápido para sistemas grandes (solo propone).
+  \item[Purview / Mechanism] Conjuntos de nodos de efecto ($t{+}1$) y mecanismo
+  ($t$) bajo análisis.
+\end{description}
+
+\subsection{Formato de archivos}
+\begin{itemize}
+  \item \textbf{Entrada:} \texttt{data/samples/N\{n\}\{página\}.csv} — $2^n$ filas,
+  $n$ columnas, $0$/$1$, little-endian.
+  \item \textbf{Salida:} resumen por consola; rejillas en
+  \texttt{data/results/*.csv}/\texttt{*.xlsx}; figuras PNG en
+  \texttt{data/results/figures/}.
+\end{itemize}
+
+\end{document}

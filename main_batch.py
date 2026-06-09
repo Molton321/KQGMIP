@@ -32,10 +32,6 @@ from src.models.base.application import application
 PROJECT_ROOT = Path(__file__).resolve().parent
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 def _to_binary(text: str, n_bits: int) -> str:
     """Convert labels like 'AC|abc' to a binary string of length n_bits."""
     positions = "ABCDEFGHIJKLMNOPQRST"[:n_bits]
@@ -49,46 +45,42 @@ def _to_binary(text: str, n_bits: int) -> str:
 def _infer_initial_state(samples_dir: Path) -> str:
     """Pick the initial state from the largest available dataset."""
     pattern = re.compile(r"N(\d+)[A-Z]\.csv$")
-    sizes = [
-        int(m.group(1))
-        for f in samples_dir.glob("N*.csv")
-        if (m := pattern.match(f.name))
-    ]
+    sizes = [int(m.group(1)) for f in samples_dir.glob("N*.csv") if (m := pattern.match(f.name))]
     if not sizes:
         raise FileNotFoundError(f"No hay archivos TPM en {samples_dir}")
     n = max(sizes)
     return "1" + "0" * (n - 1)
 
 
-# ---------------------------------------------------------------------------
-# Worker (strategies are built through the single registry, src/funcs/runner.py)
-# ---------------------------------------------------------------------------
-
 def _worker(condition, purview, mechanism, tpm, initial_state, strategy_name, k, method, queue):
-    """Worker process for batch evaluation."""
+    """Worker process for batch evaluation of one subsystem.
+
+    The strategy is built through the single registry (``src/funcs/runner.py``)
+    and the result (or error) is pushed onto ``queue`` for the parent process.
+    """
     from src.funcs.runner import build_strategy
 
     try:
         analyzer = build_strategy(strategy_name, tpm, initial_state, k, method)
         solution = analyzer.apply_strategy(condition, purview, mechanism)
-        queue.put({
-            "partition": solution.partition,
-            "loss": str(solution.loss).replace(".", ","),
-            "time": str(solution.execution_time).replace(".", ","),
-            "error": None,
-        })
+        queue.put(
+            {
+                "partition": solution.partition,
+                "loss": str(solution.loss).replace(".", ","),
+                "time": str(solution.execution_time).replace(".", ","),
+                "error": None,
+            }
+        )
     except Exception as e:
-        queue.put({
-            "partition": None,
-            "loss": None,
-            "time": None,
-            "error": str(e),
-        })
+        queue.put(
+            {
+                "partition": None,
+                "loss": None,
+                "time": None,
+                "error": str(e),
+            }
+        )
 
-
-# ---------------------------------------------------------------------------
-# Main batch runner
-# ---------------------------------------------------------------------------
 
 def run_from_excel(
     input_path: Path,
@@ -101,17 +93,19 @@ def run_from_excel(
     initial_state: str | None = None,
     fixed_conditions: str | None = None,
 ) -> None:
-    """Run a strategy over subsystems listed in an Excel file."""
+    """Run a strategy over the subsystems listed in an Excel file.
+
+    The TPM is loaded through ``Manager.load_network`` (the single source of
+    truth: float32, no duplicate ``genfromtxt``) using page ``"A"``.
+    """
     df = pd.read_excel(input_path, sheet_name=8, usecols="B", skiprows=3, names=["Subsistema"])
-    rows = df["Subsistema"].dropna().tolist()[start: start + count]
+    rows = df["Subsistema"].dropna().tolist()[start : start + count]
 
     samples_dir = Manager(initial_state or "").base_path
     initial_state = initial_state or _infer_initial_state(samples_dir)
     fixed_conditions = fixed_conditions or ("1" * len(initial_state))
     n_bits = len(initial_state)
 
-    # Load through Manager.load_network (single source of truth: float32, no
-    # duplicate genfromtxt) using page "A" as before.
     application.set_sample_network_page("A")
     manager = Manager(initial_state)
     if not manager.tpm_filename.exists():
@@ -137,8 +131,17 @@ def run_from_excel(
         queue: multiprocessing.Queue = multiprocessing.Queue()
         process = multiprocessing.Process(
             target=_worker,
-            args=(fixed_conditions, purview, mechanism, tpm, initial_state,
-                  strategy_name, k, method, queue),
+            args=(
+                fixed_conditions,
+                purview,
+                mechanism,
+                tpm,
+                initial_state,
+                strategy_name,
+                k,
+                method,
+                queue,
+            ),
         )
         process.start()
         process.join(timeout=3600)
@@ -149,21 +152,25 @@ def run_from_excel(
             process.join()
             result = {"partition": None, "loss": None, "time": None, "error": "timeout"}
         else:
-            result = queue.get() if not queue.empty() else {
-                "partition": None, "loss": None, "time": None, "error": "empty queue"
-            }
+            result = (
+                queue.get()
+                if not queue.empty()
+                else {"partition": None, "loss": None, "time": None, "error": "empty queue"}
+            )
 
-        results.append({
-            "Iteración": i,
-            "Alcance": purview,
-            "Mecanismo": mechanism,
-            "Estrategia": strategy_label,
-            "k": k,
-            "Partición": result.get("partition"),
-            "Pérdida (δ_k)": result.get("loss"),
-            "Tiempo (s)": result.get("time"),
-            "Error": result.get("error"),
-        })
+        results.append(
+            {
+                "Iteración": i,
+                "Alcance": purview,
+                "Mecanismo": mechanism,
+                "Estrategia": strategy_label,
+                "k": k,
+                "Partición": result.get("partition"),
+                "Pérdida (δ_k)": result.get("loss"),
+                "Tiempo (s)": result.get("time"),
+                "Error": result.get("error"),
+            }
+        )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(results).to_excel(output_path, index=False)
@@ -172,22 +179,32 @@ def run_from_excel(
 
 def run():
     """CLI entry point (reads env vars or uses defaults)."""
-    input_path = Path(os.getenv(
-        "IIT_INPUT_XLSX",
-        str(PROJECT_ROOT / "data" / "results" / "Pruebas_Metodo2.xlsx"),
-    ))
-    output_path = Path(os.getenv(
-        "IIT_OUTPUT_XLSX",
-        str(PROJECT_ROOT / "data" / "results" / "resultados.xlsx"),
-    ))
+    input_path = Path(
+        os.getenv(
+            "IIT_INPUT_XLSX",
+            str(PROJECT_ROOT / "data" / "results" / "Pruebas_Metodo2.xlsx"),
+        )
+    )
+    output_path = Path(
+        os.getenv(
+            "IIT_OUTPUT_XLSX",
+            str(PROJECT_ROOT / "data" / "results" / "resultados.xlsx"),
+        )
+    )
     strategy_name = os.getenv("IIT_STRATEGY", "kgeomip")
     k = int(os.getenv("IIT_K", "3"))
     method = os.getenv("IIT_METHOD", "spectral")
     initial_state = os.getenv("IIT_ESTADO_INI")
 
     print(f"Strategy: {strategy_name}  k={k}  method={method}")
-    run_from_excel(input_path, output_path, strategy_name=strategy_name, k=k, method=method,
-                   initial_state=initial_state)
+    run_from_excel(
+        input_path,
+        output_path,
+        strategy_name=strategy_name,
+        k=k,
+        method=method,
+        initial_state=initial_state,
+    )
 
 
 if __name__ == "__main__":

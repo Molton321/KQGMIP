@@ -21,9 +21,9 @@ from src.funcs.emd import delta_k
 from src.models.core.partition import KPartition
 from src.models.core.system import System
 
-# A block/cut pairs future (purview) indices with present (mechanism) indices.
-# It is non-vacuous when either set is non-empty.
 Block = tuple[frozenset[int], frozenset[int]]
+"""A block/cut: future (purview) indices paired with present (mechanism) indices,
+non-vacuous when either set is non-empty."""
 
 
 def greedy_k_partition(
@@ -87,17 +87,16 @@ def _best_refinement(
 
     Tries every (block, cut) pairing that divides a block into two non-vacuous
     sub-blocks, scores the resulting full partition with ``delta_k``, and keeps
-    the minimum. The per-step candidate batch is small (~k·|cut_pool|), so the
-    scalar ``delta_k`` path is faster here than a batched kernel (measured); the
-    batch kernel (``accelerate.batch_effect_emd``) is reserved for large-batch
-    consumers. Returns ``None`` if no block can be split into two non-vacuous
-    parts with the available cuts.
+    the minimum. The cost here is the marginalization inside ``delta_k`` (the
+    EMD itself is <1% of runtime); a Numba EMD kernel was measured and rejected
+    because marginalization — not EMD — is the bottleneck, and ``np.mean`` over
+    axes (memory-bound C) already beats a Numba reduction. Returns ``None`` if no
+    block can be split into two non-vacuous parts with the available cuts.
     """
     best_loss = np.inf
     best_blocks: list[Block] | None = None
 
     for position, (effects_block, present_block) in enumerate(blocks):
-        # A block needs at least two atoms to split into two non-vacuous parts.
         if len(effects_block) + len(present_block) < 2:
             continue
 
@@ -105,7 +104,6 @@ def _best_refinement(
             inside: Block = (effects_block & cut_effects, present_block & cut_present)
             outside: Block = (effects_block - cut_effects, present_block - cut_present)
 
-            # Reject splits that leave a fully empty (vacuous) side.
             if not (inside[0] or inside[1]) or not (outside[0] or outside[1]):
                 continue
 

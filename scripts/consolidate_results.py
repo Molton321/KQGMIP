@@ -25,17 +25,22 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 RESULTS = ROOT / "data" / "results"
 
-# Source CSVs in the order they should stack into the final grid.
 SOURCES = [
     "benchmark_core_meta.csv",
     "benchmark_N20A_kgeomip.csv",
     "benchmark_results_N25A_clustering.csv",
 ]
+"""Source CSVs in the order they should stack into the final grid."""
 
 COLUMNS = ["strategy", "network", "n", "k", "loss", "time_s", "partition", "error"]
 
 
 def main() -> None:
+    """Stack the source grids into the FINAL CSV/XLSX in a stable column order.
+
+    Missing sources are skipped and absent columns (e.g. an explicit error
+    column) are tolerated so partial grids still consolidate.
+    """
     frames = []
     for name in SOURCES:
         path = RESULTS / name
@@ -48,7 +53,6 @@ def main() -> None:
         sys.exit(1)
 
     df = pd.concat(frames, ignore_index=True)
-    # Keep a stable column order; tolerate sources without an explicit error col.
     for col in COLUMNS:
         if col not in df.columns:
             df[col] = None

@@ -50,15 +50,18 @@ class CostTable:
         state_start: NDArray[np.int8],
         state_end: NDArray[np.int8],
     ) -> None:
-        # Stack the per-node rows into a contiguous (num_nodes, 2^m) matrix so a
-        # state's per-node values are a single vectorized column gather.
+        """Stack the per-node rows and precompute the powers of two, then build.
+
+        ``flat_data`` is stacked into a contiguous ``(num_nodes, 2^m)`` matrix so
+        a state's per-node values are a single vectorized column gather, and the
+        powers of two are cached for the little-endian bit-list -> integer
+        conversion (avoiding per-state string formatting).
+        """
         self._flat = np.ascontiguousarray(np.stack(flat_data))
         self.state_start = state_start
         self.state_end = state_end
         self.num_nodes = len(flat_data)
-        # Powers of two for the little-endian bit-list -> int conversion (avoids
-        # the per-state ``int("".join(map(str, ...)), 2)`` string formatting).
-        self._powers = (1 << np.arange(state_start.size, dtype=np.int64))
+        self._powers = 1 << np.arange(state_start.size, dtype=np.int64)
         self.transition_table: dict[tuple, NDArray[np.float64]] = {}
         self.paths: dict[int, list[list[int]]] = {}
         self._build()
@@ -75,10 +78,10 @@ class CostTable:
         self.paths[level] = []
         for prev_state in self.paths[level - 1]:
             current = np.array(prev_state)
-            for i in range(len(current)):
-                if current[i] != self.state_end[i]:
+            for k, _ in enumerate(current):
+                if current[k] != self.state_end[k]:
                     new_state = current.copy()
-                    new_state[i] = self.state_end[i]
+                    new_state[k] = self.state_end[k]
                     tup = tuple(new_state)
                     if tup not in visited:
                         self.paths[level].append(new_state.tolist())
@@ -94,20 +97,17 @@ class CostTable:
         """
         key = tuple(state_start), tuple(state_end)
         dh = self._hamming(state_start, state_end)
-        factor = 1.0 / (2 ** dh)
+        factor = 1.0 / (2**dh)
 
-        # Little-endian bit list -> flat index via a dot with the powers of two.
         start_int = int(np.dot(state_start, self._powers))
         end_int = int(np.dot(state_end, self._powers))
-        # Vectorized per-node absolute difference (single column gather + abs).
         cost = np.abs(self._flat[:, start_int] - self._flat[:, end_int])
 
-        # For multi-bit jumps, accumulate the single-bit neighbor costs.
         if dh > 1:
-            for i in range(len(state_start)):
-                if state_start[i] != state_end[i]:
+            for k, _ in enumerate(state_start):
+                if state_start[k] != state_end[k]:
                     neighbor = list(state_end)
-                    neighbor[i] = state_start[i]
+                    neighbor[k] = state_start[k]
                     cost = cost + self.transition_table[(tuple(state_start), tuple(neighbor))]
 
         self.transition_table[key] = factor * cost
@@ -139,7 +139,10 @@ class CostTable:
         n_vars = len(costs)
 
         candidates: list[list[list[int]]] = [
-            [[i for i in range(len(self.state_end))], [i for i in range(n_vars) if i != idx]]
+            [
+                [i for i in range(len(self.state_end))],
+                [i for i in range(n_vars) if i != idx],
+            ]
             for idx in range(n_vars)
         ]
 
@@ -173,4 +176,5 @@ class CostTable:
 
     @staticmethod
     def _hamming(a: list, b: list) -> int:
+        """Hamming distance between two equal-length bit lists."""
         return sum(x != y for x, y in zip(a, b, strict=False))

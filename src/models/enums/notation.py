@@ -1,3 +1,5 @@
+"""Binary index notations used when (re)ordering TPM states."""
+
 from enum import Enum
 
 

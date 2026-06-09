@@ -107,7 +107,7 @@ fuerte evidencia de óptimo global. El consolidado vive en `data/results/benchma
 KQGMIP/
 ├── streamlit_app.py            # interfaz web (Streamlit)
 ├── exec.py                     # CLI por banderas (individual / --batch)
-├── main.py · main_batch.py     # ruta avanzada (config a mano) · lote desde Excel
+├── main_batch.py               # procesamiento por lotes desde Excel
 ├── src/
 │   ├── constants/              # constantes centralizadas (base, errors, tags)
 │   ├── controllers/

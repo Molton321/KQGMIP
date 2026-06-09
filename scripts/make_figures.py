@@ -17,9 +17,9 @@ from pathlib import Path
 
 import matplotlib
 
-matplotlib.use("Agg")  # headless backend
-import matplotlib.pyplot as plt  # noqa: E402
-import pandas as pd  # noqa: E402
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 

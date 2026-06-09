@@ -1,8 +1,18 @@
+"""
+QNodes strategy implementation. This strategy is based on the Q-Nodes algorithm,
+which is a submodular optimization technique for finding low-loss bipartitions
+in the context of SIA. The algorithm operates in phases, where in each phase it
+iteratively builds a candidate partition by adding nodes that minimize the EMD gain.
+The final output is the partition with the lowest global EMD against
+the original subsystem distribution.
+"""
+
 import time
 
 import numpy as np
 
 from src.constants.base import ACTUAL, COLS_IDX, EFECTO, INFTY_POS, LAST_IDX, NET_LABEL, TYPE_TAG
+from src.constants.strategies import QNODES_ANALYSIS_TAG, QNODES_LABEL, QNODES_STRATEGY_TAG
 from src.funcs.emd import effect_emd
 from src.funcs.format import fmt_bipartition_q
 from src.middlewares.profile import profile, profiling_manager
@@ -11,17 +21,11 @@ from src.models.base.application import application
 from src.models.base.sia import SIA
 from src.models.core.solution import Solution
 
-QNODES_LABEL: str = "Q-Nodes"
-QNODES_STRATEGY_TAG: str = f"{QNODES_LABEL}_strategy"
-QNODES_ANALYSIS_TAG: str = f"{QNODES_LABEL}_analysis"
-
 
 class QNodes(SIA):
     """
     Q-Nodes strategy: greedy submodular (Queyranne-like) algorithm to search the MIP.
-
-    Incrementally grows node groups while minimizing the information loss
-    (effect EMD). Ported from the 20263 base (fixes the previous base's defect).
+    Incrementally grows node groups while minimizing the information loss (effect EMD).
     """
 
     def __init__(self, tpm: np.ndarray, initial_state: str):
@@ -33,17 +37,11 @@ class QNodes(SIA):
         self.partition_memo: dict = {}
         self.logger = SafeLogger(QNODES_STRATEGY_TAG)
 
-    def apply_strategy(
-        self, condition: str, purview: str, mechanism: str
-    ) -> Solution:
+    def apply_strategy(self, condition: str, purview: str, mechanism: str) -> Solution:
         self.sia_prepare_subsystem(condition, purview, mechanism)
 
-        future = tuple(
-            (EFECTO, effect) for effect in self.sia_subsystem.ncube_indices
-        )
-        present = tuple(
-            (ACTUAL, current) for current in self.sia_subsystem.ncube_dims
-        )
+        future = tuple((EFECTO, effect) for effect in self.sia_subsystem.ncube_indices)
+        present = tuple((ACTUAL, current) for current in self.sia_subsystem.ncube_dims)
 
         self.vertices = set(present + future)
         mip = self.algorithm(list(present + future))
@@ -63,7 +61,6 @@ class QNodes(SIA):
     def algorithm(self, vertices: list[tuple[int, int]]) -> tuple:
         """
         Algorithm Q: operates in phases (i) > cycles (j) > iterations (k).
-
         Omega starts with the first vertex and grows by adding, in each cycle, the
         delta with the smallest submodular gain. When each phase closes, a candidate
         pair is formed and memoized. Returns the key of the partition with the lowest
@@ -78,13 +75,13 @@ class QNodes(SIA):
             candidate_partition_emd = INFTY_POS
             candidate_partition_dist = None
 
-            for _j in range(len(cycle_deltas) - 1):
+            for _ in range(len(cycle_deltas) - 1):
                 local_emd = 1e5
                 mip_index = 0
 
-                for k in range(len(cycle_deltas)):
+                for k, v in enumerate(cycle_deltas):
                     union_emd, delta_emd, delta_marginal_dist = self.submodular_function(
-                        cycle_deltas[k], cycle_omegas
+                        v, cycle_omegas
                     )
                     iteration_emd = union_emd - delta_emd
 
@@ -104,25 +101,21 @@ class QNodes(SIA):
                     if isinstance(cycle_deltas[LAST_IDX], list)
                     else cycle_deltas
                 )
-            ] = candidate_partition_emd, candidate_partition_dist
+            ] = (candidate_partition_emd, candidate_partition_dist)
 
             candidate_pair = (  # type: ignore[operator]
                 [cycle_omegas[LAST_IDX]]
                 if isinstance(cycle_omegas[LAST_IDX], tuple)
                 else cycle_omegas[LAST_IDX]
             ) + (
-                cycle_deltas[LAST_IDX]
-                if isinstance(cycle_deltas[LAST_IDX], list)
-                else cycle_deltas
+                cycle_deltas[LAST_IDX] if isinstance(cycle_deltas[LAST_IDX], list) else cycle_deltas
             )
 
             cycle_omegas.pop()
             cycle_omegas.append(candidate_pair)  # type: ignore[arg-type]
             phase_vertices = cycle_omegas
 
-        return min(
-            self.partition_memo, key=lambda k: self.partition_memo[k][0]
-        )
+        return min(self.partition_memo, key=lambda k: self.partition_memo[k][0])
 
     def submodular_function(
         self,
@@ -131,7 +124,6 @@ class QNodes(SIA):
     ) -> tuple[float, float, np.ndarray]:
         """
         Evaluate the individual delta and its union with omega.
-
         Rebuilds the `temporal` state on every call (no shared state) to avoid the
         previous implementation's defect. Returns
         (union_emd, delta_emd, delta_marginal_dist).

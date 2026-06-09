@@ -1,4 +1,4 @@
-"""Cross-validation for the clustering baseline (Phase 5A)."""
+"""Cross-validation for the clustering baseline"""
 
 import contextlib
 import io

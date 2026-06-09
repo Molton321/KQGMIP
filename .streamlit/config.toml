@@ -1,0 +1,10 @@
+# Official Streamlit theming (https://docs.streamlit.io/develop/concepts/configuration/theming).
+# Forced dark theme for consistent appearance; accent and radius set explicitly.
+[theme]
+primaryColor = "#7C4DFF"
+font = "sans serif"
+baseRadius = "0.6rem"
+base = "dark"
+backgroundColor = "#0E1117"
+secondaryBackgroundColor = "#262730"
+textColor = "#FAFAFA"

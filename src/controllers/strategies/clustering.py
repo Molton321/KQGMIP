@@ -1,20 +1,5 @@
-"""Deterministic clustering baseline for k-partitions (Phase 5A).
-
-This is the required comparative baseline of the official portfolio
-(``docs/Proyecto_KQMIP.md``; precedent "Estrategia KM"). It treats the k-MIP as
-a **graph-partitioning** problem: an affinity graph over the subsystem nodes is
-built from their mutual behaviour, and it is cut into k blocks by spectral
-clustering (graph Laplacian + k-means on the eigenvectors) or plain k-means.
-
-The clustering only **proposes** the partition; its quality is always measured
-with the k-generic loss ``delta_k`` (Phase 1), never with the clustering's
-internal objective. The strategy is fully deterministic (fixed
-``application.numpy_seed``) and the affinity is computed from a bounded sample of
-TPM rows, so it scales to the largest grids (N25) in seconds.
-
-The proposed partition is **node-aligned**: each node is assigned to one block
-and contributes both its future (purview) and present (mechanism) atom to that
-block, so a valid strict k-partition needs ``k ≤ n`` nodes.
+"""
+Clustering-based SIA strategy that proposes a k-partition by clustering the node affinity graph.
 """
 
 import time
@@ -25,6 +10,12 @@ from scipy.cluster.vq import kmeans2
 from scipy.sparse.csgraph import laplacian
 
 from src.constants.base import COLS_IDX, NET_LABEL, TYPE_TAG
+from src.constants.strategies import (
+    CLUSTERING_ANALYSIS_TAG,
+    CLUSTERING_LABEL,
+    CLUSTERING_STRATEGY_TAG,
+    MAX_AFFINITY_SAMPLE,
+)
 from src.funcs.emd import delta_k
 from src.funcs.format import fmt_kpartition
 from src.middlewares.profile import profile, profiling_manager
@@ -33,13 +24,6 @@ from src.models.base.application import application
 from src.models.base.sia import SIA
 from src.models.core.partition import KPartition
 from src.models.core.solution import Solution
-
-CLUSTERING_LABEL: str = "Clustering"
-CLUSTERING_STRATEGY_TAG: str = f"{CLUSTERING_LABEL}_strategy"
-CLUSTERING_ANALYSIS_TAG: str = f"{CLUSTERING_LABEL}_analysis"
-
-# Upper bound on TPM rows sampled to build the affinity (keeps n=25 in seconds).
-MAX_AFFINITY_SAMPLE: int = 4096
 
 
 class ClusteringSIA(SIA):
@@ -84,9 +68,7 @@ class ClusteringSIA(SIA):
         features = self._node_features(nodes)
         labels = self._cluster(features, self.k)
 
-        partition = self._labels_to_kpartition(
-            nodes, labels, future_universe, present_universe
-        )
+        partition = self._labels_to_kpartition(nodes, labels, future_universe, present_universe)
         loss, distribution = delta_k(subsystem, partition, baseline_distribution=baseline)
         self.best_partition = partition
 
@@ -100,8 +82,8 @@ class ClusteringSIA(SIA):
         )
 
     def _node_features(self, nodes: tuple[int, ...]) -> NDArray[np.float64]:
-        """Binarized behaviour of each node over a deterministic TPM-row sample.
-
+        """
+        Binarized behaviour of each node over a deterministic TPM-row sample.
         Returns an ``(n, sample)`` matrix where row ``i`` is the 0/1 response of
         node ``nodes[i]`` across the sampled states. Two nodes that respond
         alike across states are considered similar.
@@ -125,16 +107,13 @@ class ClusteringSIA(SIA):
         return weights
 
     def _cluster(self, features: NDArray[np.float64], k: int) -> NDArray[np.int64]:
-        """Cluster nodes into k groups, deterministically.
-
-        ``spectral`` cuts the affinity graph via the normalized Laplacian
-        eigenvectors; ``kmeans`` clusters the raw node-behaviour features. A
-        Fiedler-ordering split is used as a fallback whenever k-means collapses
-        into fewer than k non-empty clusters, guaranteeing a valid k-partition.
         """
+        Cluster nodes into k groups using spectral clustering.
+        """
+
         weights = self._affinity(features)
         normalized_laplacian = laplacian(weights, normed=True)
-        _eigenvalues, eigenvectors = np.linalg.eigh(normalized_laplacian)
+        _, eigenvectors = np.linalg.eigh(normalized_laplacian)
 
         if self.method == "kmeans":
             data = features
@@ -144,12 +123,12 @@ class ClusteringSIA(SIA):
             norms[norms == 0] = 1.0
             data = embedding / norms
 
+        labels = None
+
         try:
-            _, labels = kmeans2(
-                data, k, seed=application.numpy_seed, minit="++", missing="raise"
-            )
-        except Exception:  # pragma: no cover - degenerate clustering -> fallback
-            labels = None
+            _, labels = kmeans2(data, k, rng=application.numpy_seed, minit="++", missing="raise")
+        except ValueError as e:
+            self.logger.warn(f"k-means failed with error: {e}. Falling back to Fiedler split.")
 
         if labels is None or len(set(int(x) for x in labels)) < k:
             labels = self._fiedler_split(eigenvectors, k)
@@ -157,15 +136,14 @@ class ClusteringSIA(SIA):
 
     @staticmethod
     def _fiedler_split(eigenvectors: NDArray[np.float64], k: int) -> NDArray[np.int64]:
-        """Split nodes into k non-empty groups by Fiedler-vector ordering.
-
-        Sorts nodes along the second-smallest Laplacian eigenvector (the Fiedler
-        vector) and cuts the ordering into k contiguous near-equal blocks. This
-        always yields k non-empty groups when ``n >= k``.
+        """
+        Fallback method to split nodes into k groups based on the Fiedler vector
+        (the eigenvector corresponding to the second smallest eigenvalue of the Laplacian).
         """
         fiedler_index = 1 if eigenvectors.shape[1] > 1 else 0
         order = np.argsort(eigenvectors[:, fiedler_index])
         labels = np.empty(eigenvectors.shape[0], dtype=np.int64)
+
         for group, members in enumerate(np.array_split(order, k)):
             labels[members] = group
         return labels
@@ -177,21 +155,24 @@ class ClusteringSIA(SIA):
         future_universe: tuple[int, ...],
         present_universe: tuple[int, ...],
     ) -> KPartition:
-        """Build a node-aligned ``KPartition`` from cluster labels.
-
-        Each node's future and present atom go to the block of its label;
-        present indices not present as nodes default to the first block.
+        """
+        Convert node labels to a KPartition by grouping future and present indices
+        according to the node labels. Each block r in the partition corresponds to
+        the set of future indices whose nodes have label r, and the set of present indices
+        whose nodes have label r (or a default label if not present in node_label).
         """
         node_label = {node: int(label) for node, label in zip(nodes, labels, strict=True)}
         k = len(set(node_label.values()))
         future_blocks: list[list[int]] = [[] for _ in range(k)]
         present_blocks: list[list[int]] = [[] for _ in range(k)]
 
-        # Re-map labels to a contiguous 0..k-1 range to index the block lists.
-        label_order = {label: position for position, label in enumerate(sorted(set(node_label.values())))}
+        label_order = {
+            label: position for position, label in enumerate(sorted(set(node_label.values())))
+        }
 
         for future_index in future_universe:
             future_blocks[label_order[node_label[future_index]]].append(future_index)
+
         for present_index in present_universe:
             label = node_label.get(present_index, sorted(node_label.values())[0])
             present_blocks[label_order[label]].append(present_index)

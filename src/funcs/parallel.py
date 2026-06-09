@@ -20,16 +20,18 @@ Three official DoD requirements are met here:
   reproducible regardless of how the work is sharded.
 """
 
-from __future__ import annotations
-
 import os
 from collections.abc import Generator
 from contextlib import contextmanager
+from multiprocessing import shared_memory
 
 import numpy as np
+import threadpoolctl
 from numpy.typing import NDArray
 
 from src.models.base.application import application
+from src.models.core.ncube import NCube
+from src.models.core.system import System
 
 
 def derive_seeds(n_workers: int) -> list[int]:
@@ -51,11 +53,9 @@ def limit_worker_threads() -> None:
         "NUMEXPR_NUM_THREADS",
     ):
         os.environ.setdefault(variable, "1")
-    try:  # pragma: no cover - only when threadpoolctl is installed
-        import threadpoolctl
-
+    try:
         threadpoolctl.threadpool_limits(1)
-    except Exception:  # pragma: no cover
+    except Exception:
         pass
 
 
@@ -68,13 +68,14 @@ def chunk_evenly(items: list, n_chunks: int) -> list[list]:
 
 
 @contextmanager
-def shared_ndarray(array: np.ndarray) -> Generator[tuple[str, tuple[int, ...], np.dtype]]:
+def shared_ndarray(
+    array: np.ndarray,
+) -> Generator[tuple[str, tuple[int, ...], np.dtype]]:
     """Copy ``array`` into shared memory; yield ``(name, shape, dtype)``.
 
     The block is unlinked on exit, so workers must attach (and detach) only
     within the ``with`` body.
     """
-    from multiprocessing import shared_memory
 
     shm = shared_memory.SharedMemory(create=True, size=max(int(array.nbytes), 1))
     try:
@@ -93,9 +94,6 @@ def rebuild_system(
     initial_state: np.ndarray,
 ):
     """Rebuild a ``System`` from stacked flat n-cube data (worker side)."""
-    from src.models.core.ncube import NCube
-    from src.models.core.system import System
-
     shape = (2,) * int(dims.size)
     system = System.__new__(System)
     system.initial_state = initial_state

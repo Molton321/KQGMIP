@@ -15,6 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# isort: split
 from src.controllers.manager import Manager
 from src.models.base.application import application
 
@@ -23,12 +24,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Generar una TPM de muestra (CSV).")
     parser.add_argument("--n", type=int, required=True, help="número de nodos")
     parser.add_argument(
-        "--continuous", action="store_true",
+        "--continuous",
+        action="store_true",
         help="probabilidades continuas en vez de 0/1 deterministas",
     )
     parser.add_argument("--seed", type=int, default=application.numpy_seed, help="semilla NumPy")
     parser.add_argument(
-        "--yes", action="store_true",
+        "--yes",
+        action="store_true",
         help="modo no interactivo (acepta tamaños grandes y autoincrementa el sufijo)",
     )
     args = parser.parse_args()

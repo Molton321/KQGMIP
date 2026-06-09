@@ -1,3 +1,12 @@
+"""Core numeric, string, path and tag constants shared across the framework.
+
+Centralizes every literal the pipeline relies on (axis indices, sentinel values,
+project paths, profiling tags, the block color palette) so no module hard-codes a
+magic value — the single source of truth required by the project conventions.
+"""
+
+from pathlib import Path
+
 INFTY_POS: float = float("inf")
 
 INT_ZERO: int = 0
@@ -22,8 +31,13 @@ COLON_DELIM: str = ","
 VOID_STR: str = "∅"
 ABC_START: str = "A"
 
-PATH_SAMPLES: str = "data/samples"
-PATH_RESULTS: str = "data/results"
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+STRATEGY_TIMEOUT = 300
+
+PATH_SAMPLES: Path = PROJECT_ROOT / "data" / "samples"
+PATH_RESULTS: Path = PROJECT_ROOT / "data" / "results"
+BENCHMARK_CSV: Path = PROJECT_ROOT / "data" / "results" / "benchmark_results_FINAL.csv"
 
 NET_LABEL: str = "NET"
 LOGS_PATH: str = "logs/runtime"
@@ -34,13 +48,14 @@ HTML_EXTENSION: str = "html"
 EXCEL_EXTENSION: str = "xlsx"
 
 TYPE_TAG: str = "type"
-
-# Tolerancia para considerar que dos pérdidas δ_k "coinciden" (absorbe los
-# desempates entre óptimos degenerados: particiones distintas con igual pérdida).
 DELTA_K_TOLERANCE: float = 1e-3
 
-# Paleta cualitativa compartida por las vistas estática e interactiva; los
-# bloques más allá del último color reutilizan la paleta de forma cíclica.
 BLOCK_PALETTE: tuple[str, ...] = (
-    "#4C72B0", "#DD8452", "#55A868", "#C44E52", "#8172B3", "#937860", "#DA8BC3",
+    "#4C72B0",
+    "#DD8452",
+    "#55A868",
+    "#C44E52",
+    "#8172B3",
+    "#937860",
+    "#DA8BC3",
 )

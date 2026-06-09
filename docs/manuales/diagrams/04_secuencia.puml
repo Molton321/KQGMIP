@@ -1,0 +1,50 @@
+@startuml diagrama_secuencia
+' Diagrama de secuencia UML — búsqueda de k-MIP (Fase 8)
+' Render: plantuml docs/manuales/diagrams/04_secuencia.puml
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+title K-QGMIP — Secuencia: búsqueda de la k-MIP (KGeoMIP)
+
+actor Usuario as U
+participant "exec.py /\nmain.py" as Main
+participant "Manager" as Mgr
+participant "KGeoMIP\n(SIA)" as K
+participant "System" as Sys
+participant "CostTable" as CT
+participant "greedy_k_partition" as G
+participant "delta_k (emd)" as D
+
+U -> Main : run (estado, página, k)
+Main -> Mgr : load_network()
+Mgr --> Main : tpm
+Main -> K : KGeoMIP(tpm, estado, k)
+Main -> K : apply_strategy(cond, purview, mech)
+activate K
+K -> K : sia_prepare_subsystem(...)
+K -> Sys : System(tpm) → condition → subtract
+Sys --> K : subsistema
+K -> Sys : marginal_distribution()
+Sys --> K : baseline (P original)
+K -> CT : CostTable(flat, start, end)
+activate CT
+CT --> K : T (tabla de costos, 1 vez)
+deactivate CT
+K -> CT : candidate_bipartitions()
+CT --> K : cut_pool
+K -> G : greedy_k_partition(sub, baseline, cut_pool, ..., k)
+activate G
+loop hasta k bloques no vacíos
+  G -> G : _best_refinement(...)
+  loop cada (bloque, corte)
+    G -> D : delta_k(sub, partición candidata)
+    D -> Sys : k_partition(p).marginal_distribution()
+    Sys --> D : P(partición)
+    D --> G : (loss, dist)
+  end
+end
+G --> K : (KPartition, loss, dist)
+deactivate G
+K -> Main : Solution(strategy, loss, partition, time)
+deactivate K
+Main --> U : imprime/guarda resultado
+@enduml

@@ -1,0 +1,909 @@
+\documentclass[11pt,letterpaper]{article}
+\input{preambulo}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,fit,shapes.geometric,shapes.multipart,calc}
+\usepackage{pgf-umlsd}
+\graphicspath{{../../data/results/figures/}}
+
+\begin{document}
+
+% ====================== PORTADA ======================
+\begin{titlepage}
+\centering
+\vspace*{1.5cm}
+{\large\textbf{Universidad de Caldas}}\\[0.2cm]
+{\normalsize Facultad de Inteligencia Artificial e Ingenierías}\\[0.2cm]
+{\normalsize Análisis y Diseño de Algoritmos — 2026-1}\\[2.5cm]
+{\Huge\textbf{Proyecto K-QGMIP}}\\[0.6cm]
+{\LARGE\textbf{Manual Técnico}}\\[0.4cm]
+{\large Partición de Mínima Información en \emph{k}-particiones}\\[0.3cm]
+{\large Estrategias \textbf{KGeoMIP} (geométrica) y \textbf{KQNodes} (submodular)}\\[3cm]
+{\normalsize Teoría de la Información Integrada (IIT)}\\[0.2cm]
+{\normalsize $k \in \{2,3,4,5\}$ \quad — \quad $n$ hasta $\approx 25$ nodos}\\[2cm]
+{\small \today}
+\vfill
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% ====================== 1. RESUMEN EJECUTIVO ======================
+\section{Resumen ejecutivo}
+
+\subsection{Problema abordado}
+La \textbf{Teoría de la Información Integrada} (IIT) cuantifica cuánta información
+genera un sistema \emph{como un todo} por encima de la suma de sus partes. El
+indicador central es $\Phi$, que mide la pérdida de información al \emph{cortar}
+el sistema según su \textbf{Partición de Mínima Información} (MIP): la división
+que menos información destruye. El sistema se describe mediante una
+\textbf{Matriz de Probabilidad de Transición} (TPM) sobre variables binarias.
+
+El marco de referencia (GeoMIP y QNodes) resuelve únicamente \textbf{biparticiones}
+($k=2$). Este proyecto lo \textbf{extiende a $k$-particiones} con
+$k \in \{2,3,4,5\}$ y escala el tamaño del sistema hasta $n \approx 25$ nodos.
+Esta generalización es relevante porque la verdadera estructura de un sistema
+rara vez es binaria: una partición en $k$ bloques captura modularidad de grano
+más fino que un único corte.
+
+\subsection{Enfoque algorítmico}
+Se implementan dos estrategias núcleo, ambas heredan de la clase abstracta
+\texttt{SIA} y se evalúan con la \emph{misma} pérdida $\dk$:
+\begin{itemize}
+  \item \textbf{KGeoMIP} (geométrica): interpreta el espacio de estados como un
+  hipercubo, construye \emph{una sola vez} la tabla de costos de transición $T$
+  y aplica refinamiento jerárquico voraz ($k-1$ biparticiones sucesivas).
+  \item \textbf{KQNodes} (submodular): obtiene candidatos mediante una búsqueda
+  tipo Queyranne y los refina con el mismo motor voraz que KGeoMIP.
+\end{itemize}
+Como apoyo se incluyen un algoritmo \textbf{exacto} (enumeración de Stirling,
+\emph{ground truth} para $n$ pequeño) y un \textbf{baseline} de \emph{clustering}
+espectral/KMeans determinista.
+
+\subsection{Principales resultados}
+\begin{itemize}
+  \item \textbf{Correctitud:} para $k=2$, KGeoMIP y KQNodes reproducen
+  \emph{exactamente} GeoMIP y QNodes (invariante de regresión). KGeoMIP coincide
+  con el óptimo exacto en los casos golden y KQNodes acierta 9/10 frente al
+  oráculo, corrigiendo además un defecto histórico de QNodes.
+  \item \textbf{Calidad:} las dos estrategias núcleo obtienen pérdidas
+  $\dk$ \emph{órdenes de magnitud menores} que el baseline de clustering
+  (p.\,ej.\ $0{,}47$ vs.\ $4{,}3$ en N10A, $k=2$).
+  \item \textbf{Eficiencia:} vectorización NumPy ($6$–$9\times$ en la ruta
+  caliente), tensores \texttt{float32} (el sistema $n=25$ cabe en RAM) y
+  paralelismo por procesos (PCD) con \emph{speedup} real medido.
+\end{itemize}
+
+\subsection{Limitaciones y recomendaciones de uso}
+KGeoMIP y KQNodes tienen techo práctico en $n \approx 15$–$20$ por la
+marginalización $\bigO(2^n)$ y la búsqueda $\bigO(n^3)$. Para $n=25$ solo el
+baseline de clustering \emph{propone} una partición en tiempo razonable, sin
+puntuarla con $\dk$ (requiere el subsistema completo en memoria). Se recomienda:
+KGeoMIP para análisis exactos/rápidos hasta $n\!\approx\!15$; KQNodes cuando se
+busca robustez submodular; clustering solo como referencia exploratoria a gran
+escala.
+
+% ====================== 2. FUNDAMENTOS TEÓRICOS ======================
+\section{Fundamentos teóricos}
+\label{sec:fundamentos}
+
+\subsection{Sistema, subsistema y repertorio}
+Un sistema de $n$ variables binarias se describe por una TPM determinista
+$T \in \{0,1\}^{2^n \times n}$ en orden \emph{little-endian} (fila $0 = 00\dots0$).
+Internamente cada columna se representa como un \texttt{NCube}: un tensor de forma
+$(2,\dots,2)$ ($n$ ejes). El subsistema bajo análisis se obtiene fijando
+condiciones de fondo (\texttt{condition}) y restando \emph{purview}/\emph{mechanism}
+(\texttt{subtract}). Su distribución marginal de efecto $P$ es el repertorio que
+se desea preservar.
+
+\subsection{Definición formal de $k$-partición}
+Sea el subsistema con un \emph{universo futuro} (purview) $F$ de índices de
+efecto en $t{+}1$ y un \emph{universo presente} (mechanism) $M$ de índices de
+mecanismo en $t$. Una \textbf{$k$-partición} es una colección de $k$ bloques
+\[
+  \mathcal{P} = \{\,(F_1,M_1),\,(F_2,M_2),\,\dots,\,(F_k,M_k)\,\}
+\]
+tal que las partes \emph{futuras} forman una partición de $F$ y las partes
+\emph{presentes} una partición de $M$:
+\[
+  \bigcup_{j=1}^{k} F_j = F,\quad F_i \cap F_j=\varnothing\ (i\neq j);
+  \qquad
+  \bigcup_{j=1}^{k} M_j = M,\quad M_i \cap M_j=\varnothing\ (i\neq j).
+\]
+
+\paragraph{Semántica estricta.}
+Se adopta la definición \textbf{estricta} (doc.\ oficial §2.1): los $k$ bloques
+deben ser \emph{no vacuos} (cada bloque tiene al menos un átomo, futuro o
+presente). Un \emph{átomo} es un par $(\text{tiempo},\text{índice})$ con
+$\text{tiempo}\in\{\textsc{actual},\textsc{efecto}\}$. La validación se impone en
+\texttt{KPartition.\_\_post\_init\_\_}: si algún bloque queda totalmente vacío se
+lanza \texttt{ValueError}. Esto evita la degeneración en la que $k>2$ colapsa a
+una bipartición (un bloque vacío sería ``inerte''), garantizando que la rejilla
+experimental sea genuina y la pérdida \emph{monótona} en $k$.
+
+\paragraph{Ejemplo ($n=3$).} Con $F=M=\{0,1,2\}$, una $3$-partición válida es
+\[
+  \mathcal{P}=\{(\{0\},\{0\}),\,(\{1\},\{1,2\}),\,(\{2\},\varnothing)\}.
+\]
+El bloque $3$ es no vacuo (tiene el átomo de efecto $2$) aunque su parte presente
+sea vacía; los tres bloques cubren $F$ y $M$ de forma disjunta.
+
+\subsection{Función objetivo: la pérdida $\dk$}
+Cada $k$-partición induce una \emph{reconstrucción factorizada} del subsistema:
+los bloques se evalúan de forma independiente y se recombinan por producto
+tensorial. La pérdida de información es la distancia \emph{Earth Mover's Distance}
+(EMD) entre el repertorio original $P$ y el reconstruido $P_{\mathcal{P}}$:
+\begin{equation}
+  \dk(\mathcal{P}) \;=\; \EMD\!\big(P,\; P_{\mathcal{P}}\big).
+  \label{eq:deltak}
+\end{equation}
+Bajo independencia condicional del repertorio de efecto, la EMD se reduce a la
+suma de diferencias absolutas componente a componente (EMD-efecto
+\emph{analítica}, coste $\bigO(2^{|F|})$ sin matriz de costos):
+\begin{equation}
+  \EMD(u,v) \;=\; \sum_i \lvert u_i - v_i\rvert .
+  \label{eq:emd}
+\end{equation}
+El problema de optimización es entonces
+\begin{equation}
+  \mathcal{P}^\star \;=\; \arg\min_{\mathcal{P}\in \Pi_k(F,M)} \dk(\mathcal{P}),
+  \label{eq:opt}
+\end{equation}
+donde $\Pi_k(F,M)$ es el conjunto de $k$-particiones estrictas. La $k$-MIP es
+$\mathcal{P}^\star$ y su valor $\dk(\mathcal{P}^\star)$ generaliza a $\Phi$.
+
+\subsection{Extensión del marco GeoMIP/QNodes a $k$-particiones}
+La clave de la extensión (doc.\ §2.2) es que \textbf{una $k$-partición equivale a
+$k-1$ biparticiones sucesivas}: dividir el hipercubo con $k-1$ hiperplanos es lo
+mismo que cortar un bloque en dos, repetidamente. Esto permite \emph{reutilizar}
+la maquinaria de bipartición de ambas estrategias:
+\begin{itemize}
+  \item GeoMIP propone cortes geométricos desde la tabla $T$; KGeoMIP los
+  proyecta sobre subbloques y elige, en cada paso, el corte que minimiza
+  \eqref{eq:deltak}.
+  \item QNodes propone cortes submodulares (Queyranne); KQNodes los refina con el
+  mismo motor voraz.
+\end{itemize}
+Para $k=2$ el refinamiento ejecuta \emph{un} corte y por tanto recupera la
+bipartición legada exactamente (invariante 1). La justificación de calidad es
+doble: (i) cada corte hereda la garantía de su método base (GeoMIP es óptimo
+exacto en biparticiones sobre el núcleo verificado; Queyranne es exacto para
+funciones submodulares simétricas en $\bigO(n^3)$), y (ii) la elección voraz
+guiada por $\dk$ asegura \emph{monotonía} y validación contra el exacto en $n$
+pequeño. El óptimo global de $k$-particiones \emph{no} se garantiza (el voraz es
+heurístico), lo que se documenta honestamente en §\ref{sec:limites}.
+
+\subsection{Complejidad del espacio de soluciones}
+El número de particiones de un conjunto de $a$ átomos en exactamente $k$ bloques
+no vacíos es el \textbf{número de Stirling de segunda especie} $S(a,k)$. Para el
+subsistema completo $a = |F|+|M| = 2n$, de modo que el espacio crece como
+\[
+  |\Pi_k| \;=\; S(2n,k) \;\sim\; \frac{k^{2n}}{k!}\quad (n\ \text{grande}).
+\]
+Comparado con biparticiones, donde $S(2n,2)=2^{2n-1}-1$ es ya exponencial, el
+caso $k$-partita es \emph{super-exponencial} en $k$. La enumeración exacta
+(Stirling) solo es viable para $n\lesssim 6$; de ahí la necesidad de las
+heurísticas KGeoMIP/KQNodes, que recorren un subconjunto dirigido de tamaño
+polinómico de candidatos.
+
+% ====================== 3. ARQUITECTURA ======================
+\section{Arquitectura del software}
+
+El sistema sigue el patrón \textbf{Strategy + Template Method} sobre la clase
+abstracta \texttt{SIA}. La Figura~\ref{fig:arq} muestra los componentes
+principales y su integración.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  font=\footnotesize,
+  box/.style={draw,rounded corners=2pt,minimum height=8mm,minimum width=22mm,align=center,fill=blue!4},
+  core/.style={box,fill=green!6},
+  data/.style={draw,cylinder,shape border rotate=90,aspect=0.25,minimum height=10mm,align=center,fill=orange!8},
+  ar/.style={-{Latex[length=2mm]},gray}
+]
+\node[box] (entry) {exec.py\\main / main\_batch};
+\node[box,right=14mm of entry] (mgr) {Manager\\load\_network};
+\node[data,above=8mm of mgr] (csv) {TPM\\(.csv)};
+\node[core,right=14mm of mgr] (sia) {SIA\\(Template)};
+\node[core,above right=6mm and 12mm of sia] (kgeo) {KGeoMIP};
+\node[core,right=12mm of sia] (kqn) {KQNodes};
+\node[core,below right=6mm and 12mm of sia] (clus) {Clustering};
+\node[box,below=10mm of sia] (sys) {System\\$\,+\,$NCube};
+\node[box,below=8mm of kqn] (kref) {greedy\_k\_partition\\+ delta\_k (EMD)};
+\node[box,below=8mm of kgeo] (ct) {CostTable\,$T$};
+\node[data,below=22mm of kqn] (out) {results\\(.csv/.png)};
+
+\draw[ar] (entry)--(mgr);
+\draw[ar] (csv)--(mgr);
+\draw[ar] (mgr)--(sia);
+\draw[ar] (sia)--(kgeo);
+\draw[ar] (sia)--(kqn);
+\draw[ar] (sia)--(clus);
+\draw[ar] (sia)--(sys);
+\draw[ar] (kgeo)--(ct);
+\draw[ar] (kgeo) to[bend left=10] (kref);
+\draw[ar] (kqn)--(kref);
+\draw[ar] (kref)--(sys);
+\draw[ar] (kref) to[bend left=12] (out);
+\draw[ar] (clus) to[bend right=10] (out);
+\end{tikzpicture}
+\caption{Arquitectura general: el \texttt{Manager} carga la TPM, cada estrategia
+hereda de \texttt{SIA}, comparte el motor \texttt{greedy\_k\_partition} y puntúa
+con \texttt{delta\_k}.}
+\label{fig:arq}
+\end{figure}
+
+\subsection{Diagrama de clases}
+La Figura~\ref{fig:clases} resume la jerarquía de herencia y las relaciones de
+composición. La versión editable (PlantUML) está en
+\texttt{docs/manuales/diagrams/02\_clases.puml}.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  x=1cm,y=1cm,
+  font=\tiny,
+  cls/.style={draw,rectangle split,rectangle split parts=2,align=left,fill=blue!4,text width=26mm,inner sep=2pt},
+  abs/.style={cls,fill=green!7},
+  inh/.style={-{Triangle[open]},thick},
+  comp/.style={-{Latex[length=2mm]},densely dashed,gray}
+]
+% Jerarquía (izquierda) y modelo de dominio (derecha), con coordenadas explícitas.
+\node[abs] (sia) at (0,0) {\textbf{SIA \emph{(abstract)}}
+  \nodepart{second}+ sia\_subsystem\\+ apply\_strategy()*\\+ sia\_prepare\_subsystem()};
+\node[cls] (kgeo) at (-3.4,-3.2) {\textbf{KGeoMIP}
+  \nodepart{second}+ k:int\\+ cost\_table\\+ best\_partition};
+\node[cls] (qn) at (0,-3.2) {\textbf{QNodes}
+  \nodepart{second}+ partition\_memo\\+ algorithm()};
+\node[cls] (kqn) at (0,-6.0) {\textbf{KQNodes}
+  \nodepart{second}+ k:int\\+ best\_partition};
+\node[cls] (clus) at (3.4,-3.2) {\textbf{ClusteringSIA}
+  \nodepart{second}+ k:int\\+ method};
+\node[cls] (sys) at (6.6,0) {\textbf{System}
+  \nodepart{second}+ ncubes: NCube[]\\+ k\_partition()\\+ marginal\_distribution()};
+\node[cls] (ncube) at (6.6,2.6) {\textbf{NCube}
+  \nodepart{second}+ data: tensor f32\\+ marginalize()};
+\node[cls] (kp) at (6.6,-3.0) {\textbf{KPartition}
+  \nodepart{second}+ signature\\+ from\_blocks()};
+
+\draw[inh] (kgeo) -- (sia);
+\draw[inh] (clus) -- (sia);
+\draw[inh] (qn) -- (sia);
+\draw[inh] (kqn) -- (qn);
+\draw[comp] (sia) -- (sys) node[midway,above]{1};
+\draw[comp] (sys) -- (ncube) node[midway,right]{n};
+\draw[comp] (sys) -- (kp);
+\end{tikzpicture}
+\caption{Diagrama de clases (núcleo). Flechas huecas: herencia; discontinuas:
+composición/dependencia. KGeoMIP y KQNodes producen una \texttt{KPartition}
+puntuada vía \texttt{System.k\_partition}.}
+\label{fig:clases}
+\end{figure}
+
+\subsection{Diagrama de paquetes}
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm,font=\scriptsize,
+  pkg/.style={draw,rounded corners=1pt,fill=yellow!8,text width=28mm,minimum height=8mm,align=center,inner sep=3pt},
+  ar/.style={-{Latex[length=2mm]},gray}]
+\node[pkg] (mw)    at (0,2.4)  {middlewares\\(logger, profile)};
+\node[pkg] (strat) at (0,0)    {controllers/strategies};
+\node[pkg] (mgr)   at (0,-2.4) {controllers/manager};
+\node[pkg] (mbase) at (4.2,1.2)  {models/base (SIA)};
+\node[pkg] (funcs) at (4.2,-1.2) {funcs\\(cost\_table, k\_refine,\\emd, metrics, parallel)};
+\node[pkg] (mcore) at (8.4,0)  {models/core\\(System, NCube, KPartition)};
+\node[pkg] (viz)   at (8.4,2.4) {viz};
+\node[pkg] (cons)  at (8.4,-2.4) {constants / enums};
+\draw[ar] (strat)--(mbase);
+\draw[ar] (strat)--(funcs);
+\draw[ar] (strat)--(mw);
+\draw[ar] (mbase)--(mcore);
+\draw[ar] (funcs)--(mcore);
+\draw[ar] (mgr) -- ++(2.1,0) |- (mcore);
+\draw[ar] (viz)--(mcore);
+\draw[ar] (mcore)--(cons);
+\end{tikzpicture}
+\caption{Organización modular en \texttt{src/}. Las estrategias dependen del
+modelo base, del núcleo de dominio y de \texttt{funcs}.}
+\label{fig:paquetes}
+\end{figure}
+
+\subsection{Diagrama de secuencia}
+La Figura~\ref{fig:seq} traza la búsqueda de la $k$-MIP con KGeoMIP.
+
+\begin{figure}[H]
+\centering
+\resizebox{0.92\textwidth}{!}{%
+\begin{sequencediagram}
+\newthread{u}{:Usuario}
+\newinst{k}{:KGeoMIP}
+\newinst{s}{:System}
+\newinst{c}{:CostTable}
+\newinst{g}{:greedy\_k\_partition}
+\newinst{d}{:delta\_k}
+\begin{call}{u}{apply\_strategy}{k}{Solution}
+  \begin{call}{k}{sia\_prepare\_subsystem}{s}{subsistema, P}
+  \end{call}
+  \begin{call}{k}{CostTable(T)}{c}{tabla T (1 vez)}
+  \end{call}
+  \begin{call}{k}{greedy\_k\_partition}{g}{(KPartition, loss)}
+    \begin{sdblock}{Bucle}{hasta k bloques no vacuos}
+      \begin{call}{g}{delta\_k(candidata)}{d}{loss}
+        \begin{call}{d}{k\_partition().marginal}{s}{P\_part}
+        \end{call}
+      \end{call}
+    \end{sdblock}
+  \end{call}
+\end{call}
+\end{sequencediagram}
+}
+\caption{Secuencia de la búsqueda $k$-partita (KGeoMIP). La tabla $T$ se construye
+una sola vez; el bucle voraz puntúa cada candidata con \texttt{delta\_k}.}
+\label{fig:seq}
+\end{figure}
+
+\subsection{Patrones de diseño aplicados}
+\begin{itemize}
+  \item \textbf{Strategy:} cada algoritmo (KGeoMIP, KQNodes, Clustering,
+  ExhaustiveK) es una estrategia intercambiable con interfaz común
+  \texttt{apply\_strategy}.
+  \item \textbf{Template Method:} \texttt{SIA.sia\_prepare\_subsystem} fija el
+  esqueleto compartido (System $\to$ condition $\to$ subtract $\to$ marginal); las
+  subclases solo implementan la búsqueda.
+  \item \textbf{Singleton:} \texttt{application} centraliza la configuración global
+  (semilla, página de red, métrica, notación, EMD, profiling).
+  \item \textbf{Objeto inmutable / \emph{value object}:} \texttt{KPartition} se
+  autovalida en construcción (cobertura, disyunción, $k$ bloques no vacuos).
+\end{itemize}
+
+\subsection{Decisiones arquitectónicas clave}
+\begin{itemize}
+  \item \textbf{Reutilización del corte base:} en lugar de reimplementar GeoMIP y
+  QNodes, sus pools de candidatos se \emph{proyectan} sobre subbloques. Garantiza
+  el invariante $k=2$ y reduce la deuda técnica.
+  \item \textbf{Motor voraz compartido} (\texttt{greedy\_k\_partition}): un único
+  punto de verdad para la construcción $k$-partita; ambas estrategias difieren
+  solo en \emph{cómo} generan el \emph{cut pool}.
+  \item \textbf{Tabla $T$ una sola vez:} la estructura cara se calcula una vez por
+  sistema y se reutiliza para todo $k$ (doc.\ §3).
+  \item \textbf{\texttt{float32}:} se sacrifica precisión irrelevante (validada a
+  $10^{-5}$) por la mitad de memoria, lo que habilita $n=25$ en RAM.
+\end{itemize}
+
+% ====================== 4. DISEÑO ALGORÍTMICO ======================
+\section{Diseño algorítmico}
+
+\subsection{Visión general}
+Ambas estrategias comparten la filosofía \emph{``divide y refina''}: parten del
+subsistema como un único bloque y lo dividen $k-1$ veces, eligiendo cada vez el
+corte que minimiza $\dk$. Solo difieren en el origen de los cortes candidatos
+(geométrico vs.\ submodular). El Algoritmo~\ref{alg:greedy} es el motor común.
+
+\begin{algorithm}[H]
+\caption{\textsc{GreedyKPartition} — motor voraz compartido}
+\label{alg:greedy}
+\begin{algorithmic}[1]
+\Require subsistema $S$, repertorio base $P$, \emph{cut pool} $C$, universos $F,M$, entero $k$
+\Ensure $k$-partición $\mathcal{P}$ con su pérdida $\dk$
+\State $\mathit{blocks} \gets [\,(F, M)\,]$ \Comment{un solo bloque inicial}
+\While{$|\mathit{blocks}| < k$}
+  \State $\mathit{best} \gets \infty$;\ \ $\mathit{bestBlocks} \gets \textsc{none}$
+  \For{cada bloque $b=(F_b,M_b)$ en $\mathit{blocks}$ con $|F_b|+|M_b|\ge 2$}
+    \For{cada corte $c=(F_c,M_c)$ en $C$}
+      \State $\mathit{in} \gets (F_b\cap F_c,\, M_b\cap M_c)$;\ \ $\mathit{out} \gets (F_b\setminus F_c,\, M_b\setminus M_c)$
+      \If{$\mathit{in}$ vacuo \textbf{o} $\mathit{out}$ vacuo} \textbf{continue} \EndIf
+      \State $\mathcal{P}' \gets$ reemplazar $b$ por $\{\mathit{in},\mathit{out}\}$ en $\mathit{blocks}$
+      \State $\ell \gets \dk(S, \mathcal{P}', P)$ \Comment{Ec.~\eqref{eq:deltak}}
+      \If{$\ell < \mathit{best}$} $\mathit{best}\gets \ell$;\ $\mathit{bestBlocks}\gets \mathcal{P}'$ \EndIf
+    \EndFor
+  \EndFor
+  \If{$\mathit{bestBlocks}=\textsc{none}$} \textbf{error} ``no refinable a $k$ bloques'' \EndIf
+  \State $\mathit{blocks} \gets \mathit{bestBlocks}$
+\EndWhile
+\State \Return $(\textsc{KPartition}(\mathit{blocks}),\ \dk(S,\mathit{blocks},P))$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{KGeoMIP: generación geométrica del \emph{cut pool}}
+KGeoMIP construye la tabla $T$ (Algoritmo~\ref{alg:cost}) y deriva de ella los
+cortes candidatos. $T$ recorre el hipercubo por niveles de Hamming desde el
+estado inicial hacia su antípoda, almacenando un vector de costo por nodo,
+ponderado por $\gamma = 2^{-d_H}$.
+
+\begin{algorithm}[H]
+\caption{\textsc{CostTable} — tabla de costos de transición $T$ (una vez)}
+\label{alg:cost}
+\begin{algorithmic}[1]
+\Require matriz plana por nodo $X$, estado inicial $s_0$, antípoda $s_1 = 1-s_0$
+\State $\mathit{paths}[0] \gets \{s_0\}$
+\For{$\mathit{level} = 1 \ldots n$}
+  \For{cada $s$ en $\mathit{paths}[\mathit{level}-1]$}
+    \For{cada bit $i$ con $s_i \neq (s_1)_i$}
+      \State $s' \gets s$ con el bit $i$ volteado hacia $s_1$
+      \State $d_H \gets \textsc{Hamming}(s_0,s')$;\quad $\gamma \gets 2^{-d_H}$
+      \State $\mathit{cost} \gets |X[:,\mathrm{int}(s_0)] - X[:,\mathrm{int}(s')]|$ \Comment{gather vectorizado}
+      \If{$d_H>1$} acumular costos de vecinos de un bit \EndIf
+      \State $T[(s_0,s')] \gets \gamma \cdot \mathit{cost}$
+    \EndFor
+  \EndFor
+\EndFor
+\State \Return $T$,\ candidatos = $n$ cortes de nodo único $+$ mejor corte por nivel
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{KQNodes: generación submodular del \emph{cut pool}}
+KQNodes ejecuta una vez la búsqueda tipo Queyranne heredada de QNodes para poblar
+\texttt{partition\_memo}. Cada clave del memo representa un lado de una bipartición
+candidata como colección de vértices $(\text{tiempo},\text{índice})$; se aplana y
+se separa por capa en un corte $(F_c, M_c)$. Para $k=2$, el refinamiento aplica un
+único corte y reproduce QNodes exactamente (incluidos sus casos subóptimos
+conocidos, congelados en los tests de triaje).
+
+\subsection{Estructuras de datos}
+\begin{itemize}
+  \item \textbf{NCube} — tensor $(2,\dots,2)$ \texttt{float32} por columna de la
+  TPM; \texttt{marginalize} es puro (devuelve un nuevo NCube) y memoizado.
+  \item \textbf{System} — colección de NCubes con \texttt{condition},
+  \texttt{subtract}, \texttt{bipartition} (memoizada), \texttt{k\_partition} y
+  \texttt{marginal\_distribution}.
+  \item \textbf{CostTable} — matriz contigua $(n, 2^m)$ para el \emph{gather}
+  vectorizado de columnas; \texttt{transition\_table} mapea $(s_0,s')\!\to\!$ vector
+  de costo.
+  \item \textbf{KPartition} — bloques pareados $(F_j, M_j)$ como tuplas
+  ordenadas; \texttt{signature} es la representación canónica usada para puntuar y
+  comparar.
+  \item \textbf{Block / cut} — par \texttt{frozenset} $(F,M)$ usado en el motor
+  voraz; dividir $b$ con $c$ da $(b\cap c,\, b\setminus c)$.
+\end{itemize}
+
+\subsection{Estrategia de búsqueda}
+La técnica de diseño es \textbf{voraz jerárquica} (greedy): en lugar de enumerar
+$S(2n,k)$ particiones, se realizan $k-1$ decisiones locales óptimas. El
+\emph{cut pool} acota el ramaje a $\bigO(n)$ cortes por nivel. Se trata de una
+heurística: garantiza factibilidad y monotonía pero no optimalidad global; por
+eso se valida contra el exacto (§\ref{sec:resultados}).
+
+\subsection{Evaluación de particiones}
+Una candidata se puntúa con \texttt{delta\_k} (Ec.~\eqref{eq:deltak}): se construye
+el subsistema particionado \texttt{System.k\_partition}$(\mathcal{P})$, se obtiene
+su distribución marginal y se mide la EMD-efecto analítica
+(Ec.~\eqref{eq:emd}) contra el repertorio base $P$.
+
+\subsection{Optimizaciones implementadas}
+\begin{itemize}
+  \item \textbf{Tabla $T$ una vez} y reutilizada para todo $k$.
+  \item \textbf{Vectorización NumPy:} \emph{gather} de columnas y acumulación
+  vectorial en \texttt{CostTable} (eliminado el formateo de cadenas por estado);
+  conjuntos de Python en la ruta caliente de \texttt{bipartition}.
+  \item \textbf{Memoización} de \texttt{bipartition}/\texttt{marginalize}.
+  \item \textbf{\texttt{float32}} en los tensores (mitad de memoria).
+  \item \textbf{Paralelismo por procesos} (PCD): \texttt{joblib}/\texttt{loky} con
+  \texttt{SharedMemory}, semillas por proceso (\texttt{SeedSequence}) y control de
+  afinidad de hilos (\texttt{OMP\_NUM\_THREADS=1}) para evitar sobre-suscripción.
+  \item \textbf{Numba (opcional):} \texttt{batch\_effect\_emd} con umbral; el
+  perfilado mostró que la EMD es $<1\%$ del costo (dominado por la marginalización
+  NumPy), por lo que Numba se reserva para lotes grandes.
+\end{itemize}
+
+\subsection{Metaheurísticas comparativas (GA / SA / Tabú)}
+\label{sec:metaheuristicas}
+Como variante de comparación se implementan tres metaheurísticas
+(\texttt{src/funcs/metaheuristic.py}) que heredan de \texttt{SIA} y se puntúan con
+la \emph{misma} pérdida $\dk$, de modo que sus resultados son directamente
+comparables con KGeoMIP/KQNodes y con el óptimo exacto.
+
+\paragraph{Codificación y operadores comunes.} Una candidata es un \emph{vector de
+etiquetas} $\ell \in \{0,\dots,k-1\}^{|F|+|M|}$ que asigna cada átomo
+$(\text{tiempo},\text{índice})$ a un bloque. La decodificación a \texttt{KPartition}
+agrupa los átomos por etiqueta; si algún bloque queda vacío la candidata es
+\emph{infactible}. La \textbf{reparación} restaura la sobreyectividad sobre los $k$
+bloques moviendo átomos desde bloques excedentes, garantizando una $k$-partición
+estricta (todos los $k$ bloques no vacíos, §\ref{sec:fundamentos}). El evaluador memoiza $\dk(\ell)$ por vector
+canónico para no recomputar la marginalización.
+
+\begin{itemize}
+  \item \textbf{Algoritmo genético (\texttt{genetic\_search}).} Población de
+  soluciones reparadas; selección por torneo, cruce uniforme por átomo, mutación
+  por reetiquetado con probabilidad $p_m$ y \emph{elitismo} del mejor individuo.
+  \item \textbf{Recocido simulado (\texttt{simulated\_annealing\_search}).} Toma
+  $\dk$ como energía; en cada paso reetiqueta un átomo y acepta el vecino con
+  probabilidad de Boltzmann $\exp(-\Delta\dk/T)$, con enfriamiento geométrico
+  $T \leftarrow \alpha T$.
+  \item \textbf{Búsqueda tabú (\texttt{tabu\_search}).} Explora un vecindario de
+  reetiquetados, escoge el mejor vecino \emph{no tabú} (con criterio de aspiración
+  si mejora el incumbente) y mantiene una lista tabú de tenencia fija.
+\end{itemize}
+
+Todas son \textbf{deterministas} bajo la semilla global
+(\texttt{application.numpy\_seed}) vía \texttt{np.random.default\_rng}. Por
+construcción nunca superan al óptimo exacto ($\dk \ge \dk^\star$); los tests
+verifican que alcanzan $\dk^\star$ en $n$ pequeño (N3A/N4A) y el análisis empírico
+(§\ref{sec:resultados}) discute su comportamiento al crecer $k$.
+
+% ====================== 5. COMPLEJIDAD ======================
+\section{Análisis de complejidad}
+\label{sec:complejidad}
+
+Sea $n$ el número de nodos, $m$ las dimensiones de mecanismo del subsistema y $k$
+el número de bloques. Las cotas dominantes verificadas son:
+
+\begin{table}[H]
+\centering\footnotesize
+\caption{Complejidad temporal y espacial por componente.}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Componente & Temporal & Espacial & Cuello de botella \\
+\midrule
+\texttt{marginalize} & $\bigO(2^{m})$ & $\bigO(2^{m})$ & \texttt{np.mean} (L2) \\
+\texttt{CostTable} (build) & $\bigO(m\,2^{m})$ & $\bigO(2^{m})$ & BFS por niveles \\
+\emph{cut pool} (KGeoMIP) & $\bigO(n)$ cortes & $\bigO(n)$ & --- \\
+$\dk$ (una candidata) & $\bigO(2^{n})$ & $\bigO(2^{n})$ & marginalización \\
+\textsc{Greedy} ($k$ bloques) & $\bigO(k^{2} n\, 2^{n})$ & $\bigO(2^{n})$ & evaluaciones $\dk$ \\
+QNodes (Queyranne) & $\bigO(n^{3} 2^{n})$ & $\bigO(2^{n})$ & marginalización \\
+Exacto (Stirling) & $\bigO(S(2n,k)\,2^{n})$ & $\bigO(2^{n})$ & enumeración \\
+\bottomrule
+\end{tabular}
+\label{tab:complejidad}
+\end{table}
+
+\paragraph{Temporal.} KGeoMIP $\approx \bigO(m\,2^{m} + k^{2} n\, 2^{n})$;
+KQNodes $\approx \bigO(n^{3} 2^{n})$ (la búsqueda submodular domina). Frente a la
+fuerza bruta $\bigO(S(2n,k)\,2^{n})$, ambas heurísticas reducen el factor
+combinatorio $S(2n,k)$ a uno polinómico en $n$ y $k$.
+
+\paragraph{Espacial.} El término dominante es el tensor del subsistema y las
+distribuciones, $\bigO(2^{n})$. En \texttt{float32} esto es la mitad que en
+\texttt{float64}: para $n=25$, $\approx 3{,}35$ GB en lugar de $6{,}7$ GB, lo que
+hace al sistema cargable en RAM.
+
+\paragraph{Análisis de casos.} El \textbf{mejor caso} ocurre cuando el primer
+corte ya aísla la masa de probabilidad (pérdida casi nula, p.\,ej.\ N15A con
+$\dk=0{,}027$). El \textbf{peor caso} aparece cuando ningún corte del pool reduce
+$\dk$ y deben probarse todos los pares (bloque, corte) en los $k-1$ niveles; el
+costo crece con $k$ y con la densidad de la TPM. La marginalización
+$\bigO(2^{m})$ es el cuello empírico: $87$ ms a $m{=}20$ y $1{,}45$ s a $m{=}24$.
+
+% ====================== 6. IMPLEMENTACIÓN ======================
+\section{Detalles de implementación}
+
+\subsection{Métodos principales}
+\begin{itemize}
+  \item \texttt{KGeoMIP(tpm, initial\_state, k)} y
+  \texttt{KQNodes(tpm, initial\_state, k)} — construyen la estrategia para un
+  $k$ dado.
+  \item \texttt{apply\_strategy(condition, purview, mechanism) -> Solution} —
+  prepara el subsistema, construye el \emph{cut pool} y delega en
+  \texttt{greedy\_k\_partition}; devuelve un \texttt{Solution} (estrategia,
+  pérdida, partición, tiempo).
+  \item \texttt{System.k\_partition(partition) -> System} — aplica la
+  reconstrucción factorizada de una \texttt{KPartition} validada.
+  \item \texttt{delta\_k(subsystem, partition, baseline) -> (float, ndarray)} —
+  pérdida $\dk$ y distribución particionada.
+  \item \texttt{KPartition.from\_blocks(blocks, future\_universe,
+  present\_universe)} — fábrica que valida y normaliza los bloques.
+\end{itemize}
+
+\begin{lstlisting}[style=py,caption={Núcleo de la evaluación $\dk$ (src/funcs/emd.py).},label=lst:deltak]
+def delta_k(subsystem, partition, baseline_distribution=None):
+    original = baseline_distribution
+    if original is None:
+        original = subsystem.marginal_distribution()
+    partitioned = subsystem.k_partition(partition).marginal_distribution()
+    return effect_emd(original, partitioned), partitioned
+\end{lstlisting}
+
+\subsection{Dependencias externas}
+\begin{table}[H]
+\centering\footnotesize
+\caption{Dependencias principales y su uso.}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Biblioteca & Versión & Uso \\
+\midrule
+numpy & 2.4.6 & tensores, vectorización, EMD analítica \\
+scipy & 1.17.1 & clustering espectral (\texttt{csgraph}, \texttt{linalg}) \\
+pandas & 3.0.3 & E/S de TPM y rejilla de resultados \\
+more\_itertools & --- & particiones de Stirling (exacto) \\
+matplotlib & --- & figuras y visualización de particiones \\
+pyphi & --- & validación cruzada ($6$–$10$ nodos) \\
+joblib / psutil & --- & PCD (procesos), medición \\
+numba (opc.) & 0.65.1 & kernel EMD por lotes (umbral) \\
+pyemd (opc.) & 2.0.0 & EMD causal (métrica Hamming) de comprobación \\
+plotly (opc.) & 6.8.0 & figuras interactivas (extra \texttt{viz}) \\
+streamlit (opc.) & 1.58.0 & interfaz web (extra \texttt{web}) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Ingeniería de software}
+\begin{itemize}
+  \item \textbf{Validación de entradas:} \texttt{KPartition} verifica cobertura,
+  disyunción y no-vacuidad estricta; \texttt{apply\_strategy} exige $k\ge 2$.
+  \item \textbf{Manejo de errores:} \texttt{ValueError} (parámetros/partición
+  inválida) y \texttt{RuntimeError} (pool incapaz de refinar a $k$ bloques) con
+  mensajes descriptivos.
+  \item \textbf{Logging:} \texttt{SafeLogger} (carpeta \texttt{logs/}); profiling
+  con \texttt{@profile} (HTML en \texttt{review/profiling/}).
+  \item \textbf{Reproducibilidad:} semilla central en \texttt{application};
+  semillas derivadas por proceso con \texttt{SeedSequence.spawn}.
+\end{itemize}
+
+\subsection{Tests implementados}
+La batería (\texttt{uv run pytest}, $206$ casos) cubre: regresión $k=2$
+(KGeoMIP$\equiv$GeoMIP, KQNodes$\equiv$QNodes), validación $k\in\{3,4,5\}$ contra el
+exacto, semántica estricta de \texttt{KPartition}, determinismo del clustering y de
+las \textbf{metaheurísticas} (misma semilla $\Rightarrow$ misma partición), cota
+$\dk\ge\dk^\star$ de las siete estrategias, integración \emph{end-to-end}
+(cargar$\to$estrategia$\to$\texttt{Solution} y \emph{roundtrip} generar/cargar),
+EMD causal opcional (\texttt{importorskip}), figuras interactivas, registro headless
+(\texttt{runner}), precisión \texttt{float32} vs \texttt{float64}
+($|\Delta|\le 10^{-5}$), métricas y PCD. Triaje histórico de QNodes congelado en
+\texttt{tests/unit/test\_qnodes\_triage.py}.
+
+% ====================== 7. RESULTADOS ======================
+\section{Resultados experimentales}
+\label{sec:resultados}
+
+\subsection{Datasets}
+TPMs deterministas \texttt{N\{n\}\{letra\}.csv} ($2^n$ filas $\times\,n$ columnas,
+little-endian), generadas con semilla $73$. La rejilla de evaluación sigue una
+estrategia \textbf{híbrida honesta}: $n\in\{10,15\}$ con las \emph{siete}
+estrategias (KGeoMIP, KQNodes, Clustering~$\times2$, GA/SA/Tabú) y $\dk$ real;
+$n=20$ solo con KGeoMIP (las demás del núcleo se vuelven impracticables, ver
+abajo); y $n=25$ solo con clustering (que \emph{propone} la partición pero deja
+$\dk$ en blanco por memoria, §\ref{sec:limites}). En todos los casos $k\in\{2,3,4\}$.
+El consolidado reproducible vive en \texttt{benchmark\_results\_FINAL.csv}.
+
+\subsection{Métricas}
+\begin{itemize}
+  \item \textbf{Pérdida $\dk$} (Ec.~\eqref{eq:deltak}): menor es mejor.
+  \item \textbf{Tiempo de ejecución} (s, perfilador apagado).
+  \item \textbf{Tasa de acierto exacto:} fracción de casos donde $\dk$ iguala al
+  óptimo exacto ($n$ pequeño).
+  \item \textbf{Error relativo de $\Phi$} y \textbf{distancia de Jaccard} entre
+  particiones (conteo de pares co-asignados).
+  \item \textbf{Speedup} y \textbf{pendiente de escalabilidad} (log--log).
+\end{itemize}
+
+\subsection{Tabla de resultados}
+\begin{table}[H]
+\centering\footnotesize
+\caption{Pérdida $\dk$ y tiempo por estrategia (rejilla FINAL).}
+\begin{tabular}{@{}llrrr@{}}
+\toprule
+Red & $k$ & KGeoMIP $\dk$ & KQNodes $\dk$ & Clustering $\dk$ (mejor) \\
+\midrule
+N10A & 2 & 0,4697 & 0,4697 & 4,3438 \\
+N10A & 3 & 0,9424 & 0,9424 & 4,8594 \\
+N10A & 4 & 1,4229 & 1,4229 & 4,8594 \\
+N15A & 2 & 0,0268 & 0,0268 & 0,5274 \\
+N15A & 3 & 0,0538 & 0,0539 & 0,8752 \\
+N15A & 4 & 0,0809 & 0,0810 & 1,0762 \\
+N20A & 2 & 0,4993 & --- & --- \\
+N20A & 3 & 0,9987 & --- & --- \\
+N20A & 4 & 1,4982 & --- & --- \\
+\bottomrule
+\end{tabular}
+\label{tab:loss}
+\par\smallskip
+{\footnotesize En N20A solo KGeoMIP es practicable ($\sim\!82$ s/$k$); «---» marca
+estrategias no ejecutadas por inviabilidad temporal (KQNodes) o de memoria
+(clustering sin $\dk$).}
+\end{table}
+
+\begin{table}[H]
+\centering\footnotesize
+\caption{Metaheurísticas vs óptimo (KGeoMIP $=\dk^\star$ en esta rejilla).}
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+Red & $k$ & Óptimo & Tabú & Genética & Recocido \\
+\midrule
+N10A & 2 & 0,4697 & 0,4697 & 0,4697 & 0,4727 \\
+N10A & 3 & 0,9424 & 0,9424 & 2,3809 & 0,9639 \\
+N10A & 4 & 1,4229 & 1,4229 & 3,8848 & 1,4365 \\
+N15A & 2 & 0,0268 & 0,0268 & 0,0268 & 0,0271 \\
+N15A & 3 & 0,0538 & 0,0538 & 0,5561 & 0,0540 \\
+N15A & 4 & 0,0809 & 0,0809 & 0,9198 & 0,8346 \\
+\bottomrule
+\end{tabular}
+\label{tab:meta}
+\end{table}
+
+\begin{table}[H]
+\centering\footnotesize
+\caption{Tiempo de ejecución (s), perfilador apagado.}
+\begin{tabular}{@{}llrr@{}}
+\toprule
+Red & $k$ & KGeoMIP (s) & KQNodes (s) \\
+\midrule
+N10A & 2 & 0,051 & 0,181 \\
+N10A & 3 & 0,048 & 0,193 \\
+N10A & 4 & 0,055 & 0,176 \\
+N15A & 2 & 1,619 & 4,924 \\
+N15A & 3 & 1,651 & 4,487 \\
+N15A & 4 & 1,544 & 4,494 \\
+N20A & 2 & 83,77 & --- \\
+N20A & 3 & 83,31 & --- \\
+N20A & 4 & 80,94 & --- \\
+\bottomrule
+\end{tabular}
+\label{tab:time}
+\end{table}
+
+\subsection{Gráficas y visualizaciones}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.48\textwidth]{scalability_k2.png}\hfill
+\includegraphics[width=0.48\textwidth]{scalability_k3.png}
+\caption{Escalabilidad (tiempo vs $n$, escala log) para $k=2$ (izq.) y $k=3$
+(der.). KGeoMIP es consistentemente más rápido que KQNodes y es la única
+estrategia núcleo que alcanza $n=20$ ($\sim\!82$\,s).}
+\label{fig:scal}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.48\textwidth]{loss_vs_k_N10A.png}\hfill
+\includegraphics[width=0.48\textwidth]{loss_vs_k_N15A.png}
+\caption{Pérdida $\dk$ vs $k$ en N10A (izq.) y N15A (der.): monótona creciente,
+como exige la semántica estricta.}
+\label{fig:lossk}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.46\textwidth]{partition_KGeoMIP_N4A_k3.png}\hfill
+\includegraphics[width=0.46\textwidth]{hypercube_KGeoMIP_N4A_k3.png}
+\caption{$k$-partición hallada (N4A, $k=3$): diagrama de bloques presente/futuro
+(izq.) y proyección del hipercubo de nodos (der.).}
+\label{fig:viz}
+\end{figure}
+
+\subsection{Visualización interactiva e interfaz web}
+Las mismas vistas se ofrecen de forma \textbf{interactiva} (Plotly) mediante
+\texttt{src/viz/interactive.py}: diagrama de bloques de la partición con
+\emph{hover} por bloque, $\dk$ vs $k$ y escalabilidad con ejes navegables.
+\texttt{scripts/make\_interactive.py} las exporta como HTML autocontenido
+(\texttt{plotly.js} por CDN). Todo se integra en una \textbf{interfaz web}
+(Streamlit, \texttt{app/streamlit\_app.py}) que permite, sin línea de comandos:
+generar una TPM desde el navegador, elegir estrategia/$k$/máscaras, y obtener la
+partición, su $\dk$, la distribución marginal y las figuras estática e
+interactiva. El registro headless \texttt{src/funcs/runner.py}
+(\texttt{run\_analysis}) es el núcleo compartido por la UI y los scripts.
+
+\subsection{Análisis de resultados}
+\begin{itemize}
+  \item \textbf{KGeoMIP $\equiv$ KQNodes en calidad:} ambas hallan la misma
+  pérdida (diferencias $\le 10^{-4}$ por desempates), confirmando que comparten
+  el motor voraz y la métrica $\dk$.
+  \item \textbf{Núcleo $\gg$ baseline:} las estrategias núcleo superan al
+  clustering por $\sim\!10\times$ en N10A y $\sim\!20\times$ en N15A; el clustering
+  optimiza una métrica de grafo, no $\dk$.
+  \item \textbf{Costo de KQNodes:} $\sim\!3\times$ más lento que KGeoMIP por la
+  búsqueda Queyranne $\bigO(n^3)$, sin ganancia de calidad en esta rejilla.
+  \item \textbf{Monotonía:} $\dk$ crece con $k$ (Fig.~\ref{fig:lossk}), coherente
+  con que más bloques destruyen más información.
+  \item \textbf{KGeoMIP escala a $n=20$:} computa $\dk$ en $\sim\!82$\,s/$k$
+  (Tabla~\ref{tab:time}), un punto empírico que valida la cota $\bigO(2^n)$
+  (de $n=15$ a $n=20$, $2^5=32\times$ más estados $\Rightarrow$ salto de
+  $\sim\!1{,}6$\,s a $\sim\!82$\,s, factor $\sim\!50\times$, dominado por la
+  marginalización). KQNodes no termina en tiempo de sesión ahí (Queyranne
+  $\bigO(n^3 2^n)$).
+  \item \textbf{Metaheurísticas (Tabla~\ref{tab:meta}):} la \emph{búsqueda tabú}
+  iguala el óptimo en toda la rejilla; el \emph{recocido} se le aproxima salvo en
+  $k$ alto; la \emph{genética} acierta en $k=2$ pero se degrada al crecer $k$,
+  pues el espacio $k^{2n}$ excede el presupuesto de $\sim\!1200$ evaluaciones por
+  defecto. Es el comportamiento esperado de una metaheurística sin reinicio y
+  refuerza que las estrategias núcleo (deterministas) son la mejor opción aquí.
+\end{itemize}
+
+\subsection{Validación de correctitud}
+\begin{itemize}
+  \item \textbf{Regresión $k=2$:} KGeoMIP y KQNodes reproducen exactamente GeoMIP
+  y QNodes legados.
+  \item \textbf{Oráculo:} sobre los casos golden, el núcleo (BruteForce$\equiv$
+  GeoMIP) coincide $21/21$; KGeoMIP iguala el óptimo exacto y KQNodes acierta
+  $9/10$ (corrige el defecto N3B de QNodes: $0{,}46875$ vs $0{,}5$).
+  \item \textbf{Consistencia:} \texttt{loss}\,$=\dk$ y \texttt{loss}\,$\ge$ óptimo
+  exacto en $18/18$ casos del verificador; \texttt{float32} igual a
+  \texttt{float64} dentro de $10^{-5}$.
+\end{itemize}
+
+% ====================== 8. LIMITACIONES ======================
+\section{Limitaciones y trabajo futuro}
+\label{sec:limites}
+
+\subsection{Limitaciones conocidas}
+\begin{itemize}
+  \item \textbf{Techo de escala:} KGeoMIP/KQNodes son prácticos hasta
+  $n\approx 15$–$20$ (marginalización $\bigO(2^n)$, Queyranne $\bigO(n^3)$). A
+  $n=20$, KGeoMIP$_{k=2}\approx 52$–$84$ s y KQNodes$\approx 348$ s.
+  \item \textbf{$n=25$:} solo el clustering produce una partición (en $<5$ s),
+  pero \emph{no} se puntúa con $\dk$ porque requiere el \texttt{System} completo en
+  memoria (OOM). Las filas N25A reportan partición sin pérdida, documentado
+  honestamente.
+  \item \textbf{Optimalidad:} el motor voraz es heurístico; no garantiza la
+  $k$-MIP global (sí factibilidad, monotonía y validación contra el exacto en $n$
+  pequeño).
+\end{itemize}
+
+\subsection{Supuestos y restricciones}
+TPM determinista binaria; independencia condicional del repertorio de efecto (que
+habilita la EMD-efecto analítica $\bigO(n)$); GIL activo en Python 3.14.5, por lo
+que el paralelismo es por procesos, no por hilos.
+
+\subsection{Mejoras potenciales y trabajo futuro}
+\begin{itemize}
+  \item Marginalización \emph{local} $\bigO(2^{\dim})$ por bloque para subir el
+  techo de $n$.
+  \item Refinamiento con \emph{look-ahead} o \emph{beam search} para acercarse al
+  óptimo global manteniendo costo polinómico.
+  \item Baseline de metaheurísticas (GA/SA/Tabú), diferido (Fase 5B).
+  \item Aceleración GPU solo si el volumen justifica la transferencia H2D
+  (analizado: no rentable para los tamaños actuales).
+\end{itemize}
+
+% ====================== 9. APÉNDICES ======================
+\section{Apéndices técnicos}
+
+\subsection{Reducción $k=2 \Rightarrow$ bipartición legada}
+\textbf{Proposición.} Para $k=2$, \textsc{GreedyKPartition} ejecuta exactamente un
+refinamiento y el resultado coincide con la bipartición de la estrategia base.\\
+\emph{Bosquejo.} El bucle \texttt{while} corre mientras $|\mathit{blocks}|<2$, es
+decir una sola iteración partiendo de $[(F,M)]$. El único bloque es el universo
+completo, de modo que dividirlo con un corte $c$ produce $(c,\bar c)$, que es la
+bipartición candidata original. Como el pool y la métrica $\dk$ son los del método
+base, se selecciona la misma bipartición. $\square$
+
+\subsection{Reproducción de figuras y diagramas}
+\begin{lstlisting}[style=sh,caption={Comandos de reproducción.}]
+# Rejilla y metricas
+uv run scripts/run_benchmark.py
+uv run scripts/validate_correctness.py
+# Figuras (matplotlib) y visualizacion de particiones
+uv run scripts/make_figures.py
+uv run scripts/make_viz.py --net N4A --k 3 --strategy KGeoMIP
+# Diagramas UML editables (PlantUML)
+plantuml docs/manuales/diagrams/*.puml
+\end{lstlisting}
+
+\subsection{Referencias}
+\begin{thebibliography}{9}
+\bibitem{tononi} G. Tononi. \emph{An information integration theory of
+consciousness}. BMC Neuroscience, 2004.
+\bibitem{pyphi} W. Mayner et al. \emph{PyPhi: A toolbox for integrated information
+theory}. PLoS Comput. Biol., 2018.
+\bibitem{queyranne} M. Queyranne. \emph{Minimizing symmetric submodular
+functions}. Mathematical Programming, 1998.
+\bibitem{docproj} Universidad de Caldas. \emph{Proyecto K-QGMIP — Especificación}
+(\texttt{docs/Proyecto\_KQMIP.md}), 2026-1.
+\end{thebibliography}
+
+\subsection{Uso de inteligencia artificial generativa}
+Durante el desarrollo se utilizó \textbf{Claude Code (Opus 4.8)} como asistente,
+documentado entrada por entrada en \texttt{logs/ai\_agent\_changelog.md} (con el
+\emph{prompt} del usuario, parámetros reales y decisiones).
+
+\paragraph{Etapas y ejemplos.}
+\begin{itemize}
+  \item \textbf{Diseño:} extracción del motor voraz compartido
+  (\texttt{greedy\_k\_partition}) y decisión de semántica estricta tras medir que
+  la semántica débil degeneraba $k>2$ a bipartición.
+  \item \textbf{Implementación:} vectorización de \texttt{CostTable}, conversión a
+  \texttt{float32}, infraestructura PCD (\texttt{parallel.py}) y visualización
+  (\texttt{src/viz}).
+  \item \textbf{Depuración/optimización:} perfilado con \texttt{pyinstrument};
+  hallazgo de que Numba en lotes pequeños era $\sim\!70\%$ más lento (revertido) y
+  de que la marginalización domina el costo.
+  \item \textbf{Documentación:} estructuración de manuales, diagramas y tablas.
+\end{itemize}
+
+\paragraph{Reflexión crítica.} La IA aceleró tareas mecánicas (vectorización,
+\emph{boilerplate}, redacción) y propuso refactors útiles; sin embargo, varias
+afirmaciones de evaluación automática se basaron en código obsoleto y debieron
+\emph{verificarse} contra el repositorio real (regla ``verificar, no asumir''). El
+criterio de validación contra oráculo y \emph{microbenchmarks} aislados fue
+imprescindible para no aceptar mejoras ilusorias. La comprensión profunda del
+algoritmo y la responsabilidad de las decisiones permanecen en el equipo.
+
+\end{document}

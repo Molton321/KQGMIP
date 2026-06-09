@@ -1,3 +1,12 @@
+"""Result container and colored console renderer for a strategy's solution.
+
+:class:`Solution` bundles the subsystem and partition distributions, the minimal
+δ_k/φ loss, the formatted best partition and the execution time, and renders them
+as the colored report printed by the CLI.
+"""
+
+import re
+
 import numpy as np
 from colorama import Fore, Style, init
 
@@ -43,9 +52,11 @@ class Solution:
             overflow = dist.size - LIMIT
             suffix = f" {overflow} valores más.." if overflow > 0 else ""
             values = WHITESPACE.join(
-                f"{Fore.WHITE}{dist[i]:.4f}"
-                if dist[i] > FLOAT_ZERO
-                else f"{Fore.LIGHTBLACK_EX}0.    "
+                (
+                    f"{Fore.WHITE}{dist[i]:.4f}"
+                    if dist[i] > FLOAT_ZERO
+                    else f"{Fore.LIGHTBLACK_EX}0.    "
+                )
                 for i in range(count)
             )
             return f"[ {values}{suffix} {Fore.WHITE}]"
@@ -57,6 +68,9 @@ class Solution:
         t_min = f"{self.execution_time / 60:.1f}"
         t_sec = f"{self.execution_time:.4f}"
 
+        k_match = re.search(r"\(k=(\d+)\)", self.strategy)
+        k_str = f"{k_match.group(1)}-" if k_match else "Bi-"
+
         return (
             f"{Fore.CYAN}{double_line}\n\n"
             f"{Fore.RED}{self.strategy} fue la estrategia de solución.\n\n"
@@ -66,7 +80,7 @@ class Solution:
             f"{Style.RESET_ALL}{fmt_dist(self.subsystem_distribution)}\n"
             f"{Fore.YELLOW}Distribución {dist_type} de la Partición:\n"
             f"{Style.RESET_ALL}{fmt_dist(self.partition_distribution)}\n\n"
-            f"{Fore.YELLOW}Mejor Bi-Partición:\n"
+            f"{Fore.YELLOW}Mejor {k_str}Partición:\n"
             f"{Fore.MAGENTA}{self.partition}\n"
             f"{Fore.GREEN}Pérdida mínima ( φ ) = {self.loss:.4f}\n\n"
             f"{Fore.BLUE}Tiempos de ejecución:\n"

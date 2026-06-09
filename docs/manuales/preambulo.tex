@@ -1,0 +1,73 @@
+% Preámbulo compartido de los manuales K-QGMIP (Fase 8).
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla,es-noshorthands]{babel} % español, "Tabla", sin shorthands
+\usepackage{mathptmx}            % Times New Roman (texto y matemáticas)
+\usepackage{microtype}           % mejor justificación (kerning/protrusión)
+\usepackage[letterpaper,margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage[hidelinks,colorlinks=true,linkcolor=black,urlcolor=blue,citecolor=black]{hyperref}
+
+% --- Ajustes de localización (babel ya pone Figura/Tabla/Contenidos) ---
+\floatname{algorithm}{Algoritmo}
+\captionsetup{labelfont=bf,font=small}
+\frenchspacing
+
+% --- Cabeceras/pies ---
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small K-QGMIP}
+\fancyhead[R]{\small Universidad de Caldas — ADA 2026-1}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% --- Colores y estilo de código ---
+\definecolor{codebg}{rgb}{0.97,0.97,0.97}
+\definecolor{codekw}{rgb}{0.10,0.10,0.55}
+\definecolor{codecm}{rgb}{0.25,0.50,0.30}
+\definecolor{codestr}{rgb}{0.60,0.20,0.20}
+\lstdefinestyle{py}{
+  language=Python,
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{codekw}\bfseries,
+  commentstyle=\color{codecm}\itshape,
+  stringstyle=\color{codestr},
+  showstringspaces=false,
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{gray!40},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  captionpos=b,
+}
+\lstdefinestyle{sh}{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\footnotesize,
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{gray!40},
+  captionpos=b,
+}
+\lstset{style=py}
+% Permite acentos/UTF-8 dentro de los entornos lstlisting.
+\lstset{literate=%
+  {á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1
+  {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1
+  {ñ}{{\~n}}1 {Ñ}{{\~N}}1 {ü}{{\"u}}1 {¿}{{?`}}1 {¡}{{!`}}1}
+
+% Atajos matemáticos del dominio
+\newcommand{\dk}{\delta_k}
+\newcommand{\EMD}{\mathrm{EMD}}
+\newcommand{\bigO}{\mathcal{O}}
+\newcommand{\R}{\mathbb{R}}

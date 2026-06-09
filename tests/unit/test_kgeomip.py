@@ -70,9 +70,7 @@ def test_kgeomip_builds_cost_table_once_per_run() -> None:
     tpm = Manager(state).load_network()
     full = "1" * n
 
-    with mock.patch(
-        "src.controllers.strategies.kgeomip.CostTable", side_effect=CostTable
-    ) as spy:
+    with mock.patch("src.controllers.strategies.kgeomip.CostTable", side_effect=CostTable) as spy:
         with contextlib.redirect_stdout(io.StringIO()):
             KGeoMIP(tpm, state, k=4).apply_strategy(full, full, full)
 

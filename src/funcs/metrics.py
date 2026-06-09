@@ -17,7 +17,6 @@ import numpy as np
 
 from src.models.core.partition import KPartition
 
-# Default tolerance for treating two losses as equal (the grid reports ~6 dp).
 LOSS_TOL: float = 1e-6
 
 
@@ -67,10 +66,10 @@ def jaccard_partition_distance(part_a: KPartition, part_b: KPartition) -> float:
 
     together_both = 0
     together_either = 0
-    for i in range(len(atoms)):
-        for j in range(i + 1, len(atoms)):
-            same_a = labels_a[atoms[i]] == labels_a[atoms[j]]
-            same_b = labels_b[atoms[i]] == labels_b[atoms[j]]
+    for k, _ in enumerate(atoms):
+        for j in range(k + 1, len(atoms)):
+            same_a = labels_a[atoms[k]] == labels_a[atoms[j]]
+            same_b = labels_b[atoms[k]] == labels_b[atoms[j]]
             if same_a or same_b:
                 together_either += 1
                 if same_a and same_b:
@@ -92,9 +91,7 @@ def exact_hit_rate(strategy_losses: list[float], exact_losses: list[float]) -> f
     """Fraction of cases where the strategy reached the exact optimum."""
     if not strategy_losses:
         return 0.0
-    hits = sum(
-        is_exact_hit(s, e) for s, e in zip(strategy_losses, exact_losses, strict=True)
-    )
+    hits = sum(is_exact_hit(s, e) for s, e in zip(strategy_losses, exact_losses, strict=True))
     return hits / len(strategy_losses)
 
 
@@ -109,5 +106,5 @@ def scalability_slope(sizes: list[int], times: list[float]) -> float:
         return float("nan")
     log_sizes = np.log(np.array([s for s, _ in pairs], dtype=np.float64))
     log_times = np.log(np.array([t for _, t in pairs], dtype=np.float64))
-    slope, _intercept = np.polyfit(log_sizes, log_times, 1)
+    slope, _ = np.polyfit(log_sizes, log_times, 1)
     return float(slope)

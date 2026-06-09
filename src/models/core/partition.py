@@ -1,3 +1,11 @@
+"""Validated k-partition data model for the IIT subsystem.
+
+Defines :class:`KPartition`, an immutable, self-validating partition of the
+present (mechanism) and future (purview) index universes into ``k`` paired,
+non-vacuous, disjoint blocks that exactly cover each universe — the strict
+k-partition required by the official spec (``docs/Proyecto_KQMIP.md`` §2.1).
+"""
+
 import typing
 from dataclasses import dataclass
 
@@ -5,7 +13,9 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-def _normalize_unique(indices: tuple[int, ...] | list[int] | NDArray[np.int8], label: str) -> tuple[int, ...]:
+def _normalize_unique(
+    indices: tuple[int, ...] | list[int] | NDArray[np.int8], label: str
+) -> tuple[int, ...]:
     """Normalize index collections into sorted tuples without duplicates."""
     normalized = tuple(int(i) for i in indices)
     if len(set(normalized)) != len(normalized):
@@ -146,13 +156,4 @@ class KPartition:
     @property
     def signature(self) -> tuple[tuple[tuple[int, ...], tuple[int, ...]], ...]:
         """Deterministic representation for hashing/memoization."""
-        return tuple(
-            zip(self.purview_blocks, self.mechanism_blocks, strict=True)
-        )
-
-    def mechanism_block_for_future(self, future_index: int) -> NDArray[np.int8]:
-        """Return the mechanism block paired with the block containing ``future_index``."""
-        for purview, mechanism in zip(self.purview_blocks, self.mechanism_blocks, strict=True):
-            if future_index in purview:
-                return np.array(mechanism, dtype=np.int8)
-        raise ValueError(f"Future index {future_index} is not present in any purview block.")
+        return tuple(zip(self.purview_blocks, self.mechanism_blocks, strict=True))

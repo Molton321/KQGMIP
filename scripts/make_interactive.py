@@ -20,6 +20,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# isort: split
 from src.funcs.runner import load_tpm, parse_net_label, run_analysis
 from src.models.base.application import application
 from src.viz import (
@@ -54,15 +55,16 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
     print(f"Writing interactive figures to {out}:")
 
-    # Grid figures (loss-vs-k per net, scalability per k).
     for net in df["network"].dropna().unique():
         if df[(df["network"] == net) & df["loss"].notna()].empty:
             continue
         _export(plot_loss_vs_k_interactive(df, str(net)), out / f"loss_vs_k_{net}.html")
     for k in sorted(df["k"].dropna().unique()):
-        _export(plot_scalability_interactive(df, int(k)), out / f"scalability_k{int(k)}.html")
+        _export(
+            plot_scalability_interactive(df, int(k)),
+            out / f"scalability_k{int(k)}.html",
+        )
 
-    # Partition demo figure (run KGeoMIP live on a small network).
     net = args.demo_net
     _, page, state = parse_net_label(net)
     tpm = load_tpm(state, page)

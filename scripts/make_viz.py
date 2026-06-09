@@ -15,6 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# isort: split
 from src.controllers.manager import Manager
 from src.controllers.strategies.kgeomip import KGeoMIP
 from src.controllers.strategies.kqnodes import KQNodes
@@ -52,7 +53,9 @@ def main() -> None:
     base = f"{args.strategy}_{args.net}_k{args.k}"
     title = f"{args.strategy} {args.net} k={args.k}"
     p1 = plot_kpartition(partition, f"{title} — block diagram", str(out / f"partition_{base}.png"))
-    p2 = plot_hypercube_partition(partition, f"{title} — hypercube", str(out / f"hypercube_{base}.png"))
+    p2 = plot_hypercube_partition(
+        partition, f"{title} — hypercube", str(out / f"hypercube_{base}.png")
+    )
     print(f"Wrote:\n  - {p1}\n  - {p2}")
 
 

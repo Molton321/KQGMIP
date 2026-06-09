@@ -1,3 +1,5 @@
+"""Ground-distance metric options for the causal EMD."""
+
 from enum import Enum
 
 

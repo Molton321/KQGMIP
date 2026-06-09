@@ -1,0 +1,118 @@
+@startuml diagrama_clases
+' Diagrama de clases UML — K-QGMIP (Fase 8)
+' Render: plantuml docs/manuales/diagrams/02_clases.puml
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+title K-QGMIP — Diagrama de clases (núcleo)
+
+abstract class SIA {
+  +sia_subsystem : System
+  +sia_marginal_dists : ndarray<float32>
+  +sia_start_time : float
+  +__init__(tpm, initial_state)
+  +{abstract} apply_strategy(condition, purview, mechanism) : Solution
+  +sia_prepare_subsystem(condition, purview, mechanism)
+}
+
+class KGeoMIP {
+  +k : int
+  +cost_table : CostTable
+  +best_partition : KPartition
+  +apply_strategy(...) : Solution
+  -_build_cost_table(subsystem) : CostTable
+  -_cut_pool(subsystem) : list<Block>
+}
+
+class QNodes {
+  +partition_memo : dict
+  +algorithm(vertices)
+}
+
+class KQNodes {
+  +k : int
+  +best_partition : KPartition
+  +apply_strategy(...) : Solution
+  -_cut_pool() : list<Block>
+}
+
+class ClusteringSIA {
+  +k : int
+  +method : str
+  +apply_strategy(...) : Solution
+}
+
+class ExhaustiveK {
+  +k : int
+  +parallel : bool
+  +apply_strategy(...) : Solution
+}
+
+class System {
+  +tpm : ndarray<float32>
+  +ncubes : list<NCube>
+  +ncube_indices : ndarray
+  +ncube_dims : ndarray
+  +condition(...) : System
+  +subtract(...) : System
+  +bipartition(...) : System
+  +k_partition(partition : KPartition) : System
+  +marginal_distribution() : ndarray<float32>
+}
+
+class NCube {
+  +data : ndarray (2,)*n  float32
+  +index : int
+  +dims : ndarray
+  +condition(...) : NCube
+  +marginalize(axes) : NCube
+}
+
+class KPartition {
+  +purview_blocks : tuple
+  +mechanism_blocks : tuple
+  +future_universe : tuple
+  +present_universe : tuple
+  +k : int
+  +signature : tuple
+  +{static} from_blocks(blocks, future_universe, present_universe) : KPartition
+  +__post_init__()   ' valida cobertura, disyunción y k bloques no vacíos (estricto)
+}
+
+class CostTable {
+  -_flat : ndarray (n, 2^m)
+  -_powers : ndarray
+  -transition_table : dict
+  +cost(state_start, state_end) : ndarray
+  +candidate_bipartitions() : list
+}
+
+class Solution {
+  +strategy : str
+  +loss : float
+  +partition : str
+  +execution_time : float
+}
+
+SIA <|-- KGeoMIP
+SIA <|-- QNodes
+QNodes <|-- KQNodes
+SIA <|-- ClusteringSIA
+SIA <|-- ExhaustiveK
+
+SIA *-- System : sia_subsystem
+System "1" *-- "n" NCube : ncubes
+KGeoMIP *-- CostTable : cost_table
+KGeoMIP ..> KPartition : produce
+KQNodes ..> KPartition : produce
+System ..> KPartition : k_partition(p)
+SIA ..> Solution : devuelve
+
+note right of KQNodes
+  KQNodes y KGeoMIP delegan la
+  construcción k-partita en la
+  función compartida
+  greedy_k_partition() (k_refine),
+  puntuando con delta_k (emd).
+end note
+@enduml

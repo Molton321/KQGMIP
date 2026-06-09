@@ -1,3 +1,16 @@
+"""IIT system: a collection of :class:`NCube` tensors, one per node.
+
+:class:`System` performs the central transformations of the pipeline —
+``condition`` (background conditions), ``subtract`` (build a subsystem),
+``bipartition``/``k_partition`` (memoized partitioning) and
+``marginal_distribution`` (the distribution fed to the EMD).
+
+The n-cube tensors are stored as ``float32`` (:data:`NCUBE_DTYPE`): this halves
+the memory traffic of the ``marginalize`` reduction and the resident footprint
+toward the n≈25 ceiling. The dtype is a module constant so
+``tests/unit/test_float32_precision.py`` can rebuild the float64 reference.
+"""
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -9,9 +22,6 @@ from src.models.core.ncube import NCube
 from src.models.core.partition import KPartition
 from src.models.enums.notation import Notation
 
-# Storage dtype for the n-cube tensors. float32 halves the marginalize memory
-# traffic and the resident footprint; exposed as a module constant so the
-# precision validation test can rebuild the float64 reference.
 NCUBE_DTYPE = np.float32
 
 
@@ -27,16 +37,17 @@ class System:
     """
 
     def __init__(self, tpm: np.ndarray, initial_state: np.ndarray):
+        """Build one float32 n-cube per node from the TPM and initial state.
+
+        For deterministic 0/1 TPMs the marginal means are dyadic and therefore
+        exact in float32 at the tested sizes (see :data:`NCUBE_DTYPE`); each
+        column is reshaped into a ``(2,)*n`` tensor, reindexed when the notation
+        is not little-endian.
+        """
         num_nodes = self._validate(tpm, initial_state)
         self.initial_state = initial_state
         self.memo: dict = {}
 
-        # Store the n-cube tensors as float32 (see NCUBE_DTYPE): it halves the
-        # memory traffic of the marginalize reduction (np.mean, the dominant
-        # cost — ~78% of QNodes) and the resident footprint toward the n=25
-        # ceiling. For deterministic 0/1 TPMs the marginal means are dyadic and
-        # exact in float32 for the tested sizes (validated against float64 in
-        # tests/unit/test_float32_precision.py).
         tpm = np.asarray(tpm, dtype=NCUBE_DTYPE)
         is_little_endian = application.indexing_notation == Notation.LIL_ENDIAN.value
         self.ncubes = tuple(
@@ -53,6 +64,7 @@ class System:
         )
 
     def _validate(self, tpm: np.ndarray, initial_state: np.ndarray) -> int:
+        """Check the state length matches the node count; return the node count."""
         num_nodes = tpm.shape[COLS_IDX]
         if initial_state.size != num_nodes:
             raise ValueError(ERROR_INCOMPATIBLE_SPACES(num_nodes))
@@ -60,13 +72,13 @@ class System:
 
     @property
     def ncube_indices(self) -> np.ndarray:
+        """The original node index of each n-cube currently in the system."""
         return np.array([cube.index for cube in self.ncubes], dtype=np.int8)
 
     @property
     def ncube_dims(self) -> np.ndarray:
-        return (
-            self.ncubes[INT_ZERO].dims if len(self.ncubes) > INT_ZERO else np.array([])
-        )
+        """The active dimensions shared by the system's n-cubes."""
+        return self.ncubes[INT_ZERO].dims if len(self.ncubes) > INT_ZERO else np.array([])
 
     def condition(self, indices: NDArray[np.int8]) -> System:
         """Apply background conditions: drop the given dimensions by selecting
@@ -96,9 +108,7 @@ class System:
         new_system.initial_state = self.initial_state
         new_system.memo = {}
         new_system.ncubes = tuple(
-            cube.marginalize(mechanism_dims)
-            for cube in self.ncubes
-            if cube.index in valid_effects
+            cube.marginalize(mechanism_dims) for cube in self.ncubes if cube.index in valid_effects
         )
         return new_system
 
@@ -107,7 +117,12 @@ class System:
         purview: NDArray[np.int8],
         mechanism: NDArray[np.int8],
     ) -> System:
-        """Build a bipartition of the subsystem. Memoizes the results."""
+        """Build a (memoized) bipartition of the subsystem.
+
+        Membership is tested with plain Python sets over the tiny index arrays,
+        avoiding the heavy fixed cost of ``np.setdiff1d`` / numpy ``in`` in this
+        hot loop.
+        """
         new_system = System.__new__(System)
         new_system.initial_state = self.initial_state
         new_system.memo = self.memo
@@ -115,18 +130,19 @@ class System:
         key = tuple(purview), tuple(mechanism)
         cached = self.memo.get(key)
         if cached is None:
-            # Plain-set membership over the tiny index arrays avoids the heavy
-            # fixed cost of np.setdiff1d / numpy ``in`` in this hot loop.
             purview_set = {int(p) for p in purview}
             mechanism_set = {int(m) for m in mechanism}
             cached = tuple(
-                cube.marginalize(
-                    np.array(
-                        [d for d in cube.dims if int(d) not in mechanism_set], dtype=np.int8
+                (
+                    cube.marginalize(
+                        np.array(
+                            [d for d in cube.dims if int(d) not in mechanism_set],
+                            dtype=np.int8,
+                        )
                     )
+                    if int(cube.index) in purview_set
+                    else cube.marginalize(mechanism)
                 )
-                if int(cube.index) in purview_set
-                else cube.marginalize(mechanism)
                 for cube in self.ncubes
             )
             self.memo[key] = cached

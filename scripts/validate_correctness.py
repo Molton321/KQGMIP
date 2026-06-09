@@ -20,13 +20,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# isort: split
 from src.funcs.emd import delta_k
 from src.funcs.metrics import is_exact_hit, jaccard_partition_distance, relative_phi_error
 from src.funcs.runner import build_strategy, load_tpm, parse_net_label
 from src.models.base.application import application
 
-# Strategies validated against the exact optimum (built via the single registry).
 STRATEGIES = ["KGeoMIP", "KQNodes", "Clustering"]
+"""Strategies validated against the exact optimum (built via the single registry)."""
 
 
 def _run(name: str, tpm, state, k):
@@ -35,7 +36,12 @@ def _run(name: str, tpm, state, k):
     analyzer = build_strategy(name, tpm, state, k, "spectral")
     with contextlib.redirect_stdout(io.StringIO()):
         solution = analyzer.apply_strategy(full, full, full)
-    return solution, analyzer.best_partition, analyzer.sia_subsystem, analyzer.sia_marginal_dists
+    return (
+        solution,
+        analyzer.best_partition,
+        analyzer.sia_subsystem,
+        analyzer.sia_marginal_dists,
+    )
 
 
 def validate_net(net: str, ks: list[int]) -> tuple[int, int]:
@@ -48,8 +54,7 @@ def validate_net(net: str, ks: list[int]) -> tuple[int, int]:
     passed = total = 0
     for k in ks:
         if k > n:
-            continue  # node-aligned clustering needs k <= n
-        # Exact ground truth for this (net, k).
+            continue
         exact_sol, exact_part, _, _ = _run("ExhaustiveK", tpm, state, k)
 
         for label in STRATEGIES:
@@ -72,10 +77,12 @@ def validate_net(net: str, ks: list[int]) -> tuple[int, int]:
                     f"(exact={exact_sol.loss:.5f}, {hit_flag}, jaccard={jacc:.2f})"
                 )
                 if not consistent:
-                    print(f"        ! loss != recomputed delta_k ({sol.loss} vs {float(recomputed)})")
+                    print(
+                        f"        ! loss != recomputed delta_k ({sol.loss} vs {float(recomputed)})"
+                    )
                 if not lower_bounded:
                     print("        ! loss is below the exact optimum (impossible)")
-            except Exception as err:  # noqa: BLE001 - report and continue the grid
+            except Exception as err:
                 print(f"  [ERR] {label:11} k={k}  {type(err).__name__}: {err}")
 
     return passed, total

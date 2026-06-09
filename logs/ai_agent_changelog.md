@@ -876,3 +876,70 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
   (reescritura pendiente) ni `src/models/core/solution.py` (cambio en curso de `opencode`).
 - **IA:** la IA hizo el saneamiento, aplicó los arreglos de ambas auditorías verificándolos contra el
   código, construyó la validación de optimalidad y detectó/contuvo la corrupción de datos concurrente.
+
+---
+
+## 2026-06-08 — Estandarización de estilo (sin comentarios `#`), auditoría de archivos y tema de la UI
+
+- **Prompts del usuario:** (1) aplicar a *todos* los archivos el estándar de estilo ya aplicado a mano
+  en `src/controllers/*`; (2) hacer una validación cruzada archivo por archivo de por qué debe existir
+  cada uno (sospecha de que `scripts/*` y otros sobran); (3) arreglar `streamlit_app.py` (mantiene la
+  estructura en clase pero perdió comportamiento y "colores"). Aclaración explícita a mitad de tarea:
+  **no usar comentarios de tipo `#`; documentar sólo con docstrings `"""`** según los requerimientos.
+- **Estándar de estilo aplicado (≈30 archivos):** docstring de módulo en todos los módulos que no lo
+  tenían (constants, funcs, middlewares, models, enums), docstrings en funciones/métodos públicos que
+  faltaban, y **eliminación de todos los comentarios `#` en prosa** (su contenido se trasladó a
+  docstrings; se conservan sólo directivas funcionales `# noqa`, `# type:`, `# pragma: no cover`).
+  Verificado: 0 comentarios `#` en prosa en `src/` y raíz. Cero cambios de lógica (sólo documentación
+  y formato). `ruff format` reformateó 31 archivos; `ruff check` y `mypy src` quedan en verde.
+- **Auditoría de archivos (validación cruzada, no asumida — Invariante 4):** la sospecha de que
+  `scripts/*` sobra resultó **mayormente falsa**. Referencias verificadas: el README usa
+  `generate_tpm`, `validate_optimality`, `validate_correctness`, `run_benchmark`, `make_figures`,
+  `make_interactive`; y `docs/manuales/Manual_Tecnico.tex` incrusta (`\includegraphics`) figuras que
+  produce `make_viz.py` (`partition_KGeoMIP_N4A_k3.png`, `hypercube_…`) y `make_figures.py`
+  (`scalability_k*.png`, `loss_vs_k_*.png`). Todos los módulos de `src/funcs` y `src/viz` tienen
+  importadores. Conclusión honesta: **no hay archivos claramente muertos que borrar** (el único ya
+  muerto, `src/funcs/accelerate.py` + su test, ya estaba eliminado). Único candidato borderline:
+  `scripts/bench_fase6.py` (sólo referenciado en la bitácora; microbench de la Fase 6) — se **conserva**
+  por ser la evidencia del trabajo de eficiencia/PCD que pide la rúbrica; queda señalado por si el
+  usuario quiere recortarlo.
+- **UI web (`streamlit_app.py`):** se mantiene la clase `StreamlitApp`. Comportamiento restaurado que
+  se había perdido: mensaje `st.success("Análisis completado.")` y guía de estado vacío `st.info(...)`
+  cuando no hay TPM cargada. **Tema de color cohesivo nuevo** (nunca existió en git) siguiendo la
+  documentación oficial de theming de Streamlit (https://docs.streamlit.io/develop/concepts/configuration/theming):
+  paleta violeta/índigo en `.streamlit/config.toml` (`[theme]`, vía oficial) + capa CSS fina
+  (`_inject_theme`) para el banner degradado de cabecera y las tarjetas de métrica; insignia de color
+  por *familia* de estrategia (núcleo / baseline / metaheurística / exacta). No se inventó señal de
+  optimalidad (no existe en `AnalysisResult`): el color es por familia, no por calidad.
+- **Doc:** corregida la referencia obsoleta a `main.py` (eliminado) en `README.md`.
+- **Gates:** `ruff check` y `ruff format --check` limpios; `mypy src` sin errores. `pytest` se ejecuta
+  **una sola vez al final** de la fase (regla del usuario: no correr tests hasta terminar). Sin
+  commitear `docs/manuales/` (gated) ni los archivos WIP del usuario sin pedirlo.
+- **IA:** la IA aplicó el estándar de estilo en todo el árbol, hizo la validación cruzada de archivos
+  (incluida la verificación de referencias en README y manuales), consultó la documentación oficial de
+  Streamlit para el theming y reconstruyó la UI con el tema y el comportamiento restaurado.
+
+### Continuación (misma fecha): DRY de viz, borrado de bench_fase6, limpieza de scripts
+
+- **DRY en `src/viz` (a petición del usuario, "dedup only"):** `_block_color` estaba **duplicado**
+  literalmente en `partition_plot.py` e `interactive.py`. Se extrajo a `src/viz/palette.py`
+  (`block_color`), única fuente. En `partition_plot.py` se factorizó además el *boilerplate*
+  repetido de matplotlib en tres helpers (`_import_matplotlib`, `_block_legend`, `_save_figure`),
+  eliminando la triple repetición del bloque de import/leyenda/guardado. Sin cambio de interfaz
+  (las funciones estáticas siguen guardando PNG; las interactivas devuelven Figure) — verificado:
+  PNG estáticos e interactivo (5 trazas) se renderizan; `test_viz`/`test_interactive_viz` en verde.
+- **`scripts/bench_fase6.py` eliminado** (decisión del usuario): microbench de la Fase 6, sólo
+  referenciado en la bitácora; los números de speedup ya viven aquí y en los manuales.
+- **Limpieza de `scripts/*` al estándar sin `#`:** docstrings en lugar de comentarios de prosa
+  (se conservan `# noqa`, `# isort: split` y los ejemplos de uso dentro de docstrings).
+- **Conflicto detectado — format-on-save del editor vs. ruff (importante para el usuario):** un
+  formateador al guardar (isort con perfil distinto al de ruff) estaba (1) **reordenando imports de
+  los controllers** que el usuario había dejado a mano (I001), y (2) **subiendo los `from src ...`
+  por encima de `sys.path.insert`** en los 7 scripts, lo que los **rompía en tiempo de ejecución**
+  (`ModuleNotFoundError: No module named 'src'`). Se restauró el orden correcto y se añadió
+  `# isort: split` tras el bootstrap (directiva funcional, tolerada por ruff) para fijar la frontera.
+  Recomendación al usuario: alinear el isort del editor con ruff (o usar ruff como organizador de
+  imports) y/o desactivar el format-on-save, o estos archivos volverán a romperse al guardar.
+- **Gates finales:** `ruff check`/`ruff format --check` y `mypy src` en verde; suite `pytest`
+  re-ejecutada tras el refactor de viz. `generate_tpm.py` ejecutado de verdad (creó N3D.csv) para
+  confirmar que los scripts vuelven a correr.

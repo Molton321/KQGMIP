@@ -24,8 +24,6 @@ Every search takes an explicit ``numpy.random.Generator`` (seeded from
 ``delta_k`` evaluations are memoized per search because they dominate the cost.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 import numpy as np
@@ -56,11 +54,10 @@ def _decode(
     n_future = len(future_universe)
     blocks: list[tuple[tuple[int, ...], tuple[int, ...]]] = []
     for block in range(k):
-        future_block = tuple(
-            future_universe[i] for i in range(n_future) if labels[i] == block
-        )
+        future_block = tuple(future_universe[i] for i in range(n_future) if labels[i] == block)
         present_block = tuple(
-            present_universe[j] for j in range(len(present_universe))
+            present_universe[j]
+            for j in range(len(present_universe))
             if labels[n_future + j] == block
         )
         blocks.append((future_block, present_block))
@@ -71,7 +68,6 @@ def _decode(
             present_universe=present_universe,
         )
     except ValueError:
-        # A vacuous block (or any validation failure) means infeasible.
         return None
 
 
@@ -86,7 +82,6 @@ def _repair(labels: NDArray[np.intp], k: int, rng: np.random.Generator) -> NDArr
     counts = np.bincount(labels, minlength=k)
     empty = [b for b in range(k) if counts[b] == 0]
     for block in empty:
-        # Pick a donor block with a surplus and a random atom from it.
         donors = np.flatnonzero(counts > 1)
         donor = int(rng.choice(donors))
         atom_pool = np.flatnonzero(labels == donor)
@@ -98,10 +93,12 @@ def _repair(labels: NDArray[np.intp], k: int, rng: np.random.Generator) -> NDArr
 
 
 def _random_solution(a: int, k: int, rng: np.random.Generator) -> NDArray[np.intp]:
-    """Return a feasible random label vector of length ``a`` over ``k`` blocks."""
+    """Return a feasible random label vector of length ``a`` over ``k`` blocks.
+
+    Each block is seeded with one distinct atom to guarantee surjectivity, then
+    any remaining empties are repaired (cheap, and keeps the rest random).
+    """
     labels = rng.integers(0, k, size=a, dtype=np.intp)
-    # Seed each block with one distinct atom to guarantee surjectivity, then
-    # repair any remaining empties (cheap and keeps the rest random).
     seed_atoms = rng.permutation(a)[:k]
     for block, atom in enumerate(seed_atoms):
         labels[atom] = block
@@ -124,7 +121,9 @@ class _Evaluator:
         self.future_universe = future_universe
         self.present_universe = present_universe
         self.k = k
-        self._cache: dict[tuple[int, ...], tuple[float, NDArray[np.float32] | None, KPartition | None]] = {}
+        self._cache: dict[
+            tuple[int, ...], tuple[float, NDArray[np.float32] | None, KPartition | None]
+        ] = {}
         self.evaluations = 0
 
     def score(
@@ -138,7 +137,9 @@ class _Evaluator:
         partition = _decode(labels, self.future_universe, self.present_universe, self.k)
         if partition is None:
             result: tuple[float, NDArray[np.float32] | None, KPartition | None] = (
-                float("inf"), None, None,
+                float("inf"),
+                None,
+                None,
             )
         else:
             loss, distribution = delta_k(
@@ -150,9 +151,7 @@ class _Evaluator:
         return result
 
 
-def _to_result(
-    labels: NDArray[np.intp], evaluator: _Evaluator
-) -> SearchResult:
+def _to_result(labels: NDArray[np.intp], evaluator: _Evaluator) -> SearchResult:
     """Wrap the best label vector into a :class:`SearchResult` (must be feasible)."""
     loss, distribution, partition = evaluator.score(labels)
     if partition is None or distribution is None:
@@ -189,7 +188,7 @@ def genetic_search(
         return population[winner]
 
     for _ in range(generations):
-        new_population: list[NDArray[np.intp]] = [best.copy()]  # elitism
+        new_population: list[NDArray[np.intp]] = [best.copy()]
         while len(new_population) < population_size:
             parent_a, parent_b = _select(), _select()
             mask = rng.random(a) < 0.5
@@ -234,7 +233,6 @@ def simulated_annealing_search(
         neighbor = _neighbor(current, k, rng)
         neighbor_loss = evaluator.score(neighbor)[0]
         delta = neighbor_loss - current_loss
-        # Accept improvements always; worse moves with Boltzmann probability.
         if delta < 0 or (temp > 1e-9 and rng.random() < np.exp(-delta / temp)):
             current, current_loss = neighbor, neighbor_loss
             if current_loss < best_loss:
@@ -256,7 +254,11 @@ def tabu_search(
     neighbors_per_step: int = 20,
     tenure: int = 10,
 ) -> SearchResult:
-    """Tabu Search: best non-tabu neighbor each step, with a move tabu list."""
+    """Tabu Search: best non-tabu neighbor each step, with a move tabu list.
+
+    Aspiration is applied: a tabu move is still allowed when it improves on the
+    global best loss.
+    """
     a = len(future_universe) + len(present_universe)
     evaluator = _Evaluator(subsystem, baseline, future_universe, present_universe, k)
 
@@ -280,7 +282,6 @@ def tabu_search(
             candidate = _repair(candidate, k, rng)
             loss = evaluator.score(candidate)[0]
             is_tabu = tabu.get(move, 0) > step
-            # Aspiration: a tabu move is allowed if it beats the global best.
             if is_tabu and loss >= best_loss:
                 continue
             if loss < best_neighbor_loss:

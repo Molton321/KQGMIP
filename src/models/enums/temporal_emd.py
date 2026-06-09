@@ -1,3 +1,5 @@
+"""Temporal direction options (cause / effect / integrated) for the EMD."""
+
 from enum import Enum
 
 

@@ -1,38 +1,32 @@
+"""
+Brute-force SIA strategy that evaluates every possible bipartition
+and selects the one that minimizes the EMD against the original subsystem.
+This is a deterministic baseline that guarantees finding the optimal bipartition,
+but is computationally expensive and only feasible for small systems.
+"""
+
 import time
 from collections.abc import Callable
 
 import numpy as np
 
-from src.constants.base import (
-    ACTUAL,
-    COLS_IDX,
-    EFECTO,
-    FLOAT_ZERO,
-    NET_LABEL,
-)
+from src.constants.base import ACTUAL, COLS_IDX, EFECTO, FLOAT_ZERO, NET_LABEL
+from src.constants.strategies import BRUTEFORCE_LABEL, BRUTEFORCE_STRATEGY_TAG
 from src.constants.tags import DUMMY_ARR, DUMMY_EMD, ERROR_PARTITION
 from src.funcs.emd import select_emd
 from src.funcs.format import fmt_bipartition
-from src.funcs.partitions import (
-    bipartitions,
-)
+from src.funcs.partitions import bipartitions
 from src.middlewares.profile import profiling_manager
 from src.middlewares.slogger import SafeLogger
 from src.models.base.application import application
 from src.models.base.sia import SIA
 from src.models.core.solution import Solution
 
-BRUTEFORCE_LABEL: str = "BruteForce"
-BRUTEFORCE_STRATEGY_TAG: str = f"{BRUTEFORCE_LABEL}_strategy"
-BRUTEFORCE_ANALYSIS_TAG: str = f"{BRUTEFORCE_LABEL}_analysis"
-
 
 class BruteForce(SIA):
     """
     Brute-force strategy: evaluates every possible bipartition and selects the
     one that minimizes the EMD against the original subsystem.
-
-    Complexity: O(2^(m+n)) where m = |purview|, n = |mechanism|.
     """
 
     def __init__(self, tpm: np.ndarray, initial_state: str):
@@ -43,9 +37,8 @@ class BruteForce(SIA):
         self.distance_metric: Callable = select_emd()
         self.logger = SafeLogger(BRUTEFORCE_STRATEGY_TAG)
 
-    def apply_strategy(
-        self, condition: str, purview: str, mechanism: str
-    ) -> Solution:
+    def apply_strategy(self, condition: str, purview: str, mechanism: str) -> Solution:
+        """Evaluate every possible bipartition and select the one that minimizes the EMD."""
         self.sia_prepare_subsystem(condition, purview, mechanism)
 
         solution = Solution(
@@ -95,5 +88,6 @@ class BruteForce(SIA):
             [bipart_prim[ACTUAL], bipart_prim[EFECTO]],
             [bipart_dual[ACTUAL], bipart_dual[EFECTO]],
         )
+
         solution.execution_time = time.time() - self.sia_start_time
         return solution

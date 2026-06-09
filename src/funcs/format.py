@@ -1,3 +1,11 @@
+"""Human-readable formatters for k-partitions and bipartitions.
+
+Render the internal block signatures into the bracketed ``mechanism | purview``
+notation shown in the CLI, the web UI and the result tables, mapping future
+(purview) indices to upper-case letters and present (mechanism) ones to
+lower-case, with ``∅`` for empty sides.
+"""
+
 from src.constants.base import COLON_DELIM, EMPTY_STR, VOID_STR, WIDTH_PADDING
 from src.funcs.labels import ABECEDARY, LOWER_ABECEDARY
 
@@ -66,9 +74,8 @@ def fmt_bipartition_q(
     return f"{top_prim}{top_dual}\n{bottom_prim}{bottom_dual}\n"
 
 
-def fmt_part_q(
-    part: list[tuple[int, int]], to_sort: bool = True
-) -> tuple[str, str]:
+def fmt_part_q(part: list[tuple[int, int]], to_sort: bool = True) -> tuple[str, str]:
+    """Render one Q-Nodes block as its (top purview, bottom mechanism) rows."""
     if to_sort:
         part.sort(key=lambda x: x[1])
 

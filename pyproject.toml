@@ -17,12 +17,13 @@ dependencies = [
     "psutil>=6.0.0",
     "tqdm>=4.66.0",
     "matplotlib>=3.9.0",
+    "streamlit>=1.58.0",
+    "plotly>=6.8.0",
 ]
 
 [project.optional-dependencies]
 emd = ["pyemd>=0.5.1"]
 perf = [
-    "numba>=0.65",
     "threadpoolctl>=3.0",
 ]
 viz = [

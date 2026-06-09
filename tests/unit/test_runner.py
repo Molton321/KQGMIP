@@ -8,6 +8,7 @@ registered strategy runs end-to-end on a small network with a finite loss.
 import numpy as np
 import pytest
 
+from src.constants.base import PATH_SAMPLES
 from src.controllers.strategies.exhaustive_k import ExhaustiveK
 from src.funcs.runner import (
     STRATEGY_BUILDERS,
@@ -29,7 +30,7 @@ def test_registry_and_help_cover_the_same_strategies() -> None:
 
 def test_available_samples_finds_known_networks() -> None:
     """The shipped samples (N10A, N15A) are discovered."""
-    samples = available_samples()
+    samples = available_samples(PATH_SAMPLES)
     assert "N10A" in samples
     assert "N15A" in samples
 

@@ -1,3 +1,10 @@
+"""Safe, colorized logging with a date/hour log-file layout.
+
+``SafeLogger`` wraps the standard library logger to add colored console output
+(via colorama), UTF-8-safe stringification of arbitrary objects, and per-run log
+files organized under ``logs/runtime/<day>/<hour>hrs/``.
+"""
+
 import logging
 import sys
 from datetime import datetime
@@ -12,6 +19,8 @@ init(autoreset=True)
 
 
 class ColorFormatter(logging.Formatter):
+    """Logging formatter that colorizes the level name per severity."""
+
     COLORS = {
         logging.DEBUG: Fore.LIGHTBLACK_EX,
         logging.INFO: Fore.BLUE,
@@ -22,6 +31,7 @@ class ColorFormatter(logging.Formatter):
     }
 
     def format(self, record: logging.LogRecord) -> str:
+        """Format the record, wrapping its level name in the matching color."""
         color = self.COLORS.get(record.levelno, "")
         original = record.levelname
         record.levelname = f"{color}{original}{Style.RESET_ALL}"
@@ -37,18 +47,26 @@ class SafeLogger:
         self._logger = self._setup(name)
 
     def _safe_str(self, obj: Any) -> str:
+        """Stringify any object, never raising on undecodable content."""
         try:
             return str(obj).encode("utf-8", errors="replace").decode("utf-8")
         except Exception:
             return "[Objeto no representable]"
 
     def _fmt(self, *args, **kwargs) -> str:
+        """Join positional args and ``key=value`` kwargs into one safe message."""
         parts = " ".join(self._safe_str(a) for a in args)
         if kwargs:
             parts += " " + " ".join(f"{k}={self._safe_str(v)}" for k, v in kwargs.items())
         return parts
 
     def _setup(self, name: str) -> logging.Logger:
+        """Build the named logger with file + colored-console handlers.
+
+        The logger level is ``DEBUG`` so that per-handler levels become the
+        effective filter; a higher level here would silently drop ``debug()`` and
+        ``info()`` records before any handler could emit them.
+        """
         base = Path(LOGS_PATH)
         base.mkdir(exist_ok=True)
 
@@ -66,9 +84,6 @@ class SafeLogger:
         )
 
         logger = logging.getLogger(name)
-        # Set the logger to DEBUG so the per-handler levels are the effective
-        # filter. The previous `ERROR` here silently dropped every `debug()` and
-        # `info()` call before the handlers could see them.
         logger.setLevel(logging.DEBUG)
         logger.propagate = False
         logger.handlers.clear()
@@ -91,19 +106,25 @@ class SafeLogger:
         return logger
 
     def debug(self, *args, **kwargs) -> None:
+        """Emit a DEBUG record from the safely-formatted arguments."""
         self._logger.debug(self._fmt(*args, **kwargs))
 
     def info(self, *args, **kwargs) -> None:
+        """Emit an INFO record from the safely-formatted arguments."""
         self._logger.info(self._fmt(*args, **kwargs))
 
     def warn(self, *args, **kwargs) -> None:
+        """Emit a WARNING record from the safely-formatted arguments."""
         self._logger.warning(self._fmt(*args, **kwargs))
 
     def error(self, *args, **kwargs) -> None:
+        """Emit an ERROR record from the safely-formatted arguments."""
         self._logger.error(self._fmt(*args, **kwargs))
 
     def critic(self, *args, **kwargs) -> None:
+        """Emit a CRITICAL record from the safely-formatted arguments."""
         self._logger.critical(self._fmt(*args, **kwargs))
 
     def fatal(self, *args, **kwargs) -> None:
+        """Emit a FATAL record from the safely-formatted arguments."""
         self._logger.fatal(self._fmt(*args, **kwargs))

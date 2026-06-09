@@ -1,3 +1,10 @@
+"""Single-node n-cube: one TPM column as a ``(2,)*n`` probability tensor.
+
+:class:`NCube` is the per-node building block of :class:`System`. Its
+``condition`` and ``marginalize`` operations are pure (they return new cubes),
+with ``marginalize`` memoized because it is the framework's performance hot path.
+"""
+
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -17,15 +24,11 @@ class NCube:
     index: int
     dims: NDArray[np.int8]
     data: np.ndarray
-    memo: dict[tuple[int, ...], tuple[np.ndarray, NDArray[np.int8]]] = field(
-        default_factory=dict
-    )
+    memo: dict[tuple[int, ...], tuple[np.ndarray, NDArray[np.int8]]] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.dims.size and self.data.shape != (2,) * self.dims.size:
-            raise ValueError(
-                f"Forma inválida {self.data.shape} para dimensiones {self.dims}"
-            )
+            raise ValueError(f"Forma inválida {self.data.shape} para dimensiones {self.dims}")
 
     def condition(
         self,
@@ -62,14 +65,14 @@ class NCube:
         the tiny ``dims`` array (≤ n ints) instead of ``np.intersect1d`` /
         ``np.setdiff1d``, whose fixed overhead dominates for such small inputs.
         The ``np.mean`` reduction over the local axes is unchanged, so the
-        result is numerically identical.
+        result is numerically identical. ``local_axes`` maps the dimensions to
+        drop onto their tensor axes under the reversed little-endian indexing.
         """
         key = tuple(int(a) for a in axes)
         cached = self.memo.get(key)
         if cached is None:
             axes_set = set(key)
             num_dims = self.dims.size - 1
-            # Tensor axes (reversed little-endian indexing) of the dims to drop.
             local_axes = tuple(
                 num_dims - dim_idx
                 for dim_idx, axis in enumerate(self.dims)
@@ -81,7 +84,10 @@ class NCube:
                 [d for d in self.dims if int(d) not in axes_set],
                 dtype=np.int8,
             )
-            cached = (np.mean(self.data, axis=local_axes, keepdims=False), remaining_dims)
+            cached = (
+                np.mean(self.data, axis=local_axes, keepdims=False),
+                remaining_dims,
+            )
             self.memo[key] = cached
         return NCube(data=cached[0], dims=cached[1], index=self.index)
 

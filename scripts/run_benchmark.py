@@ -19,33 +19,33 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# isort: split
 from src.funcs.runner import load_tpm, parse_net_label, run_analysis
 from src.models.base.application import application
 
-# ---------------------------------------------------------------------------
-# Which strategies to benchmark: (row label, registry key, clustering method)
-# ---------------------------------------------------------------------------
 
 def _strategy_specs(n: int, include_meta: bool) -> list[tuple[str, str, str]]:
-    """Return the (label, strategy_key, method) specs to run for an n-node net."""
+    """Return the (label, strategy_key, method) specs to run for an n-node net.
+
+    Metaheuristics (GA/SA/Tabú) are added only when ``include_meta`` is set; the
+    exact ``ExhaustiveK`` ground truth is added only for ``n <= 6`` (tractable).
+    """
     specs = [
         ("KGeoMIP", "KGeoMIP", "spectral"),
         ("KQNodes", "KQNodes", "spectral"),
         ("Clustering_spectral", "Clustering", "spectral"),
         ("Clustering_kmeans", "Clustering", "kmeans"),
     ]
-    if include_meta:  # comparative metaheuristics (GA / SA / Tabú)
-        specs += [("Genetic", "Genetic", "spectral"),
-                  ("Annealing", "Annealing", "spectral"),
-                  ("Tabu", "Tabu", "spectral")]
-    if n <= 6:  # exact ground truth only where it is tractable
+    if include_meta:
+        specs += [
+            ("Genetic", "Genetic", "spectral"),
+            ("Annealing", "Annealing", "spectral"),
+            ("Tabu", "Tabu", "spectral"),
+        ]
+    if n <= 6:
         specs.append(("ExhaustiveK", "ExhaustiveK", "spectral"))
     return specs
 
-
-# ---------------------------------------------------------------------------
-# Run a single benchmark
-# ---------------------------------------------------------------------------
 
 def run_one(net: str, k: int, include_meta: bool = True) -> list[dict]:
     """Run every strategy for (net, k) and return result rows."""
@@ -54,8 +54,18 @@ def run_one(net: str, k: int, include_meta: bool = True) -> list[dict]:
     try:
         tpm = load_tpm(state, page)
     except FileNotFoundError:
-        return [{"strategy": "ALL", "network": net, "n": n, "k": k,
-                 "loss": None, "time_s": None, "partition": None, "error": "TPM not found"}]
+        return [
+            {
+                "strategy": "ALL",
+                "network": net,
+                "n": n,
+                "k": k,
+                "loss": None,
+                "time_s": None,
+                "partition": None,
+                "error": "TPM not found",
+            }
+        ]
 
     rows = []
     for label, key, method in _strategy_specs(n, include_meta):
@@ -63,42 +73,47 @@ def run_one(net: str, k: int, include_meta: bool = True) -> list[dict]:
             start = time.perf_counter()
             result = run_analysis(tpm, state, key, k, method=method)
             elapsed = time.perf_counter() - start
-            rows.append({
-                "strategy": label,
-                "network": net,
-                "n": n,
-                "k": k,
-                "loss": round(result.solution.loss, 6),
-                "time_s": round(elapsed, 4),
-                "partition": result.solution.partition,
-                "error": None,
-            })
+            rows.append(
+                {
+                    "strategy": label,
+                    "network": net,
+                    "n": n,
+                    "k": k,
+                    "loss": round(result.solution.loss, 6),
+                    "time_s": round(elapsed, 4),
+                    "partition": result.solution.partition,
+                    "error": None,
+                }
+            )
         except Exception as e:
-            rows.append({
-                "strategy": label,
-                "network": net,
-                "n": n,
-                "k": k,
-                "loss": None,
-                "time_s": None,
-                "partition": None,
-                "error": f"{type(e).__name__}: {e}",
-            })
+            rows.append(
+                {
+                    "strategy": label,
+                    "network": net,
+                    "n": n,
+                    "k": k,
+                    "loss": None,
+                    "time_s": None,
+                    "partition": None,
+                    "error": f"{type(e).__name__}: {e}",
+                }
+            )
     return rows
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-
 def main():
+    """Parse CLI options, run the benchmark grid and write the CSV/XLSX."""
     parser = argparse.ArgumentParser(description="Benchmark all strategies x networks x k")
-    parser.add_argument("--nets", nargs="*", default=None, help="Networks to test (default: N10A, N15A)")
+    parser.add_argument(
+        "--nets", nargs="*", default=None, help="Networks to test (default: N10A, N15A)"
+    )
     parser.add_argument("--ks", nargs="*", type=int, default=[2, 3, 4, 5], help="k values to test")
     parser.add_argument("--max-n", type=int, default=15, help="Max network size")
     parser.add_argument("--quick", action="store_true", help="Quick mode: N10 only, k=2,3")
     parser.add_argument("--no-meta", action="store_true", help="Skip metaheuristics (GA/SA/Tabu)")
-    parser.add_argument("--output", default="data/results/benchmark_results.csv", help="Output CSV path")
+    parser.add_argument(
+        "--output", default="data/results/benchmark_results.csv", help="Output CSV path"
+    )
     args = parser.parse_args()
 
     application.disable_profiling()
@@ -113,7 +128,6 @@ def main():
         nets = ["N10A", "N15A"]
         ks = args.ks
 
-    # Filter by max-n
     nets = [n for n in nets if int(n[1:-1]) <= args.max_n]
 
     print(f"Benchmark grid: {len(nets)} nets x {len(ks)} k values")
@@ -130,29 +144,24 @@ def main():
             print(f"[{done}/{total}] {net} k={k} ... ", end="", flush=True)
             rows = run_one(net, k, include_meta=not args.no_meta)
             all_rows.extend(rows)
-            # Quick status
             ok = sum(1 for r in rows if r["error"] is None)
             fail = sum(1 for r in rows if r["error"] is not None)
             print(f"{ok} ok, {fail} fail")
 
     df = pd.DataFrame(all_rows)
 
-    # Save CSV
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output, index=False)
     print(f"\nCSV saved: {output}")
 
-    # Save Excel
     xlsx_path = output.with_suffix(".xlsx")
     with pd.ExcelWriter(xlsx_path, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name="Benchmark")
-        # Summary sheet: pivot table loss by strategy x (net, k)
         pivot = df.pivot_table(index=["strategy", "network", "n"], columns="k", values="loss")
         pivot.to_excel(writer, sheet_name="Loss Summary")
     print(f"Excel saved: {xlsx_path}")
 
-    # Print summary table
     print("\n=== LOSS SUMMARY (lower is better) ===")
     pivot = df.pivot_table(index=["strategy", "network"], columns="k", values="loss")
     print(pivot.to_string())

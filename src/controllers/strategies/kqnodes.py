@@ -1,16 +1,12 @@
 """KQNodes — submodular strategy extended to k-partitions.
 
 This strategy generalizes QNodes (the Queyranne-like submodular bipartition
-search) to k-partitions with k ∈ {2..5}, following the official specification
-``docs/Proyecto_KQMIP.md`` §2.2 (a k-partition as k−1 successive bipartitions,
-greedy) and the existing QNodes machinery.
+search) to k-partitions with k ∈ {2..5}.
 
 KQNodes runs the submodular search once to obtain its pool of candidate
-bipartitions (``partition_memo``), converts each candidate into a cut, and then
-delegates to the shared greedy hierarchical engine (:func:`greedy_k_partition`),
-the same one used by KGeoMIP. For k=2 the search collapses to a single cut and
-therefore reproduces the legacy QNodes bipartition exactly (including its known
-suboptimal cases, frozen in the QNodes triage tests).
+bipartitions (partition_memo), converts each candidate into a cut, and then
+delegates to the shared greedy hierarchical engine to find a low-loss k-partition
+refining those cuts.
 """
 
 import time
@@ -18,6 +14,7 @@ import time
 import numpy as np
 
 from src.constants.base import ACTUAL, EFECTO, TYPE_TAG
+from src.constants.strategies import KQNODES_ANALYSIS_TAG, KQNODES_LABEL, KQNODES_STRATEGY_TAG
 from src.controllers.strategies.q_nodes import QNodes
 from src.funcs.format import fmt_kpartition
 from src.funcs.k_refine import Block, greedy_k_partition
@@ -25,10 +22,6 @@ from src.middlewares.profile import profile
 from src.middlewares.slogger import SafeLogger
 from src.models.core.partition import KPartition
 from src.models.core.solution import Solution
-
-KQNODES_LABEL: str = "KQNodes"
-KQNODES_STRATEGY_TAG: str = f"{KQNODES_LABEL}_strategy"
-KQNODES_ANALYSIS_TAG: str = f"{KQNODES_LABEL}_analysis"
 
 
 class KQNodes(QNodes):
@@ -57,8 +50,6 @@ class KQNodes(QNodes):
         future_universe = tuple(int(i) for i in subsystem.ncube_indices.tolist())
         present_universe = tuple(int(i) for i in subsystem.ncube_dims.tolist())
 
-        # Run the Queyranne-like submodular search once to populate the candidate
-        # pool (partition_memo); its bipartitions feed the k-way refinement.
         self.algorithm(list(present + future))
         cut_pool = self._cut_pool()
 
@@ -78,26 +69,28 @@ class KQNodes(QNodes):
         )
 
     def _cut_pool(self) -> list[Block]:
-        """Convert the submodular candidate sides (memo keys) into cuts.
-
-        Each ``partition_memo`` key represents one side of a candidate
-        bipartition as a (possibly nested) collection of ``(time, index)``
+        """
+        Convert the submodular candidate sides (memo keys) into cuts.
+        Each (partition_memo) key represents one side of a candidate
+        bipartition as a (possibly nested) collection of (time, index)
         vertices. The side is flattened and split by layer into a
-        ``(future_indices, present_indices)`` cut for the refinement engine.
+        (future_indices, present_indices) cut for the refinement engine.
         """
         pool: list[Block] = []
+
         for key in self.partition_memo:
             vertices = self._flatten_vertices(key)
             effects = frozenset(index for time, index in vertices if time == EFECTO)
             present = frozenset(index for time, index in vertices if time == ACTUAL)
             pool.append((effects, present))
+
         return pool
 
     @classmethod
     def _flatten_vertices(cls, node) -> list[tuple[int, int]]:
-        """Recursively flatten a memo key into ``(time, index)`` vertices.
-
-        A vertex is a 2-tuple of integers ``(time, index)``; merged candidate
+        """
+        Recursively flatten a memo key into (time, index) vertices.
+        A vertex is a 2-tuple of integers (time, index); merged candidate
         groups are lists, so anything that is not a plain integer 2-tuple is
         recursed into.
         """
@@ -107,7 +100,10 @@ class KQNodes(QNodes):
             and all(isinstance(component, (int, np.integer)) for component in node)
         ):
             return [(int(node[0]), int(node[1]))]
+
         vertices: list[tuple[int, int]] = []
+
         for element in node:
             vertices.extend(cls._flatten_vertices(element))
+
         return vertices

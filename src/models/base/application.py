@@ -1,3 +1,10 @@
+"""Global configuration singleton for the IIT framework.
+
+Exposes the :data:`application` singleton that strategies, models and the EMD
+read directly: random seed, sample-network page, ground metric, index notation,
+temporal EMD variant and the profiling switch. Set it in ``exec.py`` before a run.
+"""
+
 from src.models.enums.distance import MetricDistance
 from src.models.enums.notation import Notation
 from src.models.enums.temporal_emd import TimeEMD
@@ -25,21 +32,27 @@ class Application:
         self.profiler_enabled: bool = True
 
     def set_sample_network_page(self, page: str) -> None:
+        """Select the sample-network page (``A``, ``B``, ...) to auto-load."""
         self.sample_network_page = page
 
     def set_notation(self, kind: Notation) -> None:
+        """Set the binary index notation used to address the n-cubes."""
         self.indexing_notation = kind.value if isinstance(kind, Notation) else str(kind)
 
     def set_distance(self, kind: MetricDistance) -> None:
+        """Set the ground distance metric used by the causal EMD."""
         self.metric_distance = kind.value if isinstance(kind, MetricDistance) else str(kind)
 
     def set_emd_time(self, kind: TimeEMD) -> None:
+        """Set the temporal EMD variant (cause / effect / integrated)."""
         self.emd_time = kind.value if isinstance(kind, TimeEMD) else str(kind)
 
     def enable_profiling(self) -> None:
+        """Turn HTML profiling on (profiles written under review/profiling/)."""
         self.profiler_enabled = True
 
     def disable_profiling(self) -> None:
+        """Turn HTML profiling off."""
         self.profiler_enabled = False
 
 

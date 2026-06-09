@@ -1,15 +1,15 @@
-"""Metaheuristic k-partition strategies (optional comparative baselines).
+"""
+Metaheuristic k-partition strategies (optional comparative baselines).
 
-Three classic metaheuristics — Genetic Algorithm (:class:`GeneticSIA`),
-Simulated Annealing (:class:`AnnealingSIA`) and Tabu Search (:class:`TabuSIA`) —
-that search the strict k-partition space and are scored with the same loss
-``delta_k`` as the core strategies, so they slot directly into the evaluation
-grid. They are listed as an optional comparison family in the official
-specification (``docs/Proyecto_KQMIP.md``).
+Three classic metaheuristics — Genetic Algorithm (GeneticSIA), Simulated Annealing
+(AnnealingSIA) and Tabu Search (TabuSIA) that search the strict k-partition space
+and are scored with the same loss (delta_k) as the core strategies, so they slot
+directly into the evaluation  grid.
 
-All three share the engine in :mod:`src.funcs.metaheuristic` and differ only in
-the search operator. Each is seeded from ``application.numpy_seed`` for
-reproducibility (DoD: deterministic results across runs).
+All three share the same scaffolding in the _MetaheuristicSIA base class,
+which implements the common preparation and argument handling, and delegates
+the actual search to the subclasses via the _search method, which receives the
+prepared subsystem context and a seeded RNG and returns a SearchResult.
 """
 
 import time
@@ -34,11 +34,8 @@ from src.models.core.solution import Solution
 
 
 class _MetaheuristicSIA(SIA):
-    """Common scaffolding for the metaheuristic strategies.
-
-    Subclasses set :attr:`label` and implement :meth:`_search`, which receives
-    the prepared subsystem context and a seeded RNG and returns a
-    :class:`SearchResult`.
+    """
+    Common scaffolding for the metaheuristic strategies.
     """
 
     label: str = "Metaheuristic"
@@ -54,19 +51,21 @@ class _MetaheuristicSIA(SIA):
         future_universe: tuple[int, ...],
         present_universe: tuple[int, ...],
         rng: np.random.Generator,
-    ) -> SearchResult:  # pragma: no cover - overridden
+    ) -> SearchResult:
         del future_universe, present_universe, rng
         raise NotImplementedError
 
     def apply_strategy(self, condition: str, purview: str, mechanism: str) -> Solution:
         """Search for a low-loss k-partition with the configured metaheuristic."""
         self.sia_prepare_subsystem(condition, purview, mechanism)
+
         if self.k < 2:
             raise ValueError("k must be >= 2.")
 
         future_universe = tuple(int(i) for i in self.sia_subsystem.ncube_indices.tolist())
         present_universe = tuple(int(i) for i in self.sia_subsystem.ncube_dims.tolist())
         atoms = len(future_universe) + len(present_universe)
+
         if self.k > atoms:
             raise ValueError(f"k={self.k} exceeds the {atoms} available atoms.")
 

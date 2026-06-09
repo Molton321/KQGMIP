@@ -1,27 +1,35 @@
-"""Exact k-partition strategy using Stirling partitions.
+"""
+Exact k-partition strategy using weak Stirling partitions.
 
-This strategy is intended as ground truth for small systems. It enumerates
-all valid pairings of:
-- k partitions over future indices (with empty blocks allowed),
-- k partitions over present indices (with empty blocks allowed),
-and evaluates each candidate with ``delta_k``.
-
-Empty blocks per dimension are allowed so that the k=2 case reduces exactly
-to the legacy bipartition semantics (where ``sub_purview`` and ``sub_mechanism``
-can each be empty as long as one side is non-empty).
+This strategy exhaustively evaluates every k-partition of the subsystem's future and
+present nodes, returning the one with the lowest δ_k. The search space is
+constrained by using weak Stirling partitions, which allow empty blocks and thus
+include the legacy semantics of sub_purview=∅ or sub_mechanism=∅. The strategy can
+be run in parallel across multiple CPU cores, with an early exit if a perfect
+partition (δ_k = 0) is found.
 """
 
 import os
 import time
 from collections.abc import Generator
 from itertools import permutations, product
+from multiprocessing import shared_memory
 
 import numpy as np
+from joblib import Parallel, delayed
 from more_itertools import set_partitions
 
 from src.constants.base import COLS_IDX, NET_LABEL
+from src.constants.strategies import EXACT_K_LABEL, EXACT_K_STRATEGY_TAG
 from src.funcs.emd import delta_k
 from src.funcs.format import fmt_kpartition
+from src.funcs.parallel import (
+    chunk_evenly,
+    derive_seeds,
+    limit_worker_threads,
+    rebuild_system,
+    shared_ndarray,
+)
 from src.middlewares.profile import profiling_manager
 from src.middlewares.slogger import SafeLogger
 from src.models.base.application import application
@@ -29,40 +37,122 @@ from src.models.base.sia import SIA
 from src.models.core.partition import KPartition
 from src.models.core.solution import Solution
 
-EXACT_K_LABEL: str = "ExactK"
-EXACT_K_STRATEGY_TAG: str = f"{EXACT_K_LABEL}_strategy"
-
 
 def _weak_k_partitions(elements: tuple[int, ...], k: int) -> Generator[tuple[tuple[int, ...], ...]]:
-    """Yield every k-tuple of subsets that partitions ``elements`` allowing empty blocks.
-
+    """
+    Yield every k-tuple of subsets that partitions ``elements`` allowing empty blocks.
     A weak k-partition is a list of ``k`` subsets that, taken together, are a
     partition of ``elements``. Empty subsets are allowed. Order matters: the
     same partition expressed as ``(A, B)`` versus ``(B, A)`` is yielded twice.
-
     The whole universe may land in a single slot (the rest being empty),
     which is the legacy ``sub_purview=∅`` or ``sub_mechanism=∅`` semantics.
     """
     if k < 1:
         return
+
     elements_tuple = tuple(sorted(elements))
 
-    # Case 1: the universe lives in a single slot (e.g. legacy (∅, {0,1,2})).
     for slot in range(k):
         blocks: list[tuple[int, ...]] = [tuple() for _ in range(k)]
         blocks[slot] = elements_tuple
         yield tuple(blocks)
 
-    # Case 2: the universe is split into r >= 2 non-empty blocks (r <= k).
     for r in range(2, min(k, len(elements_tuple)) + 1):
         for partition in set_partitions(elements_tuple, r):
             for assignment in product(range(k), repeat=r):
                 if len(set(assignment)) != r:
                     continue
+
                 placed: list[tuple[int, ...]] = [tuple() for _ in range(k)]
+
                 for slot, block in zip(assignment, partition, strict=False):
                     placed[slot] = tuple(sorted(int(i) for i in block))
                 yield tuple(placed)
+
+
+def _generate_candidates(
+    future_options: list[tuple[tuple[int, ...], ...]],
+    present_options: list[tuple[tuple[int, ...], ...]],
+    future_universe: tuple[int, ...],
+    present_universe: tuple[int, ...],
+    k: int,
+) -> Generator[KPartition]:
+    """
+    Yield the unique valid k-partitions for a slice of future.
+    Pairs each future weak-partition with every present weak-partition across
+    all permutations, validating and de-duplicating. Module-level so it is
+    picklable and reusable by both the sequential and the worker paths; the
+    de-dup set is local, which is correct because distinct ``future_options``
+    yield disjoint candidate sets.
+    """
+    seen: set[tuple[tuple[tuple[int, ...], tuple[int, ...]], ...]] = set()
+
+    for future_blocks in future_options:
+        for present_blocks in present_options:
+            for perm in permutations(range(k)):
+                blocks: list[tuple[tuple[int, ...], tuple[int, ...]]] = [
+                    (tuple(future_blocks[idx]), tuple(present_blocks[perm[idx]]))
+                    for idx in range(k)
+                ]
+                try:
+                    candidate = KPartition.from_blocks(
+                        blocks=blocks,
+                        future_universe=future_universe,
+                        present_universe=present_universe,
+                    )
+                except ValueError:
+                    continue
+                if candidate.signature in seen:
+                    continue
+                seen.add(candidate.signature)
+                yield candidate
+
+
+def _exact_search_worker(
+    shm_name: str,
+    shape: tuple[int, ...],
+    dtype: np.dtype,
+    dims: np.ndarray,
+    indices: np.ndarray,
+    initial_state: np.ndarray,
+    baseline: np.ndarray,
+    k: int,
+    future_slice: list[tuple[tuple[int, ...], ...]],
+    present_options: list[tuple[tuple[int, ...], ...]],
+    future_universe: tuple[int, ...],
+    present_universe: tuple[int, ...],
+    seed: int,
+) -> tuple[float, KPartition | None, np.ndarray]:
+    """
+    Generate and evaluate candidates for a slice of future weak-partitions,
+    returning the best result.
+    """
+    limit_worker_threads()
+    np.random.seed(seed)
+
+    shm = shared_memory.SharedMemory(name=shm_name)
+    try:
+        flat = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
+        system = rebuild_system(flat, dims, indices, initial_state)
+
+        best_loss = float("inf")
+        best_partition: KPartition | None = None
+        best_distribution = np.array([], dtype=np.float32)
+        for candidate in _generate_candidates(
+            future_slice, present_options, future_universe, present_universe, k
+        ):
+            loss, distribution = delta_k(system, candidate, baseline_distribution=baseline)
+            if loss < best_loss:
+                best_loss = loss
+                best_partition = candidate
+                best_distribution = distribution
+
+                if loss == 0.0:
+                    break
+
+        return best_loss, best_partition, best_distribution
+    finally:
+        shm.close()
 
 
 class ExhaustiveK(SIA):
@@ -127,6 +217,7 @@ class ExhaustiveK(SIA):
         """Evaluate every candidate in-process (with an early exit at δ_k = 0)."""
         best_loss = np.inf
         best_distribution = np.array([], dtype=np.float32)
+
         for candidate in self._candidate_partitions(future_universe, present_universe):
             loss, partition_distribution = delta_k(
                 self.sia_subsystem, candidate, baseline_distribution=baseline
@@ -135,8 +226,10 @@ class ExhaustiveK(SIA):
                 best_loss = loss
                 best_distribution = partition_distribution
                 self.best_partition = candidate
+
                 if loss == 0.0:
                     break
+
         return float(best_loss), best_distribution
 
     def _search_parallel(
@@ -145,20 +238,9 @@ class ExhaustiveK(SIA):
         present_universe: tuple[int, ...],
         baseline: np.ndarray,
     ) -> tuple[float, np.ndarray]:
-        """Search across worker processes, splitting the candidate space.
-
-        Both *generation* and *evaluation* run in the workers: the outer
-        ``future_options`` (weak partitions of the future layer) are split into
-        chunks, and each worker generates and scores only its slice of the
-        product. The slices are disjoint (a candidate's future partition is
-        fixed by its ``future_blocks``), so no candidate is evaluated twice and
-        the global minimum is identical to the sequential search. Heavy n-cube
-        data is shared once via :func:`shared_ndarray`.
         """
-        from joblib import Parallel, delayed
-
-        from src.funcs.parallel import chunk_evenly, derive_seeds, shared_ndarray
-
+        Evaluate candidates in parallel batches, with an early exit at δ_k = 0.
+        """
         future_options = list(_weak_k_partitions(future_universe, self.k))
         present_options = list(_weak_k_partitions(present_universe, self.k))
 
@@ -171,24 +253,32 @@ class ExhaustiveK(SIA):
         initial_state = np.asarray(subsystem.initial_state, dtype=np.int8)
 
         workers = (os.cpu_count() or 1) if self.n_jobs in (-1, 0) else self.n_jobs
-        # One contiguous chunk per worker. The chunks stay contiguous (and the
-        # reduction iterates them in order) so the tie-broken minimum matches
-        # the sequential search exactly. Finer chunking was tried but the extra
-        # task dispatch/pickling offset the better load balance.
         chunks = chunk_evenly(future_options, workers)
         seeds = derive_seeds(len(chunks))
 
         with shared_ndarray(flat) as (name, shape, dtype):
             results = Parallel(n_jobs=workers, backend="loky")(
                 delayed(_exact_search_worker)(
-                    name, shape, dtype, dims, indices, initial_state, baseline,
-                    self.k, chunk, present_options, future_universe, present_universe, seed,
+                    name,
+                    shape,
+                    dtype,
+                    dims,
+                    indices,
+                    initial_state,
+                    baseline,
+                    self.k,
+                    chunk,
+                    present_options,
+                    future_universe,
+                    present_universe,
+                    seed,
                 )
                 for chunk, seed in zip(chunks, seeds, strict=True)
             )
 
         best_loss = np.inf
         best_distribution = np.array([], dtype=np.float32)
+
         for loss, partition, distribution in results:
             if loss < best_loss:
                 best_loss = loss
@@ -201,95 +291,11 @@ class ExhaustiveK(SIA):
         future_universe: tuple[int, ...],
         present_universe: tuple[int, ...],
     ) -> Generator[KPartition]:
-        """Yield every unique valid k-partition candidate (sequential search)."""
+        """
+        Generate all valid k-partitions of the subsystem's future and present nodes.
+        """
         future_options = list(_weak_k_partitions(future_universe, self.k))
         present_options = list(_weak_k_partitions(present_universe, self.k))
         yield from _generate_candidates(
             future_options, present_options, future_universe, present_universe, self.k
         )
-
-
-def _generate_candidates(
-    future_options: list[tuple[tuple[int, ...], ...]],
-    present_options: list[tuple[tuple[int, ...], ...]],
-    future_universe: tuple[int, ...],
-    present_universe: tuple[int, ...],
-    k: int,
-) -> Generator[KPartition]:
-    """Yield the unique valid k-partitions for a slice of ``future_options``.
-
-    Pairs each future weak-partition with every present weak-partition across
-    all permutations, validating and de-duplicating. Module-level so it is
-    picklable and reusable by both the sequential and the worker paths; the
-    de-dup set is local, which is correct because distinct ``future_options``
-    yield disjoint candidate sets.
-    """
-    seen: set[tuple[tuple[tuple[int, ...], tuple[int, ...]], ...]] = set()
-    for future_blocks in future_options:
-        for present_blocks in present_options:
-            for perm in permutations(range(k)):
-                blocks: list[tuple[tuple[int, ...], tuple[int, ...]]] = [
-                    (tuple(future_blocks[idx]), tuple(present_blocks[perm[idx]]))
-                    for idx in range(k)
-                ]
-                try:
-                    candidate = KPartition.from_blocks(
-                        blocks=blocks,
-                        future_universe=future_universe,
-                        present_universe=present_universe,
-                    )
-                except ValueError:
-                    # Rejects vacuous blocks and non-covering/universe mismatches.
-                    continue
-                if candidate.signature in seen:
-                    continue
-                seen.add(candidate.signature)
-                yield candidate
-
-
-def _exact_search_worker(
-    shm_name: str,
-    shape: tuple[int, ...],
-    dtype: np.dtype,
-    dims: np.ndarray,
-    indices: np.ndarray,
-    initial_state: np.ndarray,
-    baseline: np.ndarray,
-    k: int,
-    future_slice: list[tuple[tuple[int, ...], ...]],
-    present_options: list[tuple[tuple[int, ...], ...]],
-    future_universe: tuple[int, ...],
-    present_universe: tuple[int, ...],
-    seed: int,
-) -> tuple[float, KPartition | None, np.ndarray]:
-    """Generate and score one ``future_options`` slice; return its local best."""
-    from multiprocessing import shared_memory
-
-    import numpy as np
-
-    from src.funcs.parallel import limit_worker_threads, rebuild_system
-
-    limit_worker_threads()
-    np.random.seed(seed)  # reproducible per-worker RNG state (DoD: seed control)
-
-    shm = shared_memory.SharedMemory(name=shm_name)
-    try:
-        flat = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
-        system = rebuild_system(flat, dims, indices, initial_state)
-
-        best_loss = float("inf")
-        best_partition: KPartition | None = None
-        best_distribution = np.array([], dtype=np.float32)
-        for candidate in _generate_candidates(
-            future_slice, present_options, future_universe, present_universe, k
-        ):
-            loss, distribution = delta_k(system, candidate, baseline_distribution=baseline)
-            if loss < best_loss:
-                best_loss = loss
-                best_partition = candidate
-                best_distribution = distribution
-                if loss == 0.0:
-                    break  # δ=0 is provably optimal; stop this slice early
-        return best_loss, best_partition, best_distribution
-    finally:
-        shm.close()

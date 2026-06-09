@@ -1,7 +1,7 @@
-"""End-to-end integration tests for the K-QGMIP pipeline.
-
+"""
+End-to-end integration tests for the K-QGMIP pipeline.
 These exercise the full path a user follows — load a TPM, build a strategy, run
-``apply_strategy`` and read the :class:`Solution` — and check cross-strategy
+(apply_strategy) and read the class (Solution) — and check cross-strategy
 consistency on small systems where the exact ground truth is available.
 """
 
@@ -20,7 +20,6 @@ from src.controllers.strategies.kqnodes import KQNodes
 from src.controllers.strategies.metaheuristics import AnnealingSIA, GeneticSIA, TabuSIA
 from src.models.base.application import application
 
-# Every k-partition strategy exposed to the user (label -> factory).
 K_STRATEGIES = {
     "kgeomip": lambda tpm, s: KGeoMIP(tpm, s, k=3),
     "kqnodes": lambda tpm, s: KQNodes(tpm, s, k=3),

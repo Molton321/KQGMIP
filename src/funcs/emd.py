@@ -1,7 +1,16 @@
+"""Earth Mover's Distance variants and the δ_k partition loss.
+
+Provides the analytic effect-repertoire EMD (a sum of node-wise absolute
+differences under conditional independence), the optional ``pyemd``-backed causal
+EMD, the selectors that read the configured variant/metric from ``application``,
+and :func:`delta_k` — the single loss every k-partition strategy is scored with.
+"""
+
 from collections.abc import Callable
 
 import numpy as np
 from numpy.typing import NDArray
+from pyemd import emd
 
 from src.constants.base import INT_ZERO, STR_ONE
 from src.models.base.application import application
@@ -25,15 +34,15 @@ def causal_emd(u: NDArray[np.float64], v: NDArray[np.float64]) -> float:
     """
     EMD for the causal repertoire (present → past) using the Hamming distance
     as the ground metric. Requires the `pyemd` package.
+
+    The symmetric ground-cost matrix is built once from the configured distance
+    before delegating to ``pyemd.emd``.
     """
     try:
-        from pyemd import emd
-
         n = u.size
         costs: NDArray[np.float64] = np.empty((n, n))
         distance = select_distance()
 
-        # Build the symmetric ground-cost matrix from the configured distance.
         for i in range(n):
             costs[i, :i] = [distance(i, j) for j in range(i)]
             costs[:i, i] = costs[i, :i]
@@ -41,9 +50,7 @@ def causal_emd(u: NDArray[np.float64], v: NDArray[np.float64]) -> float:
 
         return emd(u.astype(np.float64), v.astype(np.float64), costs)
     except ImportError as err:
-        raise ImportError(
-            "pyemd no está instalado. Instálalo con: pip install pyemd"
-        ) from err
+        raise ImportError("pyemd no está instalado. Instálalo con: pip install pyemd") from err
 
 
 def select_emd() -> Callable[[NDArray[np.float32], NDArray[np.float32]], float]:
@@ -58,8 +65,7 @@ def select_emd() -> Callable[[NDArray[np.float32], NDArray[np.float32]], float]:
 
     if time not in emd_metrics:
         raise ValueError(
-            f"Tiempo EMD no soportado: '{time}'. "
-            f"Opciones: {', '.join(sorted(emd_metrics))}"
+            f"Tiempo EMD no soportado: '{time}'. Opciones: {', '.join(sorted(emd_metrics))}"
         )
     return emd_metrics[time]
 
@@ -75,13 +81,13 @@ def select_distance() -> Callable[[int, int], int]:
 
     if distance not in distances:
         raise ValueError(
-            f"Distancia no soportada: '{distance}'. "
-            f"Opciones: {', '.join(sorted(distances))}"
+            f"Distancia no soportada: '{distance}'. Opciones: {', '.join(sorted(distances))}"
         )
     return distances[distance]
 
 
 def hamming_distance(a: int, b: int) -> int:
+    """Hamming distance between two state indices (popcount of ``a ^ b``)."""
     return bin(a ^ b).count(STR_ONE)
 
 

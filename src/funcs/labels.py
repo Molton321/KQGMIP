@@ -1,13 +1,20 @@
-import numpy as np
-from numpy.typing import NDArray
+"""Node-label generation and binary index (re)ordering helpers.
 
-from src.constants.base import ABC_START, EMPTY_STR, VOID_STR
+Provides the Excel-style alphabet used to name nodes (``ABECEDARY``) and the
+little/big-endian index permutations selected by the configured notation. The
+little-endian builder is blocked to bound peak memory at large ``n``.
+"""
+
+import numpy as np
+
+from src.constants.base import ABC_START
 from src.models.base.application import application
 from src.models.enums.notation import Notation
 
 
 def get_labels(n: int) -> tuple[str, ...]:
     """Generate Excel-style alphanumeric labels (A, B, ..., Z, AA, AB, ...)."""
+
     def get_excel_column(n: int) -> str:
         if n <= 0:
             return ""
@@ -20,20 +27,13 @@ ABECEDARY: tuple[str, ...] = get_labels(40)
 LOWER_ABECEDARY: list[str] = [letter.lower() for letter in ABECEDARY]
 
 
-def literals(remaining_vars: NDArray[np.int8], lowercase: bool = False) -> str:
-    """Convert variable indices to their literal labels (A, B, C...)."""
-    return (
-        EMPTY_STR.join(
-            ABECEDARY[i].lower() if lowercase else ABECEDARY[i]
-            for i in remaining_vars
-        )
-        if remaining_vars.size
-        else VOID_STR
-    )
-
-
 def lil_endian(n: int) -> np.ndarray:
-    """Build the little-endian index permutation."""
+    """Build the little-endian index permutation (bit-reversal of 0..2ⁿ-1).
+
+    The permutation is produced block by block, reversing the bit order in small
+    groups and accumulating into a reusable buffer, so peak memory stays bounded
+    for large ``n``.
+    """
     if n <= 0:
         return np.array([0], dtype=np.uint32)
 
@@ -46,14 +46,12 @@ def lil_endian(n: int) -> np.ndarray:
     block_result = np.zeros(block_size, dtype=np.uint32)
     bit_group_size = 6 if n > 24 else 4
 
-    # Process the permutation in blocks to bound peak memory for large n.
     for start in range(0, size, block_size):
         end = min(start + block_size, size)
         current_size = end - start
         block_result[:current_size] = 0
         block_indices = np.arange(start, end, dtype=np.uint32)
 
-        # Reverse the bit order in groups, accumulating into block_result.
         for base_bit in range(0, n, bit_group_size):
             bits_remaining = min(bit_group_size, n - base_bit)
             if bits_remaining <= 0:
@@ -71,6 +69,7 @@ def lil_endian(n: int) -> np.ndarray:
 
 
 def big_endian(n: int) -> np.ndarray:
+    """Build the trivial big-endian (identity) index ordering."""
     return np.array(range(n), dtype=np.uint32)
 
 
@@ -86,25 +85,6 @@ def reindex(n: int) -> np.ndarray:
     }
     if notation not in notations:
         raise ValueError(
-            f"Notación no soportada: '{notation}'. "
-            f"Opciones: {', '.join(sorted(notations))}"
-        )
-    return notations[notation]
-
-
-def select_state(substate: tuple) -> tuple:
-    """Adjust the n-cube access order according to the configured notation."""
-    notation = application.indexing_notation
-    if isinstance(notation, Notation):
-        notation = notation.value
-
-    notations = {
-        Notation.BIG_ENDIAN.value: substate,
-        Notation.LIL_ENDIAN.value: substate[::-1],
-    }
-    if notation not in notations:
-        raise ValueError(
-            f"Notación no soportada: '{notation}'. "
-            f"Opciones: {', '.join(sorted(notations))}"
+            f"Notación no soportada: '{notation}'. Opciones: {', '.join(sorted(notations))}"
         )
     return notations[notation]

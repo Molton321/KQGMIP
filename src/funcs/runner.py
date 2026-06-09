@@ -2,14 +2,23 @@
 
 A single place that maps a strategy name to its constructor and runs the full
 ``apply_strategy`` pipeline, returning both the :class:`Solution` and the
-underlying :class:`KPartition` (when the strategy exposes one). The Streamlit
-web UI and any script can share this instead of duplicating the wiring that
-lives in ``main.py``.
+underlying :class:`KPartition` (when the strategy exposes one). The CLI
+(``exec.py``), the Streamlit web UI and the scripts all share this instead of
+duplicating the strategy wiring.
+
+The registries below are the single source of truth for strategy construction:
+``STRATEGY_BUILDERS`` holds the k-partition strategies shown in the UI (each a
+``(tpm, state, k, method)`` constructor; ``k``/``method`` are ignored by the ones
+that do not use them), and ``_LEGACY_STRATEGIES`` holds the bipartition (k=2)
+baselines as ``(module, class)`` names only — resolving a name never imports a
+class, and building one imports just that single class, keeping the common path
+free of PyPhi (whose ``Phi`` import fails on some environments).
 """
 
 from __future__ import annotations
 
 import contextlib
+import importlib
 import io
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -18,22 +27,19 @@ from typing import Any
 
 import numpy as np
 
-from src.controllers.manager import Manager, _resolve_samples_path
+from src.controllers.manager import Manager
 from src.controllers.strategies.clustering import ClusteringSIA
 from src.controllers.strategies.exhaustive_k import ExhaustiveK
 from src.controllers.strategies.kgeomip import KGeoMIP
 from src.controllers.strategies.kqnodes import KQNodes
 from src.controllers.strategies.metaheuristics import AnnealingSIA, GeneticSIA, TabuSIA
+from src.models.base.application import application
 from src.models.core.partition import KPartition
 from src.models.core.solution import Solution
 
-# A strategy constructor: (tpm, state, k, method) -> SIA instance. ``k`` and
-# ``method`` are ignored by the strategies that do not use them.
 StrategyBuilder = Callable[[np.ndarray, str, int, str], Any]
+"""A strategy constructor: ``(tpm, state, k, method) -> SIA`` instance."""
 
-# Registry of every k-partition strategy exposed to the user (UI dropdown). This
-# is the single source of truth for k-strategy construction; the CLI, the web UI
-# and the scripts all build strategies through it, never re-importing the classes.
 STRATEGY_BUILDERS: dict[str, StrategyBuilder] = {
     "KGeoMIP": lambda tpm, s, k, method: KGeoMIP(tpm, s, k=k),
     "KQNodes": lambda tpm, s, k, method: KQNodes(tpm, s, k=k),
@@ -44,22 +50,13 @@ STRATEGY_BUILDERS: dict[str, StrategyBuilder] = {
     "ExhaustiveK": lambda tpm, s, k, method: ExhaustiveK(tpm, s, k=k),
 }
 
-# Legacy bipartition (k=2) strategies — references/baselines, not in the UI list.
-# Lazily imported so the common path never loads PyPhi & friends.
-def _legacy_builders() -> dict[str, StrategyBuilder]:
-    from src.controllers.strategies.force import BruteForce
-    from src.controllers.strategies.geometric import GeometricSIA
-    from src.controllers.strategies.phi import Phi
-    from src.controllers.strategies.q_nodes import QNodes
+_LEGACY_STRATEGIES: dict[str, tuple[str, str]] = {
+    "BruteForce": ("force", "BruteForce"),
+    "GeometricSIA": ("geometric", "GeometricSIA"),
+    "QNodes": ("q_nodes", "QNodes"),
+    "Phi": ("phi", "Phi"),
+}
 
-    return {
-        "BruteForce": lambda tpm, s, k, method: BruteForce(tpm, s),
-        "GeometricSIA": lambda tpm, s, k, method: GeometricSIA(tpm, s),
-        "QNodes": lambda tpm, s, k, method: QNodes(tpm, s),
-        "Phi": lambda tpm, s, k, method: Phi(tpm, s),
-    }
-
-# Human-readable, one-line description of each strategy (for the UI).
 STRATEGY_HELP: dict[str, str] = {
     "KGeoMIP": "Geométrica: cortes sucesivos guiados por la tabla de costos (núcleo).",
     "KQNodes": "Submodular: minimización tipo Queyranne sobre nodos (núcleo).",
@@ -88,8 +85,8 @@ def resolve_strategy(name: str) -> str:
     ``"KGeoMIP"``, ``"exhaustive"`` -> ``"ExhaustiveK"``).
     """
     lookup = {key.lower(): key for key in STRATEGY_BUILDERS}
-    lookup.update({key.lower(): key for key in _legacy_builders()})
-    lookup["exhaustive"] = "ExhaustiveK"  # friendly short aliases
+    lookup.update({key.lower(): key for key in _LEGACY_STRATEGIES})
+    lookup["exhaustive"] = "ExhaustiveK"
     lookup["geometric"] = "GeometricSIA"
     canonical = lookup.get(name.lower())
     if canonical is None:
@@ -98,9 +95,20 @@ def resolve_strategy(name: str) -> str:
 
 
 def build_strategy(name: str, tpm: np.ndarray, state: str, k: int, method: str) -> Any:
-    """Construct a strategy instance by name (the one place that does so)."""
-    builders = {**STRATEGY_BUILDERS, **_legacy_builders()}
-    return builders[resolve_strategy(name)](tpm, state, k, method)
+    """Construct a strategy instance by name (the one place that does so).
+
+    A k-partition strategy is built from :data:`STRATEGY_BUILDERS`; a legacy k=2
+    baseline imports only its single class, so the common path never loads PyPhi.
+    """
+    canonical = resolve_strategy(name)
+    if canonical in STRATEGY_BUILDERS:
+        return STRATEGY_BUILDERS[canonical](tpm, state, k, method)
+
+    module, class_name = _LEGACY_STRATEGIES[canonical]
+    strategy_cls = getattr(
+        importlib.import_module(f"src.controllers.strategies.{module}"), class_name
+    )
+    return strategy_cls(tpm, state)
 
 
 def parse_net_label(net: str) -> tuple[int, str, str]:
@@ -113,7 +121,7 @@ def parse_net_label(net: str) -> tuple[int, str, str]:
     return n, net[-1], "1" * n
 
 
-def available_samples(base_path: Path | None = None) -> list[str]:
+def available_samples(base: Path) -> list[str]:
     """List the available TPM sample labels (e.g. ``["N10A", "N15A", ...]``).
 
     Args:
@@ -122,9 +130,6 @@ def available_samples(base_path: Path | None = None) -> list[str]:
     Returns:
         Sorted ``N{n}{page}`` labels for every ``*.csv`` sample found.
     """
-    base = base_path or _resolve_samples_path()
-    if not base.exists():
-        return []
     return sorted(p.stem for p in base.glob("N*.csv"))
 
 
@@ -164,7 +169,6 @@ def run_analysis(
     purview = purview or full
     mechanism = mechanism or full
 
-    # Strategies print colored progress to stdout; keep the UI/CLI output clean.
     with contextlib.redirect_stdout(io.StringIO()):
         analyzer = build_strategy(canonical, tpm, state, k, method)
         solution = analyzer.apply_strategy(condition, purview, mechanism)
@@ -184,8 +188,6 @@ def load_tpm(state: str, page: str, base_path: Path | None = None) -> np.ndarray
     Returns:
         The TPM as a NumPy array.
     """
-    from src.models.base.application import application
-
     application.set_sample_network_page(page)
     manager = Manager(state) if base_path is None else Manager(state, base_path=base_path)
     return manager.load_network()
