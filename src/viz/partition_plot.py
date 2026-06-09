@@ -36,10 +36,7 @@ def _import_matplotlib():
 
 def _block_legend(patch_cls, partition: KPartition) -> list:
     """Build one legend patch per block, colored by :func:`block_color`."""
-    return [
-        patch_cls(color=block_color(r), label=f"block {r + 1}")
-        for r in range(partition.k)
-    ]
+    return [patch_cls(color=block_color(r), label=f"block {r + 1}") for r in range(partition.k)]
 
 
 def _save_figure(fig, plt, output_path: str) -> str:
@@ -107,9 +104,7 @@ def plot_kpartition(partition: KPartition, title: str, output_path: str) -> str:
     return _save_figure(fig, plt, output_path)
 
 
-def plot_hypercube_partition(
-    partition: KPartition, title: str, output_path: str
-) -> str:
+def plot_hypercube_partition(partition: KPartition, title: str, output_path: str) -> str:
     """Draw the node hypercube (n<=4) with nodes coloured by their block.
 
     The node indices ``0..n-1`` are the hypercube dimensions. Each vertex (a bit
@@ -126,14 +121,10 @@ def plot_hypercube_partition(
 
     plt, Patch = _import_matplotlib()
 
-    future_block = {
-        idx: r for r, (purview, _) in enumerate(partition.signature) for idx in purview
-    }
+    future_block = {idx: r for r, (purview, _) in enumerate(partition.signature) for idx in purview}
 
     angles = np.linspace(0, np.pi, n, endpoint=False)
-    axes_xy = (
-        np.array([[np.cos(a), np.sin(a)] for a in angles]) if n else np.zeros((0, 2))
-    )
+    axes_xy = np.array([[np.cos(a), np.sin(a)] for a in angles]) if n else np.zeros((0, 2))
 
     coords = {}
     for vertex in range(1 << n):
@@ -152,9 +143,7 @@ def plot_hypercube_partition(
             color = block_color(future_block.get(universe[dim], 0))
         else:
             color = "#dddddd"
-        ax.scatter(
-            x, y, s=240, color=color, edgecolors="black", linewidths=0.5, zorder=2
-        )
+        ax.scatter(x, y, s=240, color=color, edgecolors="black", linewidths=0.5, zorder=2)
 
     ax.set_title(title)
     ax.set_aspect("equal")

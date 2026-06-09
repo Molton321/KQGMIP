@@ -197,9 +197,7 @@ class StreamlitApp:
             help="Cadena binaria de n dígitos que condiciona el análisis.",
         )
         if len(state) != n or any(char not in "01" for char in state):
-            st.sidebar.error(
-                f"El estado debe ser {n} dígitos binarios; usando {default_state}."
-            )
+            st.sidebar.error(f"El estado debe ser {n} dígitos binarios; usando {default_state}.")
             return default_state
         return state
 
