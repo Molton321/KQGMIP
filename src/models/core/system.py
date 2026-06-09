@@ -150,12 +150,62 @@ class System:
         new_system.ncubes = cached
         return new_system
 
-    def k_partition(self, partition: KPartition) -> System:
-        """Build a k-partitioned subsystem from a validated ``KPartition``.
+    def bipartition_marginal_distribution(
+        self,
+        purview: NDArray[np.int8],
+        mechanism: NDArray[np.int8],
+    ) -> NDArray[np.float32]:
+        """Marginal distribution of a bipartition, computed locally per cube.
 
-        For each future n-cube, this method keeps the mechanism dimensions paired
-        with that future block and marginalizes the remaining dimensions.
+        Returns exactly ``bipartition(purview, mechanism).marginal_distribution()``
+        but without materializing any marginalized tensor: each cube's value is
+        obtained with :meth:`NCube.marginal_value` in O(2^{dropped dims})
+        instead of the O(2^{all dims}) full reduction — the QNodes hot path
+        toward n=25 (PLANNING.md FASE 11). Results are memoized per cut.
         """
+        key = ("local", tuple(purview), tuple(mechanism))
+        cached = self.memo.get(key)
+        if cached is None:
+            little_endian = application.indexing_notation == Notation.LIL_ENDIAN.value
+            purview_set = {int(p) for p in purview}
+            mechanism_set = {int(m) for m in mechanism}
+            state = self.initial_state
+            distribution = np.empty(len(self.ncubes), dtype=NCUBE_DTYPE)
+            for i, cube in enumerate(self.ncubes):
+                if int(cube.index) in purview_set:
+                    axes = np.array(
+                        [d for d in cube.dims if int(d) not in mechanism_set],
+                        dtype=np.int8,
+                    )
+                else:
+                    axes = mechanism
+                distribution[i] = cube.marginal_value(axes, state, little_endian)
+            cached = distribution
+            self.memo[key] = cached
+        return cached
+
+    def k_partition_marginal_distribution(self, partition: KPartition) -> NDArray[np.float32]:
+        """Marginal distribution of a k-partition, computed locally per cube.
+
+        Returns exactly ``k_partition(partition).marginal_distribution()`` via
+        :meth:`NCube.marginal_value` (same dropped axes as ``k_partition``),
+        skipping the per-candidate full-tensor reductions of the δ_k fitness —
+        the refinement hot path shared by KGeoMIP and KQNodes (FASE 11).
+        """
+        future_to_mechanism = self._validated_block_mapping(partition)
+
+        little_endian = application.indexing_notation == Notation.LIL_ENDIAN.value
+        state = self.initial_state
+        distribution = np.empty(len(self.ncubes), dtype=NCUBE_DTYPE)
+        for i, cube in enumerate(self.ncubes):
+            axes = np.setdiff1d(cube.dims, future_to_mechanism[cube.index])
+            distribution[i] = cube.marginal_value(axes, state, little_endian)
+        return distribution
+
+    def _validated_block_mapping(self, partition: KPartition) -> dict[int, NDArray[np.int8]]:
+        """Check the partition universes and map each future index to its
+        paired mechanism block (shared by ``k_partition`` and its local
+        marginal variant)."""
         current_future_universe = tuple(sorted(int(i) for i in self.ncube_indices.tolist()))
         current_present_universe = tuple(sorted(int(i) for i in self.ncube_dims.tolist()))
 
@@ -175,6 +225,15 @@ class System:
             mechanism_arr = np.array(mechanism_block, dtype=np.int8)
             for future_idx in purview_block:
                 future_to_mechanism[future_idx] = mechanism_arr
+        return future_to_mechanism
+
+    def k_partition(self, partition: KPartition) -> System:
+        """Build a k-partitioned subsystem from a validated ``KPartition``.
+
+        For each future n-cube, this method keeps the mechanism dimensions paired
+        with that future block and marginalizes the remaining dimensions.
+        """
+        future_to_mechanism = self._validated_block_mapping(partition)
 
         new_system = System.__new__(System)
         new_system.initial_state = self.initial_state

@@ -140,6 +140,12 @@ class QNodes(SIA):
         Rebuilds the `temporal` state on every call (no shared state) to avoid the
         previous implementation's defect. Returns
         (union_emd, delta_emd, delta_marginal_dist).
+
+        Both bipartitions are scored with the **local** marginal distribution
+        (``System.bipartition_marginal_distribution``), which evaluates each
+        cube at the initial state in O(2^{dropped dims}) instead of building
+        the marginalized tensors — same float32 values, hours-to-minutes
+        difference at n=25 (PLANNING.md FASE 11).
         """
         temporal: list[list[int]] = [[], []]
 
@@ -151,11 +157,10 @@ class QNodes(SIA):
                 d_time, d_index = delta
                 temporal[d_time].append(d_index)
 
-        delta_partition = self.sia_subsystem.bipartition(
+        delta_marginal_vector = self.sia_subsystem.bipartition_marginal_distribution(
             np.array(temporal[EFECTO], dtype=np.int8),
             np.array(temporal[ACTUAL], dtype=np.int8),
         )
-        delta_marginal_vector = delta_partition.marginal_distribution()
         delta_emd = effect_emd(delta_marginal_vector, self.sia_marginal_dists)
 
         for omega in omegas:
@@ -167,11 +172,10 @@ class QNodes(SIA):
                 o_time, o_index = omega
                 temporal[o_time].append(o_index)
 
-        union_partition = self.sia_subsystem.bipartition(
+        union_marginal_vector = self.sia_subsystem.bipartition_marginal_distribution(
             np.array(temporal[EFECTO], dtype=np.int8),
             np.array(temporal[ACTUAL], dtype=np.int8),
         )
-        union_marginal_vector = union_partition.marginal_distribution()
         union_emd = effect_emd(union_marginal_vector, self.sia_marginal_dists)
 
         return union_emd, delta_emd, delta_marginal_vector

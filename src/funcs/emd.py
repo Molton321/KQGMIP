@@ -111,5 +111,5 @@ def delta_k(
     if original is None:
         original = subsystem.marginal_distribution()
 
-    partitioned_distribution = subsystem.k_partition(partition).marginal_distribution()
+    partitioned_distribution = subsystem.k_partition_marginal_distribution(partition)
     return effect_emd(original, partitioned_distribution), partitioned_distribution

@@ -1141,3 +1141,26 @@ QNodes como con GeoMIP, así que sí, debe haber una manera para que esos 2 lleg
   `test_delta_k_k2_equivalence`: 62/62) en verde; `ruff` y `mypy` limpios.
 - **IA:** la IA verificó la propiedad de orden BFS≡lex antes de depender de ella y mantuvo la
   legacy como especificación ejecutable en lugar de borrarla.
+
+### Continuación (2026-06-09): FASE 11 — marginal local O(2^descartadas) en QNodes/δ_k
+
+- **`NCube.marginal_value(axes, initial_state, little_endian)`:** equivalente local de
+  `marginalize(axes)` + indexar en el estado inicial — fija primero las dims conservadas (vista)
+  y promedia solo el bloque restante: O(2^|descartadas|) vs O(2^|dims|). Memo propio
+  (`value_memo`, clave canónica en orden de `dims`) sin materializar tensores marginalizados.
+- **`System.bipartition_marginal_distribution` / `k_partition_marginal_distribution`:** wrappers
+  finos sobre `marginal_value` con la misma semántica de ejes que `bipartition`/`k_partition`
+  (validación de universos extraída a `_validated_block_mapping`, DRY). Consumidores:
+  `QNodes.submodular_function` (camino caliente del greedy, hereda KQNodes) y `delta_k`
+  (fitness compartido por KGeoMIP/KQNodes en `greedy_k_partition`).
+- **Equivalencia medida, no asumida:** en TPMs deterministas 0/1 (dominio del proyecto) la
+  igualdad con la vía completa es **bit a bit** (medias diádicas); en float32 aleatorio no diádico
+  el orden de suma pairwise difiere en **máx. 1 ulp = 1.19e-07** (barrido exhaustivo de todas las
+  biparticiones de sistemas de 3/4/6 nodos). Tests: exactitud para determinista, cota 2 ulp para
+  aleatorio (`tests/unit/test_local_marginal.py`), + regresión QNodes contra `QNODES_LOSS` golden.
+- **Speedup medido (parámetros reales):** QNodes subsistema completo N20A: **365 s → 5.4 s (67×)**,
+  loss=0.4992504119873047 (misma vía de cómputo, igualdad probada). Bug propio detectado y
+  corregido durante el cambio: el refactor devolvía `union_marginal_vector` en lugar de
+  `delta_marginal_vector` (se revirtió antes de commitear).
+- **Gates:** 115 tests (local_marginal + regression_k2 + kqnodes + qnodes_triage +
+  delta_k_k2 + kgeomip) en verde; `ruff` y `mypy src` limpios.

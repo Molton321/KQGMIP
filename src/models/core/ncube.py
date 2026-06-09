@@ -19,12 +19,15 @@ class NCube:
     - `index`: original n-cube index tied to a literal (0:A, 1:B, 2:C, ...).
     - `dims`: current active dimensions of the n-cube.
     - `data`: numpy array with the data indexed according to the source notation.
+    - `memo`: per-axes cache of full `marginalize` reductions.
+    - `value_memo`: per-axes cache of local `marginal_value` scalars (FASE 11).
     """
 
     index: int
     dims: NDArray[np.int8]
     data: np.ndarray
     memo: dict[tuple[int, ...], tuple[np.ndarray, NDArray[np.int8]]] = field(default_factory=dict)
+    value_memo: dict[tuple, np.floating] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.dims.size and self.data.shape != (2,) * self.dims.size:
@@ -55,6 +58,51 @@ class NCube:
             index=self.index,
             dims=new_dims,
         )
+
+    def marginal_value(
+        self,
+        axes: NDArray[np.int8],
+        initial_state: NDArray[np.int8],
+        little_endian: bool,
+    ) -> np.floating:
+        """Marginal probability at ``initial_state`` after dropping ``axes``.
+
+        Local equivalent of ``marginalize(axes)`` followed by indexing the
+        result at the initial state: the kept dimensions are fixed to their
+        initial-state bits first (a view), and only the remaining block is
+        averaged. This costs O(2^{|dropped|}) instead of the O(2^{|dims|})
+        full-tensor reduction — the difference between hours and minutes for
+        the k-partition fitness at n=25 (PLANNING.md §3 and FASE 11). For the
+        deterministic 0/1 TPMs the project runs on the means are dyadic and
+        the float32 result is bit-identical to the full reduction; for
+        arbitrary float32 data the pairwise-summation order may differ by at
+        most 1 ulp (both bounds covered by ``tests/unit/test_local_marginal.py``).
+
+        Args:
+            axes: Dimensions to drop (averaged out); entries not in ``dims``
+                are ignored, mirroring ``marginalize``.
+            initial_state: Full initial state; kept dimensions are fixed to
+                their bits.
+            little_endian: Resolved indexing notation (axis of dimension
+                position ``i`` is ``dims.size - 1 - i`` when little-endian,
+                ``i`` otherwise), matching ``System.marginal_distribution``.
+
+        Returns:
+            The scalar marginal value (float32 under the production dtype).
+        """
+        axes_set = {int(a) for a in axes}
+        key = (little_endian, *(int(d) for d in self.dims if int(d) in axes_set))
+        cached = self.value_memo.get(key)
+        if cached is None:
+            num_dims = self.dims.size - 1
+            selection: list[slice | int] = [slice(None)] * self.dims.size
+            for dim_idx, dim in enumerate(self.dims):
+                if int(dim) not in axes_set:
+                    axis = num_dims - dim_idx if little_endian else dim_idx
+                    selection[axis] = int(initial_state[dim])
+            cached = np.asarray(self.data[tuple(selection)]).mean()
+            self.value_memo[key] = cached
+        return cached
 
     def marginalize(self, axes: NDArray[np.int8]) -> NCube:
         """
