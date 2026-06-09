@@ -990,3 +990,32 @@ obligatoria** (no se había registrado el trabajo reciente).
 - **IA:** la IA hizo el diagnóstico cruzado contra `.core/core_00/QNodes` y `BruteForce`, identificó
   el desajuste de entradas, añadió `--state` en CLI y UI, documentó el arreglo de QNodes y registró
   esta bitácora.
+
+### Continuación (2026-06-09): validación cruzada contra el proyecto original `.core/core_00`
+
+**Prompt:** "validación cruzada con el proyecto original `.core/core_00/`, realiza los tests
+necesarios y recuerda los `.xlsx` y `Pruebas*.xlsx`".
+
+- **TPMs idénticas:** se verificó `diff` byte a byte de las muestras compartidas entre
+  `data/samples/` y `.core/core_00/GeoMIP/data/samples` + `.core/core_00/QNodes/src/.samples`:
+  todas **SAME** (N2A..N6A, N8A, N10A, N15A/B, N3C). La comparación es sobre los mismos datos.
+- **Batería contra el `BruteForce` original (oráculo k=2):** ejecutado el `BruteForce` y el `QNodes`
+  del proyecto original (en su propio venv) sobre N2A..N6A con subsistema completo (estado y máscaras
+  todo-unos). El **`BruteForce` original reproduce exactamente** los 10 valores de
+  `tests/fixtures/golden_k2.py::ORACLE_LOSS` (N2A=0, N3A=0.25, N3B=0.46875, N3C=0, N4A=0, N4B=0,
+  N4C=0, N5A=0, N5B=0.125, N6A=0.46875). El `QNodes` **viejo** de `.core/core_00` es claramente
+  subóptimo (solo 2/10 igualan al BF: N4C, N5A) — confirma el defecto histórico que motivó su
+  reemplazo (CLAUDE.md "antes 2/8 con la base vieja").
+- **Mis estrategias contra el oráculo:** `BruteForce`, `GeometricSIA`, `KGeoMIP(k=2)` y `KQNodes(k=2)`
+  igualan el oráculo en **10/10**; el `QNodes` portado en 9/10 (N3B=0.5, el defecto congelado en
+  `QNODES_SUBOPTIMAL`). Es decir, mi `KQNodes` nuevo **recupera incluso N3B** vía el cut pool de
+  k-particiones, mejor que el `QNodes` aislado.
+- **Ground truth oficial (`data/results/Pruebas_Metodo2.xlsx`, PyPhi k=2):** se comprobó la
+  consistencia interna Pyphi-vs-GeoMIP por hoja: 3 elem 24/24, 4 elem 49/49, 5 elem 49/49, 6 elem
+  50/50, 8 elem 49/49, 10 elem 50/50, 15A 38/38, 15B 38/38, 20 elem 3/4. El GeoMIP oficial reproduce
+  a PyPhi casi perfectamente; encadenado con lo anterior: **mi Geo == BruteForce original == PyPhi**.
+- **Procedencia documentada** en el docstring de `tests/fixtures/golden_k2.py` (los valores golden son
+  la salida del `BruteForce` de referencia, validada el 2026-06-09).
+- **Tests:** suite completa `uv run pytest -q` en verde (204 tests).
+- **IA:** la IA orquestó la batería cruzada (corriendo el proyecto original en su venv), comparó TPMs
+  y losses, leyó la estructura de `Pruebas_Metodo2.xlsx` y verificó la cadena de validación.
