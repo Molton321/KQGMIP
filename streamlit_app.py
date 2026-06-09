@@ -111,6 +111,7 @@ class StreamlitApp:
                 "para empezar el análisis."
             )
         self._render_results()
+        self._render_official_grid()
         self._render_benchmark()
 
     def _inject_theme(self) -> None:
@@ -365,6 +366,42 @@ class StreamlitApp:
             ),
             width="stretch",
         )
+
+    def _render_official_grid(self) -> None:
+        """Render the official-grid batch runner (standardized .xlsx I/O).
+
+        Delegates to the single grid engine (``src/funcs/grid.py``): the
+        official template is the input contract, the results workbook the
+        output contract, and the run shares the expensive preparation across
+        k = 2..5 per subsystem (FASE 11). Interrupted runs resume.
+        """
+        from src.constants.grid import GRID_RESULTS_XLSX, GRID_TEMPLATE_XLSX
+        from src.funcs.grid import fill_grid, grid_sheet_names
+
+        if not GRID_TEMPLATE_XLSX.exists():
+            return
+        st.divider()
+        st.subheader("Rejilla oficial (.xlsx)")
+        st.caption(
+            f"Entrada: `{GRID_TEMPLATE_XLSX.name}` · Salida: `{GRID_RESULTS_XLSX.name}` "
+            "(la plantilla nunca se modifica; las celdas ya llenas se omiten)."
+        )
+        sheets = grid_sheet_names(GRID_TEMPLATE_XLSX)
+        chosen = st.multiselect("Hojas a llenar", sheets, default=[])
+        if st.button("▶ Llenar rejilla", disabled=not chosen):
+            log_box = st.empty()
+            lines: list[str] = []
+
+            def report(line: str) -> None:
+                """Stream per-row progress lines into the UI log box."""
+                lines.append(line)
+                log_box.code("\n".join(lines[-15:]))
+
+            with st.spinner("Ejecutando KQNodes + KGeoMIP sobre la rejilla…"):
+                fill_grid(
+                    GRID_TEMPLATE_XLSX, GRID_RESULTS_XLSX, sheet_names=chosen, progress=report
+                )
+            st.success(f"Rejilla guardada en {GRID_RESULTS_XLSX}")
 
     def _render_benchmark(self) -> None:
         """Render the δ_k-vs-k benchmark grid when a FINAL CSV is present."""

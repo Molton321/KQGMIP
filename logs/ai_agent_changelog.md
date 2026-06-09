@@ -1183,3 +1183,22 @@ QNodes como con GeoMIP, así que sí, debe haber una manera para que esos 2 lleg
   la corrida compartida y las corridas individuales por k en N5A/N6A × ambas estrategias;
   rechazo de k<2; deduplicación de ks.
 - **Gates:** 66 tests (for_ks + kgeomip + kqnodes) en verde; `ruff`/`mypy src` limpios.
+
+### Continuación (2026-06-09): FASE 11 — I/O .xlsx estandarizado (CLI + GUI)
+
+- **`src/funcs/grid.py` (módulo único del contrato .xlsx):** lector del formato oficial
+  (`GridSheet`/`GridTest`, anclas `Estado inicial`/`#Prueba`, máscaras de letras → bits),
+  escritor reanudable (`GridResultsWriter`: la plantilla nunca se modifica, celdas llenas se
+  omiten) y motor `fill_grid` (KQNodes+KGeoMIP × k=2..5 con `apply_strategy_for_ks`).
+  Constantes de layout en `src/constants/grid.py` (columnas por bloque k validadas en Fase 10).
+- **Consumidores unificados (DRY):** `scripts/fill_official_grid.py` queda como wrapper fino;
+  `main_batch.py` autodetecta el formato (hojas `*-Elementos` → motor de rejilla; si no, modo
+  legacy `Pruebas_Metodo2`); `streamlit_app.py` gana la sección "Rejilla oficial (.xlsx)" con
+  selección de hojas y log de progreso (mismo motor, callback).
+- **Detección de formato verificada (no asumida):** `Pruebas_Metodo2.xlsx` usa "elementos" en
+  minúscula y la oficial "-Elementos" — el sufijo case-sensitive no colisiona (comprobado
+  listando los sheetnames de ambos workbooks).
+- **Tests `tests/unit/test_grid_io.py`:** máscaras de letras, parsing de anclas, rechazo de
+  hojas sin anclas, contrato de reanudación de `missing_ks`, y `fill_grid` end-to-end sobre una
+  plantilla sintética N3A (la plantilla queda intacta).
+- **Gates:** suite completa en verde; `ruff check .` y `mypy src` limpios (52 ficheros).

@@ -1,21 +1,28 @@
 """
 Batch processing of subsystems from Excel.
 
-Supports ALL strategies (k-partition + legacy k=2).
-Reads subsystems from the Excel file, runs the chosen strategy for each,
-and stores results in an output Excel.
+Two input formats are supported and auto-detected (FASE 11):
+
+1. **Official grid** (standard): a workbook with ``*-Elementos`` sheets in the
+   ``DatosPruebas2026_1.xlsx`` format. The standardized engine
+   (``src/funcs/grid.py``) runs KQNodes + KGeoMIP for every test row and
+   k ∈ {2..5}, sharing the expensive preparation across k, and writes the
+   official results workbook (the input template is never modified).
+2. **Legacy list** (``Pruebas_Metodo2.xlsx``): a single column of ``AC|abc``
+   subsystem masks, run with one chosen strategy/k into a flat results sheet.
 
 Environment variables:
   IIT_INPUT_XLSX   → path to the input Excel  (default: data/results/Pruebas_Metodo2.xlsx)
   IIT_OUTPUT_XLSX  → path to the output Excel  (default: data/results/resultados.xlsx)
-  IIT_STRATEGY     → strategy name (default: kgeomip)
-  IIT_K            → partition count (default: 3)
+  IIT_STRATEGY     → strategy name (default: kgeomip; legacy format only)
+  IIT_K            → partition count (default: 3; legacy format only)
   IIT_ESTADO_INI   → initial state in bits     (auto-detected from data/samples/)
   IIT_SAMPLES_DIR  → samples directory         (default: data/samples/)
 
 Usage:
     uv run exec.py --batch                          # default: KGeoMIP(k=3) on N10A
     uv run exec.py --batch --strategy kqnodes --k 4
+    IIT_INPUT_XLSX=data/results/DatosPruebas2026_1.xlsx uv run exec.py --batch
     uv run main_batch.py                            # same, direct
 """
 
@@ -178,13 +185,28 @@ def run_from_excel(
 
 
 def run():
-    """CLI entry point (reads env vars or uses defaults)."""
+    """CLI entry point (reads env vars or uses defaults).
+
+    Workbooks containing ``*-Elementos`` sheets are dispatched to the
+    standardized official-grid engine; anything else uses the legacy
+    single-strategy list mode.
+    """
+    from src.constants.grid import GRID_RESULTS_XLSX
+    from src.funcs.grid import fill_grid, grid_sheet_names
+
     input_path = Path(
         os.getenv(
             "IIT_INPUT_XLSX",
             str(PROJECT_ROOT / "data" / "results" / "Pruebas_Metodo2.xlsx"),
         )
     )
+    grid_sheets = grid_sheet_names(input_path) if input_path.exists() else []
+    if grid_sheets:
+        output_path = Path(os.getenv("IIT_OUTPUT_XLSX", str(GRID_RESULTS_XLSX)))
+        print(f"Formato rejilla oficial detectado ({len(grid_sheets)} hojas).")
+        fill_grid(input_path, output_path)
+        return
+
     output_path = Path(
         os.getenv(
             "IIT_OUTPUT_XLSX",
