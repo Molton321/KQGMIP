@@ -65,12 +65,14 @@ class QNodes(SIA):
         delta with the smallest submodular gain. When each phase closes, a candidate
         pair is formed and memoized. Returns the key of the partition with the lowest
         global EMD.
+
+        A subsystem of two or fewer vertices cannot enter the phase loop (which
+        needs at least three vertices to form omega/delta cycles), so every
+        singleton side is evaluated directly to populate ``partition_memo`` for
+        the downstream cut pool.
         """
         phase_vertices = vertices
 
-        # Edge case: ≤ 2 vertices cannot go through the phase cycling loop
-        # (which needs at least 3).  Directly evaluate every singleton side
-        # so that partition_memo is populated for _cut_pool() downstream.
         if len(phase_vertices) <= 2:
             for i, v in enumerate(phase_vertices):
                 side = (v,)

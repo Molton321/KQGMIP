@@ -943,3 +943,50 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
 - **Gates finales:** `ruff check`/`ruff format --check` y `mypy src` en verde; suite `pytest`
   re-ejecutada tras el refactor de viz. `generate_tpm.py` ejecutado de verdad (creó N3D.csv) para
   confirmar que los scripts vuelven a correr.
+
+## 2026-06-09 — Fase 10 (pulido): estado inicial configurable (CLI + UI) + arreglo QNodes subsistema pequeño
+
+**Prompt del usuario (resumen):** reportó una "discrepancia" entre la implementación original de la
+docente (`.core/core_00/QNodes`, `BruteForce` con `estado_inicial="1000"`, `condiciones/alcance/
+mecanismo="1110"` → φ=0.25, bipartición ⎛B⎞⎛A,C⎞ / ⎝∅⎠⎝a,b,c⎠) y su `KQNodes`, que daba φ=0.0000 y
+una partición distinta al ejecutarse con `--condition 1000 --purview 1110 --mechanism 1110`. Luego
+preguntó por qué, con la misma pérdida, los subconjuntos podían diferir. Y recordó la **bitácora
+obligatoria** (no se había registrado el trabajo reciente).
+
+- **Diagnóstico (verificar, no asumir — Invariante 4):** no había bug en `KQNodes`. La discrepancia
+  era de **entradas**: (1) la CLI fijaba el estado inicial a `"1"*n` (no existía forma de pasar otro),
+  así que `--net N4A` usaba `"1111"` y no `"1000"`; (2) el usuario había puesto el valor del estado
+  (`1000`) en `--condition`, donde correspondía `1110`. Al alimentar el código con los parámetros
+  exactos de la docente (`state=1000`, `condition=1110`, `purview=mechanism=1110`), **`BruteForce`,
+  `KQNodes` y `KGeoMIP` dan los tres φ=0.25** con la misma partición (verificado por volcado del
+  objeto `partition`: idénticos salvo orden de bloque y notación `mecanismo|purview` vs apilado).
+- **Respuesta a "misma φ, subconjuntos distintos":** es legítimo. La MIP es el *argmin* de δ_k y el
+  argmin **no es único**: una bipartición y su complemento describen el mismo corte, y los sistemas
+  simétricos tienen **óptimos degenerados (empatados)** donde varias particiones comparten la δ_k
+  mínima. `BruteForce` devuelve la *primera* del mínimo (orden de iteración); las heurísticas greedy
+  rompen empates a su manera. Lo validado es **φ** (Invariante 3), no qué partición empatada se reporta.
+- **`exec.py`: nueva bandera `--state`** (validada a `n` dígitos; por defecto `"1"*n`). La CLI ya puede
+  reproducir casos arbitrarios; comprobado que `--net N4A --strategy kqnodes --state 1000 --condition
+  1110 --purview 1110 --mechanism 1110` reproduce exactamente el resultado de la docente (marginales
+  `[0,0,1]` / `[0,0.25,1]`, φ=0.25).
+- **`streamlit_app.py`: estado inicial editable** (`_render_initial_state`, espejo de `--state`):
+  cadena binaria de `n` dígitos, validada (longitud y `0/1`), con *fallback* a todo-unos; fluye por
+  `tpm_loaded` → `load_tpm`/`run_analysis`. La UI deja de estar fijada a todo-unos.
+- **`q_nodes.py`: arreglo de subsistema ≤ 2 vértices** (cambio del usuario, conservado y documentado):
+  el bucle de fases necesita ≥ 3 vértices, así que con ≤ 2 se evalúa cada lado *singleton*
+  directamente para poblar `partition_memo` (lo consume el cut pool aguas abajo). La explicación se
+  movió de comentario `#` a **docstring** (regla del usuario: documentar sólo con `"""`).
+- **Polish acompañante (cambios del usuario, integrados):** `manager.py` carga la TPM con
+  `np.loadtxt(dtype=float32)` (más estricto, sin pico de copia); `runner.py` corre `ExhaustiveK` con
+  `parallel=True`; `solution.py` amplía la detección `k=` en la cabecera; etiquetas de la rejilla de
+  benchmark en la UI más claras.
+- **Conflicto recurrente — format-on-save del editor vs. ruff:** al reabrir `q_nodes.py` el isort del
+  editor reescribió los imports a un perfil con paréntesis colgantes (rompía `ruff check`) y borró el
+  comentario que se había añadido. Se normalizó con `ruff check --fix` + `ruff format` como últimas
+  escrituras (ver nota de memoria del proyecto). Pendiente real: alinear el isort del editor con ruff.
+- **Gates:** `ruff check` y `mypy src` en verde (49 archivos); `tests/unit/test_qnodes_triage.py`
+  12/12 (la lógica del arreglo ≤2 es idéntica a la ya probada en `87b78e1`). Suite completa `pytest`
+  se reserva para el cierre de fase (regla del usuario: no correr tests en cada cambio).
+- **IA:** la IA hizo el diagnóstico cruzado contra `.core/core_00/QNodes` y `BruteForce`, identificó
+  el desajuste de entradas, añadió `--state` en CLI y UI, documentó el arreglo de QNodes y registró
+  esta bitácora.
