@@ -1,7 +1,8 @@
 """Cross-validation against the professor's original project (Invariante 3/4).
 
 Validates the project's results against the only external reference of record,
-the original project handed out by the professor (.core/core_00):
+the original project handed out by the professor (.core/core_00, source:
+https://github.com/JuManoel/projecto-analisis-20261):
 
 1. TPM samples: the network files we sample from are verified byte-identical
    to the ones shipped in the original project.

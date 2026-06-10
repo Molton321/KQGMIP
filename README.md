@@ -106,9 +106,10 @@ uv run scripts/make_interactive.py         # figuras interactivas (HTML, Plotly)
 (mejor estrategia) iguala el óptimo enumerado por fuerza bruta; a n=10/15, tres búsquedas
 independientes (geométrica, submodular y metaheurística) **convergen** al mismo `δ_k`, lo que es
 fuerte evidencia de óptimo global. Como referencia externa, `validate.py external` reproduce los
-resultados del **proyecto original de la docente** (`.core/core_00`): TPM idéntica byte a byte y
-filas de `resultados_Geometric.xlsx` dentro de la tolerancia float32. El consolidado del benchmark
-vive en `data/results/benchmark.csv`.
+resultados del **proyecto original de la docente** (`.core/core_00`, fuente:
+[github.com/JuManoel/projecto-analisis-20261](https://github.com/JuManoel/projecto-analisis-20261)):
+TPM idéntica byte a byte y filas de `resultados_Geometric.xlsx` dentro de la tolerancia float32. El
+consolidado del benchmark vive en `data/results/benchmark.csv`.
 
 ---
 
