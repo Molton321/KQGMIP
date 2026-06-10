@@ -1300,3 +1300,16 @@ valores no solo tiempo y precisión sino también las particiones son correctas.
   **nuestro ExhaustiveK**, validado a su vez contra el BruteForce de `.core/core_00` (golden
   10/10) y PyPhi — cadena de confianza documentada.
 - **Gates:** suite completa + 5 tests nuevos en verde; `ruff check .` y `mypy src` limpios.
+
+### Continuación (2026-06-09): tabla de evaluación oficial COMPLETA y verificada — notas obsoletas eliminadas
+
+- **Hallazgo:** la hoja `25A-Elementos` quedó **completa (50/50 filas)** — el proceso de llenado
+  terminó la hoja antes de morir, más de lo estimado. La tabla oficial entera (10A, 15B, 20A,
+  22A, 25A) está llenada.
+- **Verificación de particiones completa:** `--verify-partitions` sobre las 5 hojas:
+  **1992 celdas** (392+400+400+400+400) — **0 particiones inválidas, 0 desajustes de pérdida**.
+  Cada partición almacenada es una k-partición estricta válida (§2.1) y su δ_k re-evaluada
+  coincide con la celda.
+- **Notas al pie obsoletas eliminadas** (ítem 🔶 del usuario): las 3 notas de Fase 10 sobre el
+  "techo práctico/OOM a n=25" en 20A/22A/25A contradicen los datos ya presentes; eliminadas del
+  workbook de resultados (la plantilla oficial nunca se tocó).
