@@ -1,0 +1,48 @@
+@startuml diagrama_paquetes
+' Diagrama de paquetes UML — K-QGMIP (Fase 8)
+' Render: plantuml docs/manuales/diagrams/03_paquetes.puml
+skinparam packageStyle folder
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+title K-QGMIP — Diagrama de paquetes
+
+package "src" {
+  package "constants" as constants
+  package "models" {
+    package "base" as m_base
+    package "core" as m_core
+    package "enums" as m_enums
+  }
+  package "controllers" {
+    package "strategies" as c_strat
+    [manager] as c_mgr
+  }
+  package "funcs" as funcs
+  package "middlewares" as mw
+  package "viz" as viz
+}
+
+package "tests" {
+  package "unit" as t_unit
+  package "integration" as t_int
+}
+
+package "scripts" as scripts
+package "docs" as docs
+package "data" as data
+
+c_strat ..> m_base : hereda SIA
+c_strat ..> m_core : System/NCube/KPartition
+c_strat ..> funcs : CostTable, k_refine, emd
+c_mgr ..> m_core : carga TPM → System
+m_base ..> m_core
+m_core ..> m_enums
+funcs ..> m_core
+c_strat ..> mw : logging/profiling
+m_base ..> constants
+viz ..> m_core : KPartition
+scripts ..> c_strat : benchmark / figuras
+scripts ..> funcs : metrics
+t_unit ..> c_strat
+t_unit ..> funcs
+@enduml

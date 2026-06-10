@@ -1,0 +1,86 @@
+@startuml arquitectura_general
+' Diagrama de arquitectura general — K-QGMIP (Fase 8)
+' Render: plantuml docs/manuales/diagrams/01_arquitectura.puml
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+title K-QGMIP — Arquitectura general
+
+actor Usuario as user
+rectangle "Punto de entrada\nexec.py (run / batch / results / benchmark)\nstreamlit_app.py (web)" as entry
+
+package "Configuración" {
+  component "application\n(singleton)" as app
+}
+
+package "Controllers" {
+  component "Manager\nload_network()" as mgr
+  package "Strategies (Strategy)" {
+    component "KGeoMIP" as kgeo
+    component "KQNodes" as kqn
+    component "ClusteringSIA" as clus
+    component "ExhaustiveK\n(ground truth)" as exh
+    component "GeoMIP / QNodes / BruteForce\n(legacy k=2)" as legacy
+  }
+}
+
+package "Models" {
+  component "SIA\n(Template Method)" as sia
+  component "System\n(colección de NCube)" as sys
+  component "NCube" as ncube
+  component "KPartition" as kp
+  component "Solution" as sol
+}
+
+package "Funcs" {
+  component "CostTable (T)" as ct
+  component "greedy_k_partition\n(k_refine)" as kref
+  component "emd / delta_k" as emd
+  component "metrics" as met
+  component "parallel (PCD)" as par
+  component "runner\n(registro de estrategias)" as run
+}
+
+package "Middlewares" {
+  component "SafeLogger" as log
+  component "@profile" as prof
+}
+
+package "Visualización" {
+  component "src/viz\nplot_kpartition" as viz
+}
+
+database "data/samples/*.csv\n(TPM)" as data
+database "data/results/*\n(CSV/XLSX/figuras)" as out
+
+user --> entry
+entry --> app
+entry --> mgr
+mgr --> data
+mgr --> kgeo
+mgr --> kqn
+mgr --> clus
+kgeo --|> sia
+kqn --|> sia
+clus --|> sia
+exh --|> sia
+legacy --|> sia
+sia --> sys
+sys *-- ncube
+kgeo --> ct
+kgeo --> kref
+kqn --> kref
+kref --> emd
+emd --> sys
+kref --> kp
+kgeo --> sol
+kqn --> sol
+sia ..> log
+sia ..> prof
+entry ..> run
+clus ..> par
+sol --> out
+viz --> kp
+viz --> out
+met --> out
+@enduml
