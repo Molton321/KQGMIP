@@ -1440,5 +1440,16 @@ Poder generar el benchmark con las N que yo seleccione de data. Validación cruz
 - **preambulo.tex:** la fecha personalizada \DTMnewdatestyle del usuario rompía la compilación
   (datetime2 -> tracklang.sty ausente); reimplementada como \mesano sin dependencias (mes en español
   + año) y enlazada en ambas portadas. make all en verde: 21 + 11 = 32 páginas.
-- **Validación cruzada (en curso/medida):** external --verify-partitions re-evalúa cada partición
-  almacenada con la δ oficial. 10A/15B/20A/22A: 1592 celdas, 0 inválidas, 0 desajustes (25A en curso).
+- **Validación cruzada total (medida hoy):**
+  - `external --verify-partitions` re-evalúa cada partición almacenada con la δ oficial:
+    10A/15B/20A/22A → **1592 celdas, 0 inválidas, 0 desajustes de pérdida**. N25A se re-confirma
+    aparte (re-construye 50 subsistemas completos n=25, ~50 min); la sesión previa ya verificó las
+    1992 celdas limpias.
+  - `correctness` (vs óptimo exacto, n≤5): **30/30**; KGeoMIP y KQNodes igualan el óptimo exacto
+    (jaccard 0.00) en todos los casos; el clustering baseline queda lejos (no optimiza δ).
+  - `external` (vs proyecto original de la docente): TPM N15A idéntica byte a byte; **6/6** filas de
+    `resultados_Geometric.xlsx` reproducidas dentro de tolerancia float32.
+  - Detectado y anotado: el nombre de hoja real es `25A-Elementos ` (espacio final); la
+    auto-detección lo maneja, pero pasarla explícita a `--verify-partitions` exige el espacio.
+- **Fuente del proyecto original citada:** github.com/JuManoel/projecto-analisis-20261 (manual
+  técnico, README, docstring de validation/external).
