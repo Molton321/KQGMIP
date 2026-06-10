@@ -1342,3 +1342,28 @@ tabla… CLI y GUI deben ofrecer las mismas acciones, fáciles para quien no pro
 - **Estándar corregido tras observación del usuario:** docstring de módulo de exec.py vuelto a
   inglés; la guía de uso en español vive en la constante `USAGE_ES` (cadena de UX).
 - **Gates:** ruff limpio; smoke de `exec.py resultados` y `--help` en verde.
+
+### Continuación (2026-06-10): código muerto, validadores consolidados y CLI rápida en todas sus opciones
+
+- **Vulture + triaje con grep (no se borró nada sin verificar referencias):** eliminados
+  `EXCEL_EXTENSION`, `BRUTEFORCE_ANALYSIS_TAG`, miembros de enum sin implementación
+  (`MANHATTAN`, `EUCLIDEAN`, `GRAY_CODE`, `SIGN_MAGNITUDE`, `TWOS_COMPLEMENT`,
+  `EMD_INTEGRATED`) y `Application.set_distance` (solo HAMMING está implementada).
+  Conservados con justificación: `BruteForce`/`Phi` (oráculos exigidos por la spec §3.2),
+  `LegacyCostTable` y `System.k_partition` (referencias ejecutables de los tests de igualdad),
+  métricas de `metrics.py` (usadas por tests y validación).
+- **Validadores consolidados (petición del usuario):** `validate_correctness/optimality/
+  vs_others` pasan a `scripts/validation/{correctness,optimality,external}.py` con un único
+  punto de entrada `scripts/validate.py {correctness|optimality|external}`. Se conservan
+  porque la spec §4.3 exige validación experimental reproducible.
+- **Prueba de velocidad de toda la CLI (petición del usuario) con dos cuellos encontrados y
+  arreglados:**
+  1. `exec.py results` tardaba **131 s**: el modo read_only de openpyxl re-parsea el XML en
+     cada acceso aleatorio `cell()` (cuadrático con 1992 celdas). Lectura de una pasada con
+     `iter_rows` (`_sheet_values`/`_value_at`) → **2.4 s (55×)**.
+  2. `exec.py batch` sobre tabla completa tardaba **54 s**: cargaba la TPM de cada red
+     (N25 ≈ CSV de 800 MB) aunque no faltara ninguna celda, y guardaba el workbook por fila
+     sin cambios. TPM diferida hasta la primera celda faltante + save solo si se escribió →
+     **3.7 s**. Tiempos finales: --help 1.4 s · demo 2 s · run N5A 1.3 s · results 2.4 s ·
+     batch-resume 3.7 s.
+- **Renombre del usuario respetado:** subcomando `resultados` → `results`.

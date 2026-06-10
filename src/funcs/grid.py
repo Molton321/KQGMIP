@@ -73,57 +73,76 @@ def grid_sheet_names(path: Path) -> list[str]:
         book.close()
 
 
-def read_grid_sheet(path: Path, sheet_name: str) -> GridSheet:
-    """Parse one grid sheet into its standardized representation."""
+def _sheet_values(path: Path, sheet_name: str) -> list[tuple]:
+    """Read every cell value of a sheet in one streaming pass.
+
+    Random ``cell(row, column)`` access on a read-only worksheet re-parses the
+    XML from the top on every call (quadratic on big sheets); a single
+    ``iter_rows`` pass is linear and keeps the viewer instantaneous.
+    """
     book = load_workbook(path, read_only=True)
     try:
-        sheet = book[sheet_name]
-        initial_state = ""
-        header_row = 0
-        for row in range(1, 12):
-            label = sheet.cell(row=row, column=1).value
-            if label == GRID_STATE_LABEL:
-                initial_state = str(
-                    sheet.cell(row=row, column=GRID_PURVIEW_COLUMN).value
-                ).strip()
-            elif label == GRID_HEADER_LABEL:
-                header_row = row
-                break
-        if not initial_state or not header_row:
-            raise ValueError(
-                f"La hoja '{sheet_name}' no tiene las anclas "
-                f"'{GRID_STATE_LABEL}' / '{GRID_HEADER_LABEL}'."
-            )
-
-        num_nodes = len(initial_state)
-        tests: list[GridTest] = []
-        row = header_row + 1
-        while True:
-            purview_letters = sheet.cell(row=row, column=GRID_PURVIEW_COLUMN).value
-            mechanism_letters = sheet.cell(row=row, column=GRID_MECHANISM_COLUMN).value
-            if purview_letters in (None, "") or mechanism_letters in (None, ""):
-                break
-            tests.append(
-                GridTest(
-                    row=row,
-                    purview_letters=str(purview_letters).strip(),
-                    mechanism_letters=str(mechanism_letters).strip(),
-                    purview_mask=letters_to_mask(str(purview_letters), num_nodes),
-                    mechanism_mask=letters_to_mask(str(mechanism_letters), num_nodes),
-                )
-            )
-            row += 1
-
-        page = next(char for char in sheet_name if char.isalpha())
-        return GridSheet(
-            name=sheet_name,
-            initial_state=initial_state,
-            page=page,
-            header_row=header_row,
-            tests=tuple(tests),
-        )
+        return list(book[sheet_name].iter_rows(values_only=True))
     finally:
         book.close()
+
+
+def _value_at(values: list[tuple], row: int, column: int):
+    """1-based cell lookup over a prefetched ``_sheet_values`` matrix."""
+    if row - 1 >= len(values):
+        return None
+    line = values[row - 1]
+    if column - 1 >= len(line):
+        return None
+    return line[column - 1]
+
+
+def read_grid_sheet(path: Path, sheet_name: str) -> GridSheet:
+    """Parse one grid sheet into its standardized representation."""
+    values = _sheet_values(path, sheet_name)
+
+    initial_state = ""
+    header_row = 0
+    for row in range(1, 12):
+        label = _value_at(values, row, 1)
+        if label == GRID_STATE_LABEL:
+            initial_state = str(_value_at(values, row, GRID_PURVIEW_COLUMN)).strip()
+        elif label == GRID_HEADER_LABEL:
+            header_row = row
+            break
+    if not initial_state or not header_row:
+        raise ValueError(
+            f"La hoja '{sheet_name}' no tiene las anclas "
+            f"'{GRID_STATE_LABEL}' / '{GRID_HEADER_LABEL}'."
+        )
+
+    num_nodes = len(initial_state)
+    tests: list[GridTest] = []
+    row = header_row + 1
+    while True:
+        purview_letters = _value_at(values, row, GRID_PURVIEW_COLUMN)
+        mechanism_letters = _value_at(values, row, GRID_MECHANISM_COLUMN)
+        if purview_letters in (None, "") or mechanism_letters in (None, ""):
+            break
+        tests.append(
+            GridTest(
+                row=row,
+                purview_letters=str(purview_letters).strip(),
+                mechanism_letters=str(mechanism_letters).strip(),
+                purview_mask=letters_to_mask(str(purview_letters), num_nodes),
+                mechanism_mask=letters_to_mask(str(mechanism_letters), num_nodes),
+            )
+        )
+        row += 1
+
+    page = next(char for char in sheet_name if char.isalpha())
+    return GridSheet(
+        name=sheet_name,
+        initial_state=initial_state,
+        page=page,
+        header_row=header_row,
+        tests=tuple(tests),
+    )
 
 
 class GridResultsWriter:
@@ -180,38 +199,33 @@ def read_grid_results(path: Path) -> list[dict]:
     """
     rows: list[dict] = []
     for sheet_name in grid_sheet_names(path):
-        sheet = read_grid_sheet(path, sheet_name)
-        red = "N" + sheet_name.strip().replace(f"-{GRID_SHEET_SUFFIX}", "")
-        book = load_workbook(path, read_only=True)
         try:
-            cells = book[sheet_name]
-            for test in sheet.tests:
-                for k in GRID_K_VALUES:
-                    for family, offset in GRID_FAMILY_OFFSET.items():
-                        base = GRID_K_BASE_COLUMN[k] + offset
-                        loss = cells.cell(row=test.row, column=base + 1).value
-                        if loss in (None, ""):
-                            continue
-                        rows.append(
-                            {
-                                "red": red,
-                                "n": sheet.num_nodes,
-                                "prueba": test.row - sheet.header_row,
-                                "alcance": test.purview_letters,
-                                "mecanismo": test.mechanism_letters,
-                                "estrategia": family,
-                                "k": k,
-                                "particion": str(
-                                    cells.cell(row=test.row, column=base).value or ""
-                                ),
-                                "perdida": float(loss),
-                                "tiempo": float(
-                                    cells.cell(row=test.row, column=base + 2).value or 0
-                                ),
-                            }
-                        )
-        finally:
-            book.close()
+            sheet = read_grid_sheet(path, sheet_name)
+        except ValueError:
+            continue
+        red = "N" + sheet_name.strip().replace(f"-{GRID_SHEET_SUFFIX}", "")
+        values = _sheet_values(path, sheet_name)
+        for test in sheet.tests:
+            for k in GRID_K_VALUES:
+                for family, offset in GRID_FAMILY_OFFSET.items():
+                    base = GRID_K_BASE_COLUMN[k] + offset
+                    loss = _value_at(values, test.row, base + 1)
+                    if loss in (None, ""):
+                        continue
+                    rows.append(
+                        {
+                            "red": red,
+                            "n": sheet.num_nodes,
+                            "prueba": test.row - sheet.header_row,
+                            "alcance": test.purview_letters,
+                            "mecanismo": test.mechanism_letters,
+                            "estrategia": family,
+                            "k": k,
+                            "particion": str(_value_at(values, test.row, base) or ""),
+                            "perdida": float(loss),
+                            "tiempo": float(_value_at(values, test.row, base + 2) or 0),
+                        }
+                    )
     return rows
 
 
@@ -284,12 +298,13 @@ def fill_grid(
         sheet = read_grid_sheet(template_path, sheet_name)
         application.set_sample_network_page(sheet.page)
         condition = "1" * sheet.num_nodes
-        tpm = Manager(sheet.initial_state).load_network()
+        tpm = None
         progress(
             f"=== {sheet_name} (n={sheet.num_nodes}, estado={sheet.initial_state}) ==="
         )
 
         for test in sheet.tests:
+            row_wrote = False
             for family, strategy_name in GRID_FAMILY_STRATEGY.items():
                 missing = tuple(
                     k
@@ -298,6 +313,8 @@ def fill_grid(
                 )
                 if not missing:
                     continue
+                if tpm is None:
+                    tpm = Manager(sheet.initial_state).load_network()
                 with contextlib.redirect_stdout(io.StringIO()):
                     analyzer = build_strategy(
                         strategy_name, tpm, sheet.initial_state, missing[0], "spectral"
@@ -315,6 +332,9 @@ def fill_grid(
                         float(solution.loss),
                         float(solution.execution_time),
                     )
+                row_wrote = True
+            if not row_wrote:
+                continue
             writer.save()
             progress(
                 f"  {sheet_name} fila {test.row - sheet.header_row}: "

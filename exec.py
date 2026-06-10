@@ -27,7 +27,7 @@ Comandos (los mismos que ofrece la interfaz web):
     uv run exec.py                                  → demostración + ayuda
     uv run exec.py run --net N10A --k 3             → un análisis individual
     uv run exec.py batch [archivo.xlsx]             → llenar la tabla de evaluación
-    uv run exec.py resultados [archivo.xlsx]        → ver la tabla de resultados
+    uv run exec.py results [archivo.xlsx]        → ver la tabla de resultados
     uv run exec.py benchmark [--quick]              → regenerar el benchmark δ_k vs k
 """
 
@@ -62,7 +62,7 @@ class ExecApp:
             self._run_single(args)
         elif args.command == "batch":
             self._run_batch(args)
-        elif args.command == "resultados":
+        elif args.command == "results":
             self._show_results(args)
         elif args.command == "benchmark":
             self._run_benchmark(args)
@@ -70,7 +70,7 @@ class ExecApp:
             self._run_demo()
 
     def _build_parser(self) -> argparse.ArgumentParser:
-        """Build the subcommand parser (run / batch / resultados / benchmark)."""
+        """Build the subcommand parser (run / batch / results / benchmark)."""
         parser = argparse.ArgumentParser(
             prog="exec.py",
             description=USAGE_ES,
@@ -102,7 +102,7 @@ class ExecApp:
         batch.add_argument("--hojas", nargs="*", default=None, help="Hojas a llenar.")
 
         results = commands.add_parser(
-            "resultados", help="Ver una tabla de resultados en la terminal."
+            "results", help="Ver una tabla de resultados en la terminal."
         )
         results.add_argument(
             "archivo",
@@ -168,7 +168,7 @@ class ExecApp:
             raise SystemExit("La salida no puede ser el mismo archivo de entrada.")
         print(f"Entrada: {source}\nSalida:  {output} (reanudable; la entrada no se modifica)\n")
         fill_grid(source, output, sheet_names=args.hojas)
-        print(f"\nPara ver la tabla: uv run exec.py resultados {output}")
+        print(f"\nPara ver la tabla: uv run exec.py results {output}")
 
     def _show_results(self, args: argparse.Namespace) -> None:
         """Print the console view of a results workbook."""

@@ -8,4 +8,3 @@ class TimeEMD(Enum):
 
     EMD_EFFECT = "emd-effect"
     EMD_CAUSE = "emd-cause"
-    EMD_INTEGRATED = "emd-cause-effect"

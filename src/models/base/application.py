@@ -35,12 +35,6 @@ class Application:
         """Set the binary index notation used to address the n-cubes."""
         self.indexing_notation = kind.value if isinstance(kind, Notation) else str(kind)
 
-    def set_distance(self, kind: MetricDistance) -> None:
-        """Set the ground distance metric used by the causal EMD."""
-        self.metric_distance = (
-            kind.value if isinstance(kind, MetricDistance) else str(kind)
-        )
-
     def set_emd_time(self, kind: TimeEMD) -> None:
         """Set the temporal EMD variant (cause / effect / integrated)."""
         self.emd_time = kind.value if isinstance(kind, TimeEMD) else str(kind)

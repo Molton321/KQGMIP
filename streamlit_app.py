@@ -346,11 +346,16 @@ class StreamlitApp:
         )
 
     def _standard_workbooks(self) -> list[Path]:
-        """Workbooks in data/results/ that follow the standard *-Elementos format."""
+        """Workbooks in data/results/ whose sheets actually parse as the standard
+        format (anchors included), not just by sheet name."""
+        from src.funcs.grid import read_grid_sheet
+
         found = []
         for path in sorted(PATH_RESULTS.glob("*.xlsx")):
             try:
-                if grid_sheet_names(path):
+                names = grid_sheet_names(path)
+                if names:
+                    read_grid_sheet(path, names[0])
                     found.append(path)
             except Exception:
                 continue

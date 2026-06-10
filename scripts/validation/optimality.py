@@ -28,7 +28,7 @@ from pathlib import Path
 
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 # isort: split
 from src.constants.base import DELTA_K_TOLERANCE as TOL

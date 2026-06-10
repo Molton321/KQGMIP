@@ -45,7 +45,6 @@ PROFILING_PATH: str = "review/profiling"
 
 CSV_EXTENSION: str = "csv"
 HTML_EXTENSION: str = "html"
-EXCEL_EXTENSION: str = "xlsx"
 
 TYPE_TAG: str = "type"
 DELTA_K_TOLERANCE: float = 1e-3

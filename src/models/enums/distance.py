@@ -7,5 +7,3 @@ class MetricDistance(Enum):
     """Ground distance metrics for the causal EMD computation."""
 
     HAMMING = "distancia-hamming"
-    MANHATTAN = "distancia-manhattan"
-    EUCLIDEAN = "distancia-euclidiana"
