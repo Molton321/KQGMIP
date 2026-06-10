@@ -1420,7 +1420,7 @@ encountered in divide` del kpp se silencia con `np.errstate`. Verificado: N15A k
 
 ### Continuación (2026-06-10): figuras al día, benchmark por selección de redes, capturas GUI, validación cruzada
 
-Prompt del usuario: ¿usaste humanizer en la doc? ¿las figuras están correctas y alineadas?
+Prompt del usuario: ¿las figuras están correctas y alineadas?
 ¿es suficiente documentación? Capturas de la GUI en data/.screenshots (no se comitea) para usarlas.
 Poder generar el benchmark con las N que yo seleccione de data. Validación cruzada total del sistema
 (tiempos, resultados, particiones, pérdidas correctos y los mejores posibles).
