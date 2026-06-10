@@ -47,14 +47,17 @@ Gestión con [`uv`](https://github.com/astral-sh/uv) (Python 3.14.5).
 
 ```bash
 uv sync                  # instalar dependencias
-uv run exec.py           # análisis individual (configurado en main.py)
-uv run exec.py --batch   # análisis por lotes desde Excel (main_batch.py)
-uv run pytest            # tests (269 tests: regresión k=2, igualdad CostTable vectorizada/legacy, marginal local, validación k=3..5, determinismo)
+uv run exec.py           # análisis individual (subcommand run)
+uv run exec.py batch     # análisis por lotes (formato oficial: datos.xlsx → resultados.xlsx)
+uv run exec.py results    # ver tabla de resultados en consola
+uv run exec.py benchmark # regenerar benchmark completo
+uv run pytest            # 275 tests
 uv run ruff check . && uv run mypy src   # lint + tipos
 ```
 
-`exec.py` despacha a `main.py` (individual) o `main_batch.py` (`--batch`) tras fijar opciones en el
-singleton `application`. La TPM se autocarga de `data/samples/N{len(initial_state)}{page}.csv`.
+`exec.py` tiene subcomandos: `run` (análisis individual), `batch` (llenar tabla desde Excel),
+`results` (ver tabla), `benchmark` (regenerar). La TPM se autocarga de
+`data/samples/N{len(initial_state)}{page}.csv`.
 
 > **Convención de identificadores (2026-06-07):** todo el código fuente está en **inglés**. Los
 > nombres de métodos/atributos que aparecen abajo usan ya la API en inglés. Las **cadenas

@@ -68,8 +68,7 @@ candidato), evitando construir tablas de costos O(2ⁿ × 2ⁿ) que serían invi
 
 ```text
 KQGMIP/                             # repo/carpeta renombrada (nomenclatura oficial)
-├── exec.py                         # punto de entrada (individual / --batch)
-├── main.py · main_batch.py
+├── exec.py                         # CLI unificado: run / batch / results / benchmark
 ├── pyproject.toml                  # deps reales + grupo dev
 ├── README.md                       # reescrito y alineado (Fase 8)
 ├── PLANNING.md                     # este documento
@@ -392,7 +391,7 @@ Los **ENTREGABLES REALES** a crear en `docs/manuales/` son:
 
 ## FASE 11 — Escala N25 (CostTable vectorizada, marginal local, cache por k, I/O xlsx)
 
-**Objetivo:** cumplir la tabla de evaluación oficial `DatosPruebas2026_1.xlsx` hoja `25A-Elementos`, que exige
+**Objetivo:** cumplir la tabla de evaluación oficial `datos.xlsx` hoja `25A-Elementos`, que exige
 columnas **QNodes y Geometric** para k∈{2,3,4,5} a n=25. Elimina el techo práctico n≥20 documentado
 en Fase 10, que era de implementación (estructura de datos y orden de operaciones), no algorítmico.
 
