@@ -37,37 +37,45 @@
 \definecolor{codecm}{rgb}{0.25,0.50,0.30}
 \definecolor{codestr}{rgb}{0.60,0.20,0.20}
 \lstdefinestyle{py}{
-  language=Python,
-  backgroundcolor=\color{codebg},
-  basicstyle=\ttfamily\footnotesize,
-  keywordstyle=\color{codekw}\bfseries,
-  commentstyle=\color{codecm}\itshape,
-  stringstyle=\color{codestr},
-  showstringspaces=false,
-  breaklines=true,
-  frame=single,
-  rulecolor=\color{gray!40},
-  numbers=left,
-  numberstyle=\tiny\color{gray},
-  captionpos=b,
+	language=Python,
+	backgroundcolor=\color{codebg},
+	basicstyle=\ttfamily\footnotesize,
+	keywordstyle=\color{codekw}\bfseries,
+	commentstyle=\color{codecm}\itshape,
+	stringstyle=\color{codestr},
+	showstringspaces=false,
+	breaklines=true,
+	frame=single,
+	rulecolor=\color{gray!40},
+	numbers=left,
+	numberstyle=\tiny\color{gray},
+	captionpos=b,
 }
 \lstdefinestyle{sh}{
-  backgroundcolor=\color{codebg},
-  basicstyle=\ttfamily\footnotesize,
-  breaklines=true,
-  frame=single,
-  rulecolor=\color{gray!40},
-  captionpos=b,
+	backgroundcolor=\color{codebg},
+	basicstyle=\ttfamily\footnotesize,
+	breaklines=true,
+	frame=single,
+	rulecolor=\color{gray!40},
+	captionpos=b,
 }
 \lstset{style=py}
 % Permite acentos/UTF-8 dentro de los entornos lstlisting.
 \lstset{literate=%
-  {á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1
-  {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1
-  {ñ}{{\~n}}1 {Ñ}{{\~N}}1 {ü}{{\"u}}1 {¿}{{?`}}1 {¡}{{!`}}1}
+	{á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1
+{Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1
+{ñ}{{\~n}}1 {Ñ}{{\~N}}1 {ü}{{\"u}}1 {¿}{{?`}}1 {¡}{{!`}}1}
 
 % Atajos matemáticos del dominio
 \newcommand{\dk}{\delta_k}
 \newcommand{\EMD}{\mathrm{EMD}}
 \newcommand{\bigO}{\mathcal{O}}
 \newcommand{\R}{\mathbb{R}}
+
+% Formato de fecha personalizado (mes y año), sin dependencias externas.
+\newcommand{\mesano}{%
+	\ifcase\month\or enero\or febrero\or marzo\or abril\or mayo\or junio\or
+	julio\or agosto\or septiembre\or octubre\or noviembre\or diciembre\fi
+	\space de \the\year%
+}
+

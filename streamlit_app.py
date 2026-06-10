@@ -425,15 +425,15 @@ class StreamlitApp:
                 st.success(f"Tabla de resultados guardada en {output_path}")
 
     def _render_benchmark(self) -> None:
-        """Render the δ_k-vs-k benchmark, with one-click generation when absent."""
+        """Render the δ_k-vs-k benchmark, with a network picker for (re)generation."""
         st.divider()
         st.subheader("Benchmark (δ_k vs k, todas las estrategias)")
         if not BENCHMARK_CSV.exists():
             st.info(
-                "Aún no hay benchmark generado. Genera uno rápido aquí o ejecuta "
-                "uv run exec.py benchmark en la terminal."
+                "Aún no hay benchmark generado. Elige las redes y genéralo aquí, o "
+                "ejecuta uv run exec.py benchmark en la terminal."
             )
-            self._benchmark_generate_button("Generar benchmark rápido (N10A)")
+            self._benchmark_generator()
             return
         df = pd.read_csv(BENCHMARK_CSV)
         valid_nets = [
@@ -441,21 +441,32 @@ class StreamlitApp:
             for n in df["network"].dropna().unique()
             if not df[(df["network"] == n) & df["loss"].notna()].empty
         ]
-        if not valid_nets:
+        if valid_nets:
+            net = st.selectbox("Red", valid_nets)
+            st.plotly_chart(self._plot_loss_k(df, str(net)), width="stretch")
+            with st.expander("Tabla de resultados"):
+                st.dataframe(df, width="stretch")
+        else:
             st.warning("El CSV de benchmark existe pero no tiene filas válidas; regenéralo.")
-            return
-        net = st.selectbox("Red", valid_nets)
-        st.plotly_chart(self._plot_loss_k(df, str(net)), width="stretch")
-        with st.expander("Tabla de resultados"):
-            st.dataframe(df, width="stretch")
-        self._benchmark_generate_button("Regenerar benchmark rápido (N10A)")
+        self._benchmark_generator()
 
-    def _benchmark_generate_button(self, label: str) -> None:
-        """Run the quick benchmark in a subprocess and refresh the page."""
-        if st.button(label):
-            with st.spinner("Corriendo todas las estrategias sobre N10A…"):
+    def _benchmark_generator(self) -> None:
+        """Pick which sampled networks to benchmark and run them in a subprocess."""
+        samples = self._available_samples(PATH_SAMPLES)
+        if not samples:
+            st.caption("No hay muestras en data/samples/ para generar el benchmark.")
+            return
+        default = [n for n in ("N10A", "N15A") if n in samples] or samples[:1]
+        chosen = st.multiselect(
+            "Redes a incluir en el benchmark",
+            samples,
+            default=default,
+            help="Selecciona una o varias redes de data/samples/.",
+        )
+        if st.button("Generar/Regenerar benchmark") and chosen:
+            with st.spinner(f"Corriendo todas las estrategias sobre {', '.join(chosen)}…"):
                 subprocess.run(
-                    [sys.executable, "scripts/run_benchmark.py", "--quick"],
+                    [sys.executable, "scripts/run_benchmark.py", "--nets", *chosen],
                     check=False,
                 )
             st.rerun()

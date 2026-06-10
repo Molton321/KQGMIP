@@ -6,7 +6,7 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
 
 > **Prompt del usuario (requisito 2026-06-07):** cada entrada incluye el **prompt dado por el
 > usuario**. Las entradas a partir de Fase 3 lo registran de origen; las anteriores se rellenaron
-> retroactivamente (*backfill*) cuando el prompt verbatim consta en la conversación. Las entradas de
+> retroactivamente (_backfill_) cuando el prompt verbatim consta en la conversación. Las entradas de
 > Fase 0/1/2 marcadas sin prompt corresponden a sesiones previas cuyo prompt no quedó registrado
 > verbatim, por lo que no se reconstruye (no se inventa).
 
@@ -111,7 +111,7 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
 ## 2026-06-07 — Paso 5: ruff/mypy limpios
 
 - **Acción:** `ruff check .` → **All checks passed** (E402 resuelto moviendo los tags inline bajo
-  los imports en force/geometric/phi; I001/F401/UP* con `--fix`; B904 con `raise ... from err`;
+  los imports en force/geometric/phi; I001/F401/UP\* con `--fix`; B904 con `raise ... from err`;
   B905 con `zip(..., strict=False)`).
 - **Acción:** `mypy src` → **Success: no issues found** (32 archivos). Correcciones: `DUMMY_ARR`
   ahora `np.ndarray`; `memo` de NCube como `dict[..., tuple]`; `System.memo: dict`; `.get()` →
@@ -158,7 +158,7 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
   el nuevo repo, tambien aunque no lo hicimos la traduccion del proyecto a ingles, tambien quisiera
   una validacion cruzada de este core de que no exista codigo legacy, codigo inecesario o que no se
   usa, etc. que el codigo existente es la mejor version posible de si mismo.» (+ decisiones por
-  AskUserQuestion: «Keep both» y «Full migration now»). *(Backfill 2026-06-07.)*
+  AskUserQuestion: «Keep both» y «Full migration now»). _(Backfill 2026-06-07.)_
 - **Acción (arranque de sesión):** la base estaba **rota** en el árbol de trabajo. (1) El `.venv`
   se había creado bajo la ruta vieja `projecto-analisis-20261` → shebangs apuntaban a un Python
   inexistente (`mypy` no arrancaba); se recreó con `rm -rf .venv && uv sync --dev`. (2) Una
@@ -176,15 +176,15 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
   - Ramas `as_matrix`/lista-no-generador de `generar_particiones` (todas las llamadas usan el
     generador por defecto).
   - 13 constantes sin uso en `constants/base.py` (`INFTY_NEG, FLOAT_ONE, ABC_LEN, ROWS_IDX, BITS,
-    EQUIV_SYM, EQUAL_SYM, DASH_SYM, LINE_SYM, NEQ_SYM, SMALL_PHI_STR, INACTIVE, SAMPLES_PATH`).
-  - **Decisión del usuario (preguntado):** *conservar* `BruteForce.analyze_full_network` + sus
+EQUIV_SYM, EQUAL_SYM, DASH_SYM, LINE_SYM, NEQ_SYM, SMALL_PHI_STR, INACTIVE, SAMPLES_PATH`).
+  - **Decisión del usuario (preguntado):** _conservar_ `BruteForce.analyze_full_network` + sus
     generadores (`generate_candidates/subsystems/partitions`) — produce la rejilla Excel que pide la
     Fase 7 — y la cadena `causal_emd`/`select_distance`/`hamming_distance` (métrica EMD_CAUSE opcional).
 - **Acción (migración a inglés — Paso 3, antes diferido; el usuario pidió "full migration now"):**
   reescritos **todos** los archivos de `src/` + `exec.py`/`main.py`/`main_batch.py` + `tests/`:
   identificadores, docstrings y comentarios a **inglés**. Renombres transversales clave:
   `aplicacion→application` (+ atributos: `semilla_numpy→numpy_seed`, `pagina_red_muestra→
-  sample_network_page`, `notacion_indexado→indexing_notation`, `tiempo_emd→emd_time`,
+sample_network_page`, `notacion_indexado→indexing_notation`, `tiempo_emd→emd_time`,
   `profiler_habilitado→profiler_enabled`); `aplicar_estrategia→apply_strategy`,
   `sia_preparar_subsistema→sia_prepare_subsystem`, `sia_subsistema→sia_subsystem`,
   `sia_dists_marginales→sia_marginal_dists`, `sia_tiempo_inicio→sia_start_time`;
@@ -210,7 +210,7 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
   (QNodes/N10A) imprime `Solution` correcta (φ=0.0312, UI en español).
 - **Acción (docs):** actualizadas en `CLAUDE.md` las referencias de API a los nombres en inglés
   (`load_network`, `apply_strategy`, `sia_prepare_subsystem`, `condition/subtract/bipartition/
-  marginal_distribution`, `application`, `generate_network`, `run`) + nota de convención de cadenas.
+marginal_distribution`, `application`, `generate_network`, `run`) + nota de convención de cadenas.
 - **Config del repo:** el remote ya apunta a 20263 (Paso 6 previo); `.venv` recreado. Sin push
   (la historia local sigue divergiendo de 20263).
 - **IA:** la IA hizo la auditoría de código muerto, la migración completa a inglés, la verificación
@@ -238,7 +238,7 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
   - **Bugs corregidos:**
     - `BruteForce.apply_strategy` usaba `set(causes.data)` / `set(effects.data)`,
       donde `.data` en un `np.ndarray` devuelve el memoryview (no los elementos);
-      el resultado eran *bytes* en vez de índices. Reemplazado por
+      el resultado eran _bytes_ en vez de índices. Reemplazado por
       `np.setdiff1d(causes, sub_mechanism)` (con docstring explicando el motivo).
       El bug era **latente** — solo afectaba la partición formateada para display
       en `analyze_full_network` (no en el EMD), por lo que los tests no fallaban.
@@ -248,7 +248,7 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
     - `SIA.apply_strategy` carecía de anotación de retorno `-> Solution`.
   - **Malas prácticas corregidas:**
     - `format.fmt_bipartition` usaba `+ BASE_TWO` (la constante que vale 2) como
-      *padding* de ancho. Renombrada a `WIDTH_PADDING = 2` en `constants/base.py`
+      _padding_ de ancho. Renombrada a `WIDTH_PADDING = 2` en `constants/base.py`
       y usado el nombre semánticamente correcto.
     - `format.fmt_bipartition` chequeaba `if purv_d` (truthy), que funciona
       para sets/listas pero **lanza `ValueError`** para `np.ndarray` con >1
@@ -364,8 +364,8 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
 ## 2026-06-07 — Fase 3: KGeoMIP (geometrico, k-particiones) + semantica estricta
 
 - **Prompt del usuario:** «review, reload and continue / perfecto ahora con que continuamos /
-  recuerda seguir los lineamientos existentes y todo segun la documentacion oficial». *(Backfill
-  2026-06-07.)*
+  recuerda seguir los lineamientos existentes y todo segun la documentacion oficial». _(Backfill
+  2026-06-07.)_
 - **Contexto:** tras cerrar Fase 1/2, se implementa Fase 3 siguiendo `docs/Proyecto_KQMIP.md`
   (§2.1/§2.3/§3) y `PLANNING.md`. Se valida primero contra la documentacion oficial.
 - **Decision de semantica (doc §2.1) — k-particiones estrictas:**
@@ -411,7 +411,7 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
   termines una fase con validaciones y demas crear una rama, hacer los comits de dichos cambios y
   revisiones push y continua con la siguiente fase creando la rama, y etc. ademas segun otro agente
   encontro esto quiero que lo revises y corrigas si es necesario. [audit del otro agente adjunto]».
-  *(Backfill 2026-06-07.)*
+  _(Backfill 2026-06-07.)_
 - **Regla de proceso (nueva):** se documenta en `CLAUDE.md` §"Flujo de trabajo por fases" y en
   `PLANNING.md` §2.9 el ciclo obligatorio: **una rama por fase**, al terminar (validada + verde)
   commit + push + PR, y la fase siguiente arranca en una rama nueva. Aplica desde Fase 3.
@@ -453,7 +453,7 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
     10/10** redes golden (mejora 9/10 → 10/10), alineado con la mitigacion de riesgo de `PLANNING.md`
     ("KQNodes heredaria el defecto → decidir fix"). Esto significa que **KQNodes(k=2) NO bit-replica
     QNodes en N3B** (es estrictamente mejor); el triaje de QNodes (`test_qnodes_triage.py`) sigue
-    fijando el comportamiento *de QNodes* sin cambios.
+    fijando el comportamiento _de QNodes_ sin cambios.
   - Validacion: **KQNodes(k=3) ≥ ExhaustiveK(k=3) en 5/5** (cota inferior exacta); k=3 genuino
     (3 bloques no vacios).
 - **Comparacion de calidad KGeoMIP vs KQNodes (DoD Fase 4)** — δ medida vs exacto (k=3/k=4):
@@ -565,20 +565,20 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
   [validación cruzada de otro agente: NO CUMPLE — claims vs realidad, batch_effect_emd no usado,
   sin vectorización, KQNodes/KGeoMIP mucho más lentos, ExhaustiveK paralelo se cuelga]».
 - **Verificación contra el código realmente commiteado (rama feature/fase6-efficiency, 177958c):**
-  - *"Sin vectorización en marginalize/bipartition"* → **FALSO**: presentes en `system.py:108-116`
+  - _"Sin vectorización en marginalize/bipartition"_ → **FALSO**: presentes en `system.py:108-116`
     (`purview_set`/`mechanism_set`) y `ncube.py:70-84` (`axes_set`/`local_axes`). Los `setdiff1d`/
     `intersect1d` restantes están en caminos **fríos** (`condition`/`subtract`/`k_partition`, 1 vez
     por corrida), no en el bucle caliente.
-  - *"KQNodes 42-63× más lento que lo claimado"* → **FALSO / comparación inválida**: el agente midió
+  - _"KQNodes 42-63× más lento que lo claimado"_ → **FALSO / comparación inválida**: el agente midió
     **N15 k=2** (red grande) contra mi claim de **N10A k=3** (red chica). Medido ahora: N10A k=3
     KGeoMIP=53 ms, KQNodes=181 ms (coincide con el claim). En el caso del agente (N15 k=2) mi código
     da **1606 ms / 5029 ms** vs sus **4922 ms / 13816 ms** → soy **3.1× / 2.7× más rápido** (él midió
     código **sin optimizar**).
-  - *"ExhaustiveK paralelo se cuelga (timeout 2 min)"* → **FALSO en el código actual**: N6A k=3
+  - _"ExhaustiveK paralelo se cuelga (timeout 2 min)"_ → **FALSO en el código actual**: N6A k=3
     paralelo completa en **40.6 s** (exit 0, determinista). El "cuelgue" correspondía a un estado
     intermedio (mi primer enfoque que materializaba TODOS los candidatos) o al código sin el
     refactor de generation-splitting.
-  - *"batch_effect_emd definido pero NO usado"* → **CIERTO** (única crítica válida). El kernel Numba
+  - _"batch_effect_emd definido pero NO usado"_ → **CIERTO** (única crítica válida). El kernel Numba
     no estaba conectado a ninguna estrategia.
 - **Remediación (esta sesión):**
   - **Vectorización de `CostTable._compute_cost`** (cuello real de KGeoMIP, ~35% del tiempo):
@@ -683,7 +683,7 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
   (4096 filas del CSV, evita System/NCubes que serían ~10 GB → OOM). **Limitación honesta
   documentada:** las filas N25A de clustering tienen **partición propuesta + tiempo (<5 ms) pero δ_k
   vacío** — puntuar δ_k a n=25 requiere el System completo (OOM); a n=25 solo se demuestra la
-  *propuesta* de partición, no su calidad. Figuras regeneradas desde el FINAL (7 figuras).
+  _propuesta_ de partición, no su calidad. Figuras regeneradas desde el FINAL (7 figuras).
 - **Techo de escalabilidad (medido, para Manual Técnico §2.8):** KGeoMIP/KQNodes limitados por
   CostTable O(2ⁿ) y Queyranne O(n³) → techo práctico n≈15-20; n=25 solo baseline Clustering
   (propuesta). Tiempos: KGeoMIP N20A k=2 ~52-84 s; KQNodes N20A k=2 ~348 s; Clustering streaming
@@ -784,14 +784,14 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
   interactivas… UI/UX bien desarrollada». Orden confirmado: algoritmos/base primero, luego UI.
 - **Figuras interactivas `src/viz/interactive.py` (Fase 9-B):** `plot_kpartition_interactive`
   (diagrama de bloques de dos capas presente/futuro, hover por bloque), `plot_loss_vs_k_interactive`
-  (δ_k vs k, una línea por estrategia), `plot_scalability_interactive` (tiempo vs n, eje y log).
+  (δ*k vs k, una línea por estrategia), `plot_scalability_interactive` (tiempo vs n, eje y log).
   Plotly se importa de forma perezosa; `src/viz/__init__.py` reexpone los tres vía `__getattr__`
   (no fuerza el extra opcional). Export a HTML autocontenido con `scripts/make_interactive.py`
-  (genera `loss_vs_k_*.html`, `scalability_k*.html`, `partition_*_*.html` con plotly.js por CDN).
-  Verificado: 6 HTML generados desde `benchmark_core_meta.csv` + demo KGeoMIP N4A k3.
+  (genera `loss_vs_k*_.html`, `scalability_k_.html`, `partition*\**\*.html`con plotly.js por CDN).
+Verificado: 6 HTML generados desde`benchmark_core_meta.csv` + demo KGeoMIP N4A k3.
 - **Registro de estrategias `src/funcs/runner.py`:** centraliza `STRATEGY_BUILDERS` (7 estrategias
   k-partitas), `STRATEGY_HELP`, `run_analysis(...)` headless (redirige stdout, devuelve `Solution`
-  + `KPartition`), `available_samples()`, `load_tpm()`. Compartido por la UI y los scripts.
+  - `KPartition`), `available_samples()`, `load_tpm()`. Compartido por la UI y los scripts.
 - **UI web `app/streamlit_app.py` (Fase 9-C):** Streamlit de un archivo. (1) Datos: elegir muestra
   existente o **generar TPM nueva desde el navegador** (0/1 o continua, semilla, `assume_yes=True`);
   (2) Estrategia: selector de las 7 estrategias + ayuda, slider de k (2..min(5,2n)), método de
@@ -830,7 +830,7 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
   alcanzan el óptimo en k pequeño pero se quedan atrás en k mayor sobre el espacio 4^(2n) con los
   presupuestos de iteración por defecto (es el comportamiento esperado de una metaheurística).
 - **Validación de instalación limpia (entorno nuevo):** `git clone` a `/tmp` + `uv sync --extra web
-  --extra emd` → (1) **generar CSV por comando** `scripts/generate_tpm.py --n 4 --yes` (creó N4D.csv);
+--extra emd` → (1) **generar CSV por comando** `scripts/generate_tpm.py --n 4 --yes` (creó N4D.csv);
   (2) análisis headless KGeoMIP N4A k=3 → loss 0.125 + partición; (3) **`pytest` 206 passed**;
   (4) figuras estáticas e interactivas generadas; (5) **UI web arranca** (HTTP 200, `/_stcore/health`
   200, sin errores). El sistema se recrea de cero. Clon temporal eliminado tras validar.
@@ -858,7 +858,7 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
     y la conversión a `float32` creaba una copia → pico ~10 GB. Ahora carga `dtype=np.float32`
     directamente (0/1 exacto; continuos < 1e-6). `main_batch.py` ya no duplica el `genfromtxt`: usa
     `Manager.load_network`. Resultados idénticos (N10A k3 = 0.942383). El `self.network_tpm` que la
-    1.ª auditoría señalaba era sólo una *referencia* (no copia) — confirmado y eliminado igual (DRY).
+    1.ª auditoría señalaba era sólo una _referencia_ (no copia) — confirmado y eliminado igual (DRY).
   - 🟡 **Early-exit `δ=0`** añadido al worker paralelo de `ExhaustiveK` (el secuencial ya lo tenía).
   - 🟢 **Dead code** `BruteForce.analyze_full_network` (+ tag e imports huérfanos) eliminado.
   - 🟢 `np.sort` innecesario del muestreo de afinidad de `ClusteringSIA` eliminado.
@@ -881,7 +881,7 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
 
 ## 2026-06-08 — Estandarización de estilo (sin comentarios `#`), auditoría de archivos y tema de la UI
 
-- **Prompts del usuario:** (1) aplicar a *todos* los archivos el estándar de estilo ya aplicado a mano
+- **Prompts del usuario:** (1) aplicar a _todos_ los archivos el estándar de estilo ya aplicado a mano
   en `src/controllers/*`; (2) hacer una validación cruzada archivo por archivo de por qué debe existir
   cada uno (sospecha de que `scripts/*` y otros sobran); (3) arreglar `streamlit_app.py` (mantiene la
   estructura en clase pero perdió comportamiento y "colores"). Aclaración explícita a mitad de tarea:
@@ -909,7 +909,7 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
   documentación oficial de theming de Streamlit (https://docs.streamlit.io/develop/concepts/configuration/theming):
   paleta violeta/índigo en `.streamlit/config.toml` (`[theme]`, vía oficial) + capa CSS fina
   (`_inject_theme`) para el banner degradado de cabecera y las tarjetas de métrica; insignia de color
-  por *familia* de estrategia (núcleo / baseline / metaheurística / exacta). No se inventó señal de
+  por _familia_ de estrategia (núcleo / baseline / metaheurística / exacta). No se inventó señal de
   optimalidad (no existe en `AnalysisResult`): el color es por familia, no por calidad.
 - **Doc:** corregida la referencia obsoleta a `main.py` (eliminado) en `README.md`.
 - **Gates:** `ruff check` y `ruff format --check` limpios; `mypy src` sin errores. `pytest` se ejecuta
@@ -923,7 +923,7 @@ fecha/hora, acción, parámetros reales probados, justificación y uso de IA. As
 
 - **DRY en `src/viz` (a petición del usuario, "dedup only"):** `_block_color` estaba **duplicado**
   literalmente en `partition_plot.py` e `interactive.py`. Se extrajo a `src/viz/palette.py`
-  (`block_color`), única fuente. En `partition_plot.py` se factorizó además el *boilerplate*
+  (`block_color`), única fuente. En `partition_plot.py` se factorizó además el _boilerplate_
   repetido de matplotlib en tres helpers (`_import_matplotlib`, `_block_legend`, `_save_figure`),
   eliminando la triple repetición del bloque de import/leyenda/guardado. Sin cambio de interfaz
   (las funciones estáticas siguen guardando PNG; las interactivas devuelven Figure) — verificado:
@@ -960,20 +960,20 @@ obligatoria** (no se había registrado el trabajo reciente).
   exactos de la docente (`state=1000`, `condition=1110`, `purview=mechanism=1110`), **`BruteForce`,
   `KQNodes` y `KGeoMIP` dan los tres φ=0.25** con la misma partición (verificado por volcado del
   objeto `partition`: idénticos salvo orden de bloque y notación `mecanismo|purview` vs apilado).
-- **Respuesta a "misma φ, subconjuntos distintos":** es legítimo. La MIP es el *argmin* de δ_k y el
+- **Respuesta a "misma φ, subconjuntos distintos":** es legítimo. La MIP es el _argmin_ de δ_k y el
   argmin **no es único**: una bipartición y su complemento describen el mismo corte, y los sistemas
   simétricos tienen **óptimos degenerados (empatados)** donde varias particiones comparten la δ_k
-  mínima. `BruteForce` devuelve la *primera* del mínimo (orden de iteración); las heurísticas greedy
+  mínima. `BruteForce` devuelve la _primera_ del mínimo (orden de iteración); las heurísticas greedy
   rompen empates a su manera. Lo validado es **φ** (Invariante 3), no qué partición empatada se reporta.
 - **`exec.py`: nueva bandera `--state`** (validada a `n` dígitos; por defecto `"1"*n`). La CLI ya puede
   reproducir casos arbitrarios; comprobado que `--net N4A --strategy kqnodes --state 1000 --condition
-  1110 --purview 1110 --mechanism 1110` reproduce exactamente el resultado de la docente (marginales
+1110 --purview 1110 --mechanism 1110` reproduce exactamente el resultado de la docente (marginales
   `[0,0,1]` / `[0,0.25,1]`, φ=0.25).
 - **`streamlit_app.py`: estado inicial editable** (`_render_initial_state`, espejo de `--state`):
-  cadena binaria de `n` dígitos, validada (longitud y `0/1`), con *fallback* a todo-unos; fluye por
+  cadena binaria de `n` dígitos, validada (longitud y `0/1`), con _fallback_ a todo-unos; fluye por
   `tpm_loaded` → `load_tpm`/`run_analysis`. La UI deja de estar fijada a todo-unos.
 - **`q_nodes.py`: arreglo de subsistema ≤ 2 vértices** (cambio del usuario, conservado y documentado):
-  el bucle de fases necesita ≥ 3 vértices, así que con ≤ 2 se evalúa cada lado *singleton*
+  el bucle de fases necesita ≥ 3 vértices, así que con ≤ 2 se evalúa cada lado _singleton_
   directamente para poblar `partition_memo` (lo consume el cut pool aguas abajo). La explicación se
   movió de comentario `#` a **docstring** (regla del usuario: documentar sólo con `"""`).
 - **Polish acompañante (cambios del usuario, integrados):** `manager.py` carga la TPM con
@@ -1024,8 +1024,7 @@ necesarios y recuerda los `.xlsx` y `Pruebas*.xlsx`".
 
 **Prompt:** el usuario compartió 4 propuestas de otro modelo (híbrido KQNodes→Tabu, tuning de
 Genetic, documentar ExhaustiveK parallel, streaming CostTable) y delegó la decisión, recordando la
-misión: implementación **óptima/eficiente** y verificada. Se **verificó cada afirmación** (Invariante
-4) antes de actuar; varias eran inexactas.
+misión: implementación **óptima/eficiente** y verificada. Se **verificó cada afirmación** (Invariante 4) antes de actuar; varias eran inexactas.
 
 - **Tuning de Genetic (implementado).** Defaults reales eran `30/40` (no `30/50`). Medición directa
   contra el óptimo exacto en N6A k=3: `GA 30/40 = 1.0625` (**11.5%** de error, coincide con el
@@ -1046,7 +1045,7 @@ misión: implementación **óptima/eficiente** y verificada. Se **verificó cada
   KQNodes** sin sembrar (N6A k=5: 1.50 vs 1.94). Conclusión: una clase nueva `HybridKQNodesTabu` sería
   complejidad sin beneficio medible sobre `TabuSIA` (viola KISS y la misión de eficiencia). Se
   **revirtió** el hook `initial_labels` (sin caller = código muerto). El hallazgo honesto: Tabu es el
-  mejor refinador; KQNodes es un buen *upper bound* greedy que Tabu mejora en k alto.
+  mejor refinador; KQNodes es un buen _upper bound_ greedy que Tabu mejora en k alto.
 - **Streaming CostTable (DIFERIDO).** Riesgo de cambiar resultados vs la versión eager; el techo n≈25
   ya está documentado honestamente; baja prioridad según el propio otro modelo. No se implementa.
 - **Pendiente derivado:** el tuning de GA deja **obsoletas las cifras de Genetic** en los CSV de
@@ -1239,7 +1238,7 @@ QNodes como con GeoMIP, así que sí, debe haber una manera para que esos 2 lleg
 
 **Prompt:** "cancelé el grid en N25A… aún más importante es saber si los resultados obtenidos
 hasta el momento son correctos y óptimos… validación cruzada del proyecto original .core/core_00
-(dado por la docente) y los resultados obtenidos por terceros data/results_others/*".
+(dado por la docente) y los resultados obtenidos por terceros data/results_others/\*".
 
 - **Script permanente `scripts/validate_vs_others.py`** (reproducible, Invariante 3/4):
   1. **vs proyecto de la docente (.core/core_00/GeoMIP):** TPMs N5A/N8A/N10A/N15B **idénticas
@@ -1353,7 +1352,7 @@ tabla… CLI y GUI deben ofrecer las mismas acciones, fáciles para quien no pro
   `LegacyCostTable` y `System.k_partition` (referencias ejecutables de los tests de igualdad),
   métricas de `metrics.py` (usadas por tests y validación).
 - **Validadores consolidados (petición del usuario):** `validate_correctness/optimality/
-  vs_others` pasan a `scripts/validation/{correctness,optimality,external}.py` con un único
+vs_others` pasan a `scripts/validation/{correctness,optimality,external}.py` con un único
   punto de entrada `scripts/validate.py {correctness|optimality|external}`. Se conservan
   porque la spec §4.3 exige validación experimental reproducible.
 - **Prueba de velocidad de toda la CLI (petición del usuario) con dos cuellos encontrados y
@@ -1381,7 +1380,7 @@ ni propiedades matemáticas dentro del código."
   comparten su vector de comportamiento; el código solo capturaba `ValueError`, así que la
   excepción se propagaba y la celda fallaba ("1 fail" en el benchmark). Ahora se captura
   `(ValueError, ClusterError)` y cae al corte de Fiedler; el `RuntimeWarning: invalid value
-  encountered in divide` del kpp se silencia con `np.errstate`. Verificado: N15A kmeans k=3/4/5
+encountered in divide` del kpp se silencia con `np.errstate`. Verificado: N15A kmeans k=3/4/5
   devuelven pérdida finita (1.071/1.076/1.083). El warning de scipy ya no aparece.
 - **GUI: regenerar benchmark aunque exista el CSV:** `_render_benchmark` ahora expone el botón
   de generación rápida en ambos caminos (CSV ausente y presente) mediante
@@ -1394,7 +1393,7 @@ ni propiedades matemáticas dentro del código."
   Docstrings de `validate.py`/`external.py` actualizados. Resultado medido hoy: TPM N15A idéntica
   byte a byte; 3/3 filas de la docente reproducidas (p. ej. 0.0002500843 vs 0.0002501011).
 - **Estilo de documentación en el código (petición del usuario):** retirados todos los backticks
-  de resaltado (``…``/`…`) de docstrings y comentarios en 20 ficheros de `src/`, `scripts/`,
+  de resaltado (`…`/`…`) de docstrings y comentarios en 20 ficheros de `src/`, `scripts/`,
   `exec.py` y `streamlit_app.py`; retiradas las propiedades matemáticas/complejidad de los
   docstrings (p. ej. el `O(2^{dropped dims})` de `q_nodes.submodular_function` y el énfasis en
   negrita de `kgeomip.apply_strategy_for_ks`/`external`). Esa parte vive en la documentación
@@ -1402,10 +1401,6 @@ ni propiedades matemáticas dentro del código."
 - **Gates:** `pytest` 275 en verde; `ruff check .` limpio; `mypy src` sin incidencias.
 
 ### Continuación (2026-06-10): manuales al día (post-Fase 11), interpretación §4.3, autores y video
-
-Prompt del usuario: continuar con la documentación (README y manuales); incluir
-autores (Alejandro Gonzales U:13431, Juan Estiven Lopez U:543534) y el video
-(YouTube). Documentar las pruebas de validación y sus resultados.
 
 - **README.md:** subcomandos run/batch/results/benchmark (antes banderas
   --net/--batch y main.py inexistente), 275 tests, validate.py {correctness,
@@ -1419,6 +1414,31 @@ autores (Alejandro Gonzales U:13431, Juan Estiven Lopez U:543534) y el video
   "Interpretación de los resultados" (§4.3); saneos (lst:deltak, API, 275 tests,
   figura, "rejilla"->"tabla", streamlit_app.py, benchmark.csv).
 - **Manual_Usuario.tex:** CLI por subcomandos en toda la guía; capacidades al día
-  (ambas estrategias a n=25); sección de video con YouTube; sin main.py/IIT_*.
+  (ambas estrategias a n=25); sección de video con YouTube; sin main.py/IIT\_\*.
 - **Autores** en la portada de ambos manuales.
 - **Compilación:** make all en verde; 21 pp + 9 pp = 30 páginas; sin refs sin resolver.
+
+### Continuación (2026-06-10): figuras al día, benchmark por selección de redes, capturas GUI, validación cruzada
+
+Prompt del usuario: ¿usaste humanizer en la doc? ¿las figuras están correctas y alineadas?
+¿es suficiente documentación? Capturas de la GUI en data/.screenshots (no se comitea) para usarlas.
+Poder generar el benchmark con las N que yo seleccione de data. Validación cruzada total del sistema
+(tiempos, resultados, particiones, pérdidas correctos y los mejores posibles).
+
+- **Humanizer:** la prosa nueva de los manuales se escribió siguiendo la guía (números medidos, voz
+  llana, sin em-dashes en los párrafos nuevos). El estilo de listas/captions del manual (separador
+  con guion largo) es la convención previa del documento, se respeta.
+- **Figuras regeneradas desde benchmark.csv actual:** make_figures (9 PNG) y make_interactive
+  (8 HTML). Arreglado el orden de imports de make_interactive (sys.path antes de `import src` +
+  `# isort: split`); make_figures y make_interactive apuntan a benchmark.csv (no al nombre viejo).
+- **GUI: selección de redes para el benchmark (petición del usuario):** _render_benchmark ahora
+  ofrece un multiselect de las muestras de data/samples/ y un botón Generar/Regenerar que corre
+  run_benchmark.py --nets con las elegidas; antes solo hacía N10A.
+- **Capturas de la GUI en los manuales:** data/.screenshots/ añadido a .gitignore. Manual_Usuario
+  inserta 4 capturas (generar TPM, ejecución básica k3/N10A, tabla de evaluación, benchmark N20A con
+  el selector de redes) vía \guishot con \IfFileExists (compila aunque falte la carpeta ignorada).
+- **preambulo.tex:** la fecha personalizada \DTMnewdatestyle del usuario rompía la compilación
+  (datetime2 -> tracklang.sty ausente); reimplementada como \mesano sin dependencias (mes en español
+  + año) y enlazada en ambas portadas. make all en verde: 21 + 11 = 32 páginas.
+- **Validación cruzada (en curso/medida):** external --verify-partitions re-evalúa cada partición
+  almacenada con la δ oficial. 10A/15B/20A/22A: 1592 celdas, 0 inválidas, 0 desajustes (25A en curso).

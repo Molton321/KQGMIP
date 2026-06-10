@@ -9,6 +9,9 @@ import argparse
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+# isort: split
 import pandas as pd
 
 from src.funcs.runner import load_tpm, parse_net_label, run_analysis
@@ -18,8 +21,6 @@ from src.viz import (
     plot_loss_vs_k_interactive,
     plot_scalability_interactive,
 )
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 def _export(fig, out: Path) -> None:

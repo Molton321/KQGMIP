@@ -2,7 +2,7 @@
 
 Usage:
     uv run scripts/make_figures.py
-    uv run scripts/make_figures.py --csv data/results/benchmark_results.csv
+    uv run scripts/make_figures.py --csv data/results/benchmark.csv
 """
 
 import argparse
@@ -64,7 +64,7 @@ def fig_loss_vs_k(df: pd.DataFrame, out: Path, net: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate Phase 7 figures")
-    parser.add_argument("--csv", default="data/results/benchmark_results.csv")
+    parser.add_argument("--csv", default="data/results/benchmark.csv")
     parser.add_argument("--out", default="data/results/figures")
     args = parser.parse_args()
 

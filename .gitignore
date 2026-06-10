@@ -70,3 +70,6 @@ data/samples/N22*.csv
 data/samples/N25*.csv
 
 data/results_others/
+
+# Screenshots de la GUI (no se comitean)
+data/.screenshots/
