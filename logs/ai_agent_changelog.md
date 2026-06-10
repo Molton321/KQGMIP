@@ -1400,3 +1400,25 @@ ni propiedades matemáticas dentro del código."
   negrita de `kgeomip.apply_strategy_for_ks`/`external`). Esa parte vive en la documentación
   técnica, no en el código.
 - **Gates:** `pytest` 275 en verde; `ruff check .` limpio; `mypy src` sin incidencias.
+
+### Continuación (2026-06-10): manuales al día (post-Fase 11), interpretación §4.3, autores y video
+
+Prompt del usuario: continuar con la documentación (README y manuales); incluir
+autores (Alejandro Gonzales U:13431, Juan Estiven Lopez U:543534) y el video
+(YouTube). Documentar las pruebas de validación y sus resultados.
+
+- **README.md:** subcomandos run/batch/results/benchmark (antes banderas
+  --net/--batch y main.py inexistente), 275 tests, validate.py {correctness,
+  optimality,external}, sin referencias a main.py/main_batch.py; nota de validación
+  externa solo contra el proyecto original de la docente.
+- **Manual_Tecnico.tex:** validación reescrita en tres bloques (óptimo exacto/legado,
+  proyecto original de la docente, re-evaluación de particiones: 1992 celdas, 0
+  inválidas, 0 desajustes); resultados con datos reales de resultados.xlsx (pérdida y
+  tiempo N10A..N25A, ambas estrategias coinciden en δ); tab:meta refrescada con el
+  benchmark nuevo; limitaciones (techo n≈25 por memoria, no OOM); nueva subsección
+  "Interpretación de los resultados" (§4.3); saneos (lst:deltak, API, 275 tests,
+  figura, "rejilla"->"tabla", streamlit_app.py, benchmark.csv).
+- **Manual_Usuario.tex:** CLI por subcomandos en toda la guía; capacidades al día
+  (ambas estrategias a n=25); sección de video con YouTube; sin main.py/IIT_*.
+- **Autores** en la portada de ambos manuales.
+- **Compilación:** make all en verde; 21 pp + 9 pp = 30 páginas; sin refs sin resolver.

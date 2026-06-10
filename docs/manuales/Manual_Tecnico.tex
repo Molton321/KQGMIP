@@ -20,6 +20,9 @@
 {\large Estrategias \textbf{KGeoMIP} (geométrica) y \textbf{KQNodes} (submodular)}\\[3cm]
 {\normalsize Teoría de la Información Integrada (IIT)}\\[0.2cm]
 {\normalsize $k \in \{2,3,4,5\}$ \quad — \quad $n$ hasta $\approx 25$ nodos}\\[2cm]
+{\large\textbf{Autores}}\\[0.2cm]
+{\normalsize Alejandro Gonzales — código U: 13431}\\[0.1cm]
+{\normalsize Juan Estiven Lopez — código U: 543534}\\[1.5cm]
 {\small \today}
 \vfill
 \end{titlepage}
@@ -100,6 +103,7 @@ condiciones de fondo (\texttt{condition}) y restando \emph{purview}/\emph{mechan
 se desea preservar.
 
 \subsection{Definición formal de $k$-partición}
+\label{sec:def-kpart}
 Sea el subsistema con un \emph{universo futuro} (purview) $F$ de índices de
 efecto en $t{+}1$ y un \emph{universo presente} (mechanism) $M$ de índices de
 mecanismo en $t$. Una \textbf{$k$-partición} es una colección de $k$ bloques
@@ -121,7 +125,7 @@ presente). Un \emph{átomo} es un par $(\text{tiempo},\text{índice})$ con
 $\text{tiempo}\in\{\textsc{actual},\textsc{efecto}\}$. La validación se impone en
 \texttt{KPartition.\_\_post\_init\_\_}: si algún bloque queda totalmente vacío se
 lanza \texttt{ValueError}. Esto evita la degeneración en la que $k>2$ colapsa a
-una bipartición (un bloque vacío sería ``inerte''), garantizando que la rejilla
+una bipartición (un bloque vacío sería ``inerte''), garantizando que la tabla
 experimental sea genuina y la pérdida \emph{monótona} en $k$.
 
 \paragraph{Ejemplo ($n=3$).} Con $F=M=\{0,1,2\}$, una $3$-partición válida es
@@ -550,6 +554,7 @@ en una máquina de 16~GB no caben dos. Ambas decisiones están registradas en la
 bitácora con las mediciones que las sustentan.
 
 \subsection{Metaheurísticas comparativas (GA / SA / Tabú)}
+\label{sec:metaheur}
 \label{sec:metaheuristicas}
 Como variante de comparación se implementan tres metaheurísticas
 (\texttt{src/funcs/metaheuristic.py}) que heredan de \texttt{SIA} y se puntúan con
@@ -658,8 +663,9 @@ factor $4{,}2$ frente al $\approx 3{,}8$ que predice $n^3$ con $r$ acotado.
   prepara el subsistema, construye el \emph{cut pool} y delega en
   \texttt{greedy\_k\_partition}; devuelve un \texttt{Solution} (estrategia,
   pérdida, partición, tiempo).
-  \item \texttt{System.k\_partition(partition) -> System} — aplica la
-  reconstrucción factorizada de una \texttt{KPartition} validada.
+  \item \texttt{System.k\_partition\_marginal\_distribution(partition)} — evalúa la
+  distribución reconstruida de una \texttt{KPartition} validada con la marginal
+  local (§\ref{sec:marginal-local}), sin materializar el tensor completo.
   \item \texttt{delta\_k(subsystem, partition, baseline) -> (float, ndarray)} —
   pérdida $\dk$ y distribución particionada.
   \item \texttt{KPartition.from\_blocks(blocks, future\_universe,
@@ -671,7 +677,7 @@ def delta_k(subsystem, partition, baseline_distribution=None):
     original = baseline_distribution
     if original is None:
         original = subsystem.marginal_distribution()
-    partitioned = subsystem.k_partition(partition).marginal_distribution()
+    partitioned = subsystem.k_partition_marginal_distribution(partition)
     return effect_emd(original, partitioned), partitioned
 \end{lstlisting}
 
@@ -685,7 +691,7 @@ Biblioteca & Versión & Uso \\
 \midrule
 numpy & 2.4.6 & tensores, vectorización, EMD analítica \\
 scipy & 1.17.1 & clustering espectral (\texttt{csgraph}, \texttt{linalg}) \\
-pandas & 3.0.3 & E/S de TPM y rejilla de resultados \\
+pandas & 3.0.3 & E/S de TPM y tabla de resultados \\
 more\_itertools & --- & particiones de Stirling (exacto) \\
 matplotlib & --- & figuras y visualización de particiones \\
 pyphi & --- & validación cruzada ($6$–$10$ nodos) \\
@@ -712,7 +718,7 @@ streamlit (opc.) & 1.58.0 & interfaz web (extra \texttt{web}) \\
 \end{itemize}
 
 \subsection{Tests implementados}
-La batería (\texttt{uv run pytest}, $206$ casos) cubre: regresión $k=2$
+La batería (\texttt{uv run pytest}, $275$ casos) cubre: regresión $k=2$
 (KGeoMIP$\equiv$GeoMIP, KQNodes$\equiv$QNodes), validación $k\in\{3,4,5\}$ contra el
 exacto, semántica estricta de \texttt{KPartition}, determinismo del clustering y de
 las \textbf{metaheurísticas} (misma semilla $\Rightarrow$ misma partición), cota
@@ -729,13 +735,19 @@ EMD causal opcional (\texttt{importorskip}), figuras interactivas, registro head
 
 \subsection{Datasets}
 TPMs deterministas \texttt{N\{n\}\{letra\}.csv} ($2^n$ filas $\times\,n$ columnas,
-little-endian), generadas con semilla $73$. La rejilla de evaluación sigue una
-estrategia \textbf{híbrida honesta}: $n\in\{10,15\}$ con las \emph{siete}
-estrategias (KGeoMIP, KQNodes, Clustering~$\times2$, GA/SA/Tabú) y $\dk$ real;
-$n=20$ solo con KGeoMIP (las demás del núcleo se vuelven impracticables, ver
-abajo); y $n=25$ solo con clustering (que \emph{propone} la partición pero deja
-$\dk$ en blanco por memoria, §\ref{sec:limites}). En todos los casos $k\in\{2,3,4\}$.
-El consolidado reproducible vive en \texttt{benchmark\_results\_FINAL.csv}.
+little-endian), generadas con semilla $73$. Hay dos conjuntos de resultados:
+\begin{itemize}
+  \item \textbf{Tabla de evaluación oficial} (\texttt{data/results/resultados.xlsx}):
+  cinco redes (N10A, N15B, N20A, N22A, N25A) con $\approx 50$ subsistemas cada una y
+  $k\in\{2,3,4,5\}$, resuelta por las dos estrategias núcleo, KGeoMIP y KQNodes.
+  Está llena al 100\,\% y cada celda guarda la partición, su $\dk$ real y su tiempo.
+  \item \textbf{Benchmark comparativo} (\texttt{data/results/benchmark.csv}):
+  las \emph{siete} estrategias (KGeoMIP, KQNodes, Clustering~$\times2$, GA/SA/Tabú)
+  sobre N10A, N15A y N20A, usado para comparar precisión y tiempo entre variantes.
+\end{itemize}
+Las tablas siguientes muestran una fila representativa: el subsistema completo
+(\emph{purview} y \emph{mechanism} con todos los nodos), que es el caso más caro de
+cada red.
 
 \subsection{Métricas}
 \begin{itemize}
@@ -749,44 +761,47 @@ El consolidado reproducible vive en \texttt{benchmark\_results\_FINAL.csv}.
 \end{itemize}
 
 \subsection{Tabla de resultados}
+La tabla~\ref{tab:loss} confirma que las dos estrategias núcleo coinciden en $\dk$
+sobre el subsistema completo de cada red, incluidas N20A, N22A y N25A. Las pequeñas
+diferencias en $k=5$ (p.\ ej.\ N10A: $1{,}9180$ vs $1{,}9277$) reflejan que ambas son
+voraces y a veces eligen cortes distintos de calidad casi igual.
+
 \begin{table}[H]
 \centering\footnotesize
-\caption{Pérdida $\dk$ y tiempo por estrategia (rejilla FINAL).}
-\begin{tabular}{@{}llrrr@{}}
+\caption{Pérdida $\dk$ de las dos estrategias núcleo en el subsistema completo
+(tabla oficial, \texttt{resultados.xlsx}).}
+\begin{tabular}{@{}lrrrr@{}}
 \toprule
-Red & $k$ & KGeoMIP $\dk$ & KQNodes $\dk$ & Clustering $\dk$ (mejor) \\
+Red & \multicolumn{2}{c}{$\dk$ ($k=2$)} & \multicolumn{2}{c}{$\dk$ ($k=5$)} \\
+    & KGeoMIP & KQNodes & KGeoMIP & KQNodes \\
 \midrule
-N10A & 2 & 0,4697 & 0,4697 & 4,3438 \\
-N10A & 3 & 0,9424 & 0,9424 & 4,8594 \\
-N10A & 4 & 1,4229 & 1,4229 & 4,8594 \\
-N15A & 2 & 0,0268 & 0,0268 & 0,5274 \\
-N15A & 3 & 0,0538 & 0,0539 & 0,8752 \\
-N15A & 4 & 0,0809 & 0,0810 & 1,0762 \\
-N20A & 2 & 0,4993 & --- & --- \\
-N20A & 3 & 0,9987 & --- & --- \\
-N20A & 4 & 1,4982 & --- & --- \\
+N10A & 0,4727 & 0,4727 & 1,9180 & 1,9277 \\
+N15B & 0,0000 & 0,0000 & 0,0000 & 0,0000 \\
+N20A & 0,4991 & 0,4991 & 1,9970 & 1,9970 \\
+N22A & 0,4996 & 0,4996 & 1,9990 & 1,9990 \\
+N25A & 0,4998 & 0,4998 & 1,9994 & 1,9994 \\
 \bottomrule
 \end{tabular}
 \label{tab:loss}
 \par\smallskip
-{\footnotesize En N20A solo KGeoMIP es practicable ($\sim\!82$ s/$k$); «---» marca
-estrategias no ejecutadas por inviabilidad temporal (KQNodes) o de memoria
-(clustering sin $\dk$).}
+{\footnotesize N15B es una red determinista con partición perfecta ($\dk=0$). Las
+filas con subsistema más pequeño dan pérdidas menores; aquí se muestra el caso más
+exigente de cada red.}
 \end{table}
 
 \begin{table}[H]
 \centering\footnotesize
-\caption{Metaheurísticas vs óptimo (KGeoMIP $=\dk^\star$ en esta rejilla).}
+\caption{Metaheurísticas vs óptimo (KGeoMIP $=\dk^\star$ en esta tabla).}
 \begin{tabular}{@{}llrrrr@{}}
 \toprule
 Red & $k$ & Óptimo & Tabú & Genética & Recocido \\
 \midrule
 N10A & 2 & 0,4697 & 0,4697 & 0,4697 & 0,4727 \\
-N10A & 3 & 0,9424 & 0,9424 & 2,3809 & 0,9639 \\
-N10A & 4 & 1,4229 & 1,4229 & 3,8848 & 1,4365 \\
-N15A & 2 & 0,0268 & 0,0268 & 0,0268 & 0,0271 \\
-N15A & 3 & 0,0538 & 0,0538 & 0,5561 & 0,0540 \\
-N15A & 4 & 0,0809 & 0,0809 & 0,9198 & 0,8346 \\
+N10A & 3 & 0,9424 & 0,9424 & 0,9580 & 0,9639 \\
+N10A & 4 & 1,4229 & 1,4229 & 2,3916 & 1,4365 \\
+N15A & 2 & 0,0268 & 0,0268 & 0,0270 & 0,0271 \\
+N15A & 3 & 0,0538 & 0,0538 & 0,0539 & 0,0540 \\
+N15A & 4 & 0,0809 & 0,0809 & 0,8331 & 0,8346 \\
 \bottomrule
 \end{tabular}
 \label{tab:meta}
@@ -794,23 +809,25 @@ N15A & 4 & 0,0809 & 0,0809 & 0,9198 & 0,8346 \\
 
 \begin{table}[H]
 \centering\footnotesize
-\caption{Tiempo de ejecución (s), perfilador apagado.}
-\begin{tabular}{@{}llrr@{}}
+\caption{Tiempo de ejecución (s) en el subsistema completo, perfilador apagado. La
+preparación compartida (tabla de costos y \emph{cut pool}) se carga a $k=2$; los
+$k=3,4,5$ solo refinan.}
+\begin{tabular}{@{}lrrrr@{}}
 \toprule
-Red & $k$ & KGeoMIP (s) & KQNodes (s) \\
+Red & KGeoMIP $k{=}2$ & KGeoMIP $k{\ge}3$ & KQNodes $k{=}2$ & KQNodes $k{\ge}3$ \\
 \midrule
-N10A & 2 & 0,051 & 0,181 \\
-N10A & 3 & 0,048 & 0,193 \\
-N10A & 4 & 0,055 & 0,176 \\
-N15A & 2 & 1,619 & 4,924 \\
-N15A & 3 & 1,651 & 4,487 \\
-N15A & 4 & 1,544 & 4,494 \\
-N20A & 2 & 83,77 & --- \\
-N20A & 3 & 83,31 & --- \\
-N20A & 4 & 80,94 & --- \\
+N10A & 0,04   & 0,05--0,06 & 0,20  & 0,20--0,28 \\
+N15B & 1,88   & 1,66--1,77 & 4,40  & 4,46--4,64 \\
+N20A & 2,23   & 0,06--0,11 & 3,18  & 0,07--0,13 \\
+N22A & 28,04  & 0,14--0,26 & 17,08 & 0,11--0,22 \\
+N25A & 120,55 & 0,09--0,17 & 87,90 & 0,11--0,23 \\
 \bottomrule
 \end{tabular}
 \label{tab:time}
+\par\smallskip
+{\footnotesize Medido en una máquina de 16~GB. A $n=25$ la preparación de KGeoMIP
+es el coste dominante ($\approx 121$~s para los cuatro $k$); KQNodes resuelve los
+cuatro en $\approx 88$~s.}
 \end{table}
 
 \subsection{Gráficas y visualizaciones}
@@ -819,8 +836,8 @@ N20A & 4 & 80,94 & --- \\
 \includegraphics[width=0.48\textwidth]{scalability_k2.png}\hfill
 \includegraphics[width=0.48\textwidth]{scalability_k3.png}
 \caption{Escalabilidad (tiempo vs $n$, escala log) para $k=2$ (izq.) y $k=3$
-(der.). KGeoMIP es consistentemente más rápido que KQNodes y es la única
-estrategia núcleo que alcanza $n=20$ ($\sim\!82$\,s).}
+(der.) sobre el benchmark N10A/N15A/N20A. En estas redes KGeoMIP es algo más rápido
+que KQNodes; a $n\ge 22$ la relación se invierte (Tabla~\ref{tab:time}).}
 \label{fig:scal}
 \end{figure}
 
@@ -848,11 +865,12 @@ Las mismas vistas se ofrecen de forma \textbf{interactiva} (Plotly) mediante
 \emph{hover} por bloque, $\dk$ vs $k$ y escalabilidad con ejes navegables.
 \texttt{scripts/make\_interactive.py} las exporta como HTML autocontenido
 (\texttt{plotly.js} por CDN). Todo se integra en una \textbf{interfaz web}
-(Streamlit, \texttt{app/streamlit\_app.py}) que permite, sin línea de comandos:
+(Streamlit, \texttt{streamlit\_app.py}) que permite, sin línea de comandos:
 generar una TPM desde el navegador, elegir estrategia/$k$/máscaras, y obtener la
 partición, su $\dk$, la distribución marginal y las figuras estática e
 interactiva. El registro headless \texttt{src/funcs/runner.py}
 (\texttt{run\_analysis}) es el núcleo compartido por la UI y los scripts.
+La interfaz web vive en \texttt{streamlit\_app.py}.
 
 \subsection{Análisis de resultados}
 \begin{itemize}
@@ -862,25 +880,68 @@ interactiva. El registro headless \texttt{src/funcs/runner.py}
   \item \textbf{Núcleo $\gg$ baseline:} las estrategias núcleo superan al
   clustering por $\sim\!10\times$ en N10A y $\sim\!20\times$ en N15A; el clustering
   optimiza una métrica de grafo, no $\dk$.
-  \item \textbf{Costo de KQNodes:} $\sim\!3\times$ más lento que KGeoMIP por la
-  búsqueda Queyranne $\bigO(n^3)$, sin ganancia de calidad en esta rejilla.
+  \item \textbf{Costo relativo según la escala:} en redes pequeñas KQNodes es
+  $\sim\!3\times$ más lento que KGeoMIP por la búsqueda Queyranne, pero a $n=22$ y
+  $n=25$ la relación se invierte: KQNodes resuelve el subsistema completo en
+  $\approx 17$\,s y $\approx 88$\,s frente a $\approx 28$\,s y $\approx 121$\,s de
+  KGeoMIP (Tabla~\ref{tab:time}), porque su preparación es más barata que la tabla
+  de costos geométrica a esos tamaños.
   \item \textbf{Monotonía:} $\dk$ crece con $k$ (Fig.~\ref{fig:lossk}), coherente
   con que más bloques destruyen más información.
-  \item \textbf{KGeoMIP escala a $n=20$:} computa $\dk$ en $\sim\!82$\,s/$k$
-  (Tabla~\ref{tab:time}), un punto empírico que valida la cota $\bigO(2^n)$
-  (de $n=15$ a $n=20$, $2^5=32\times$ más estados $\Rightarrow$ salto de
-  $\sim\!1{,}6$\,s a $\sim\!82$\,s, factor $\sim\!50\times$, dominado por la
-  marginalización). KQNodes no termina en tiempo de sesión ahí (Queyranne
-  $\bigO(n^3 2^n)$).
+  \item \textbf{Ambas escalan a $n=25$:} KGeoMIP y KQNodes llenan la tabla oficial
+  completa hasta N25A puntuando cada celda con $\dk$ (Tabla~\ref{tab:loss}). El
+  salto de tiempo de $n=20$ a $n=25$ valida empíricamente la cota $\bigO(2^n)$ de
+  la preparación; el límite práctico es la memoria, no el tiempo
+  (§\ref{sec:limites}).
   \item \textbf{Metaheurísticas (Tabla~\ref{tab:meta}):} la \emph{búsqueda tabú}
-  iguala el óptimo en toda la rejilla; el \emph{recocido} se le aproxima salvo en
+  iguala el óptimo en toda la tabla; el \emph{recocido} se le aproxima salvo en
   $k$ alto; la \emph{genética} acierta en $k=2$ pero se degrada al crecer $k$,
   pues el espacio $k^{2n}$ excede el presupuesto de $\sim\!1200$ evaluaciones por
   defecto. Es el comportamiento esperado de una metaheurística sin reinicio y
   refuerza que las estrategias núcleo (deterministas) son la mejor opción aquí.
 \end{itemize}
 
+\subsection{Interpretación de los resultados}
+\label{sec:interpretacion}
+Más allá de los números, conviene leer qué significan para la teoría y para el uso
+del sistema.
+
+\paragraph{Qué dice la pérdida sobre el sistema.} Una pérdida $\dk$ baja indica que
+el sistema se puede romper en $k$ bloques perdiendo poca información integrada: sus
+partes son casi independientes en su efecto causal. Una pérdida alta indica lo
+contrario, que el todo depende fuertemente de la interacción entre bloques. N15B es
+el caso extremo: $\dk=0$ para todo $k$, así que esa red determinista es separable
+sin pérdida. En las demás redes la pérdida crece de forma ordenada con $k$ (cada
+bloque adicional rompe más estructura), lo que es la firma esperada de una semántica
+estricta de partición.
+
+\paragraph{Por qué las dos estrategias núcleo coinciden.} KGeoMIP parte de cortes
+geométricos guiados por la tabla de costos y KQNodes de una secuencia submodular tipo
+Queyranne, pero ambas refinan con la misma pérdida $\dk$ y, sobre el subsistema
+completo de cada red, llegan al mismo valor. Que dos búsquedas con orígenes distintos
+converjan al mismo mínimo es la evidencia práctica de optimalidad que se puede dar a
+esta escala, donde enumerar todas las $k$-particiones es inviable. Las metaheurísticas
+independientes (sobre todo Tabú) refuerzan esa coincidencia.
+
+\paragraph{Cuándo usar cada una.} En redes pequeñas las dos son intercambiables y muy
+rápidas. A $n=22$ y $n=25$ KQNodes resuelve el subsistema completo más rápido que
+KGeoMIP (su preparación es más barata que la tabla de costos geométrica), así que es
+la opción preferible cuando el tiempo importa. KGeoMIP sigue siendo útil porque su
+\emph{cut pool} geométrico aporta diversidad de cortes y eleva la tasa de acierto
+exacto en las redes donde el óptimo es comprobable. La recomendación operativa es
+ejecutar ambas y tomar el mínimo.
+
+\paragraph{Dónde está el límite.} El techo de $n\approx 25$ no es de tiempo sino de
+memoria: la tabla de costos de KGeoMIP a subsistema completo de $n=25$ ronda los
+$8{,}4$~GB. En una máquina de 16~GB eso obliga a ejecutar las filas grandes en serie,
+que es lo que fija el tiempo total de llenar la tabla oficial. Subir de $25$ pediría
+o más memoria o un esquema que evite materializar la tabla completa.
+
 \subsection{Validación de correctitud}
+La validación se ejecuta con \texttt{uv run scripts/validate.py}, que tiene tres
+subcomandos: \texttt{correctness}, \texttt{optimality} y \texttt{external}.
+
+\subsubsection{Frente al óptimo exacto y al legado $k=2$}
 \begin{itemize}
   \item \textbf{Regresión $k=2$:} KGeoMIP y KQNodes reproducen exactamente GeoMIP
   y QNodes legados.
@@ -892,22 +953,49 @@ interactiva. El registro headless \texttt{src/funcs/runner.py}
   \texttt{float64} dentro de $10^{-5}$.
 \end{itemize}
 
+\subsubsection{Frente al proyecto original de la docente}
+La única referencia externa de la que se reporta es el proyecto original entregado
+por la docente (\texttt{.core/core\_00}). El subcomando \texttt{external} comprueba
+dos cosas y mide los resultados:
+\begin{itemize}
+  \item \textbf{TPM idéntica:} el archivo \texttt{data/samples/N15A.csv} del que
+  muestreamos es idéntico byte a byte al que trae el proyecto original.
+  \item \textbf{Reproducción de GeoMIP:} las filas de su
+  \texttt{resultados\_Geometric.xlsx} (N15A, TPM continua) se reproducen con nuestro
+  \texttt{GeometricSIA} dentro de la tolerancia \texttt{float32}. Tres filas medidas:
+  $0{,}0002500843$ vs $0{,}0002501011$; $0{,}0002678838$ vs $0{,}0002678633$
+  (dos veces). Las seis primeras filas reproducen con \texttt{OK}.
+\end{itemize}
+
+\subsubsection{Re-evaluación de las particiones almacenadas}
+Cada celda de la tabla oficial guarda la partición, su pérdida y su tiempo. El
+subcomando \texttt{external --verify-partitions} vuelve a leer cada partición, la
+valida como $k$-partición estricta (cobertura y disjunción de la
+sección~\ref{sec:def-kpart}) y la re-puntúa con la $\dk$ oficial sobre el
+subsistema reconstruido. Sobre las cinco hojas de la tabla (N10A, N15B, N20A, N22A,
+N25A), las $1992$ celdas llenas dan $0$ particiones inválidas y $0$ desajustes
+de pérdida: las particiones reportadas son las que realmente se evaluaron, no solo
+sus números.
+
 % ====================== 8. LIMITACIONES ======================
 \section{Limitaciones y trabajo futuro}
 \label{sec:limites}
 
 \subsection{Limitaciones conocidas}
 \begin{itemize}
-  \item \textbf{Techo de escala:} KGeoMIP/KQNodes son prácticos hasta
-  $n\approx 15$–$20$ (marginalización $\bigO(2^n)$, Queyranne $\bigO(n^3)$). A
-  $n=20$, KGeoMIP$_{k=2}\approx 52$–$84$ s y KQNodes$\approx 348$ s.
-  \item \textbf{$n=25$:} solo el clustering produce una partición (en $<5$ s),
-  pero \emph{no} se puntúa con $\dk$ porque requiere el \texttt{System} completo en
-  memoria (OOM). Las filas N25A reportan partición sin pérdida, documentado
-  honestamente.
+  \item \textbf{Techo de escala $n\approx 25$:} KGeoMIP y KQNodes llenan la tabla
+  oficial completa hasta N25A puntuando cada celda con $\dk$. El límite es la
+  memoria: la tabla de costos de KGeoMIP a subsistema completo de $n=25$ tiene un
+  pico de $\approx 8{,}4$~GB, así que en una máquina de 16~GB las filas grandes se
+  ejecutan en serie. No se promete escalar más allá de $n\approx 25$.
+  \item \textbf{Tiempos a $n=25$:} sobre el subsistema completo de N25A (la fila más
+  cara), KGeoMIP resuelve $k=2..5$ en $\approx 121$~s y KQNodes en $\approx 88$~s.
+  El grueso es la preparación compartida (tabla de costos y \emph{cut pool}), que se
+  carga a $k=2$; los $k=3,4,5$ solo refinan y tardan décimas de segundo. Las filas
+  con subsistema más pequeño son mucho más baratas.
   \item \textbf{Optimalidad:} el motor voraz es heurístico; no garantiza la
   $k$-MIP global (sí factibilidad, monotonía y validación contra el exacto en $n$
-  pequeño).
+  pequeño y convergencia de estrategias independientes a mayor escala).
 \end{itemize}
 
 \subsection{Supuestos y restricciones}
@@ -916,12 +1004,15 @@ habilita la EMD-efecto analítica $\bigO(n)$); GIL activo en Python 3.14.5, por 
 que el paralelismo es por procesos, no por hilos.
 
 \subsection{Mejoras potenciales y trabajo futuro}
+La marginalización local, la carga en \texttt{uint8} y las metaheurísticas
+comparativas ya están implementadas (secciones~\ref{sec:marginal-local}
+y~\ref{sec:metaheur}). Lo que queda como trabajo futuro:
 \begin{itemize}
-  \item Marginalización \emph{local} $\bigO(2^{\dim})$ por bloque para subir el
-  techo de $n$.
+  \item Llenado por lotes consciente de la memoria: paralelizar por procesos solo
+  las hojas que caben en RAM (hasta $n\approx 20$) y dejar las filas grandes en
+  serie, para recortar el tiempo de la tabla completa sin arriesgar OOM.
   \item Refinamiento con \emph{look-ahead} o \emph{beam search} para acercarse al
   óptimo global manteniendo costo polinómico.
-  \item Baseline de metaheurísticas (GA/SA/Tabú), diferido (Fase 5B).
   \item Aceleración GPU solo si el volumen justifica la transferencia H2D
   (analizado: no rentable para los tamaños actuales).
 \end{itemize}
@@ -940,7 +1031,7 @@ base, se selecciona la misma bipartición. $\square$
 
 \subsection{Reproducción de figuras y diagramas}
 \begin{lstlisting}[style=sh,caption={Comandos de reproducción.}]
-# Rejilla y metricas
+# Tabla y metricas
 uv run scripts/run_benchmark.py
 uv run scripts/validate_correctness.py
 # Figuras (matplotlib) y visualizacion de particiones

@@ -14,7 +14,10 @@
 {\LARGE\textbf{Manual de Usuario}}\\[0.4cm]
 {\large Análisis de $k$-particiones de mínima información}\\[0.3cm]
 {\large Estrategias \textbf{KGeoMIP} y \textbf{KQNodes}}\\[3cm]
-{\small\itshape Guía de instalación y uso para usuarios finales}\\[2cm]
+{\small\itshape Guía de instalación y uso para usuarios finales}\\[1.5cm]
+{\large\textbf{Autores}}\\[0.2cm]
+{\normalsize Alejandro Gonzales — código U: 13431}\\[0.1cm]
+{\normalsize Juan Estiven Lopez — código U: 543534}\\[1.5cm]
 {\small \today}
 \vfill
 \end{titlepage}
@@ -55,14 +58,15 @@ que produce la \emph{pérdida más baja}. Ese es el resultado que usted busca.
 
 \subsection{Capacidades y limitaciones}
 \begin{itemize}
-  \item \textbf{Sí puede:} analizar sistemas pequeños y medianos
-  ($n \le 15$–$20$ nodos) con las estrategias exactas y rápidas KGeoMIP/KQNodes,
-  para cualquier $k\in\{2,3,4,5\}$.
-  \item \textbf{Con cuidado:} sistemas grandes ($n \approx 25$) solo con la
-  estrategia de \emph{clustering}, que \emph{propone} una división rápida pero no
-  calcula la pérdida exacta (requiere demasiada memoria).
+  \item \textbf{Sí puede:} analizar sistemas de hasta $n \approx 25$ nodos con las
+  dos estrategias núcleo KGeoMIP y KQNodes, calculando la pérdida real $\dk$ para
+  cualquier $k\in\{2,3,4,5\}$. La tabla de evaluación oficial está resuelta al
+  100\,\% hasta N25A.
+  \item \textbf{Con cuidado:} a $n=25$ el subsistema completo tarda del orden de uno
+  o dos minutos por fila y usa varios GB de RAM (pico $\approx 8{,}4$~GB en KGeoMIP),
+  así que conviene una máquina con 16~GB.
   \item \textbf{No puede:} garantizar la partición óptima global en sistemas
-  grandes (usa heurísticas), ni manejar $n \gg 25$ en un equipo común.
+  grandes (usa heurísticas voraces), ni manejar $n \gg 25$ en un equipo común.
 \end{itemize}
 
 % ====================== 2. REQUISITOS ======================
@@ -127,20 +131,20 @@ instalado. El primer \texttt{uv sync} puede tardar varios minutos según la red.
 % ====================== 4. VIDEO ======================
 \section{Video tutorial de instalación y uso}
 
-Se incluye un video demostrativo (formato MP4, 8–15 min) que cubre la instalación
-desde cero, la configuración y un ejemplo completo de ejecución e interpretación.
+Se incluye un video demostrativo que cubre la instalación desde cero, la
+configuración y un ejemplo completo de ejecución e interpretación.
 
 \begin{center}
 \fbox{\parbox{0.8\textwidth}{\centering\vspace{4mm}
-\textbf{Video tutorial:} \href{run:./video/tutorial_KQGMIP.mp4}{\texttt{video/tutorial\_KQGMIP.mp4}}\\[1mm]
-\small (Enlace alternativo en línea: \emph{pendiente de publicación})\\[4mm]
+\textbf{Video tutorial:}
+\href{https://www.youtube.com/watch?v=NCtzkaL2t_Y}{\texttt{youtube.com/watch?v=NCtzkaL2t\_Y}}\\[4mm]
 }}
 \end{center}
 
 \noindent Contenido del video: (1) instalación de \texttt{uv} y
-\texttt{uv sync}; (2) edición de parámetros en \texttt{main.py}; (3) ejecución con
-distintos valores de $k$; (4) interpretación de la salida; (5) generación de
-figuras.
+\texttt{uv sync}; (2) ejecución desde la interfaz web y desde la CLI
+(\texttt{uv run exec.py run/batch/results/benchmark}); (3) ejecución con distintos
+valores de $k$; (4) interpretación de la salida; (5) generación de figuras.
 
 % ====================== 5. USO BÁSICO ======================
 \section{Guía de uso básico}
@@ -163,24 +167,27 @@ El archivo se guarda en \texttt{data/samples/} con el siguiente sufijo libre
 web} (§\ref{sec:webui}), sin línea de comandos.
 
 \subsection{Ejecución básica}
-El análisis individual se configura en \texttt{main.py} y se lanza con
-\texttt{exec.py}. Los parámetros principales están al inicio de \texttt{main.py}:
+El análisis individual se lanza con el subcomando \texttt{run} de \texttt{exec.py},
+pasando los parámetros por línea de comandos (no hay que editar ningún archivo):
 
-\begin{lstlisting}[style=py]
-initial_state = "1111011011"  # Estado en t=0 (10 nodos)
-conditions    = "1110001100"  # 0 = condicionar (fijar) la variable
-purview       = "0011101111"  # 0 = marginalizar el nodo futuro
-mechanism     = "1000111111"  # 0 = marginalizar el nodo presente
-k = 3                         # Numero de particiones (k >= 2)
-
-STRATEGY_NAME = "kgeomip"     # kgeomip | kqnodes | clustering | exhaustive
-PAGE = "A"                    # Pagina de red (A, B, C, ...)
-\end{lstlisting}
-
-\noindent Luego:
 \begin{lstlisting}[style=sh]
-uv run exec.py
+uv run exec.py run --net N10A --k 3 --strategy kgeomip
 \end{lstlisting}
+
+\noindent Opciones de \texttt{run}:
+\begin{itemize}
+  \item \texttt{--net} red a analizar, p.\ ej.\ \texttt{N10A} (obligatorio).
+  \item \texttt{--k} número de bloques, $\ge 2$ (por defecto 3).
+  \item \texttt{--strategy} \texttt{kgeomip}, \texttt{kqnodes}, \texttt{clustering},
+  \texttt{genetic}, \texttt{annealing}, \texttt{tabu} o \texttt{exhaustivek}
+  (por defecto \texttt{kgeomip}).
+  \item \texttt{--page} página de la red (A, B, \dots); \texttt{--state} estado
+  inicial binario; \texttt{--method spectral|kmeans} (solo clustering);
+  \texttt{--condition/--purview/--mechanism} para fijar el subsistema a mano.
+\end{itemize}
+
+\noindent Sin argumentos, \texttt{uv run exec.py} imprime la ayuda y corre una
+demostración de extremo a extremo.
 
 \subsection{Interpretación de resultados}
 La salida muestra la estrategia usada, las distribuciones, la $k$-partición
@@ -219,13 +226,12 @@ Horas: 0.00 = Minutos: 0.0 = Segundos: 0.0036
 
 \subsection{Casos de uso típicos}
 \begin{enumerate}
-  \item \textbf{Una $3$-partición de un sistema pequeño:} ponga
-  \texttt{STRATEGY\_NAME="kgeomip"}, \texttt{k=3}, y ejecute \texttt{uv run exec.py}.
-  \item \textbf{Comparar $k=2,3,4$:} cambie \texttt{k} y vuelva a ejecutar; anote
-  la pérdida de cada uno (crecerá con $k$).
-  \item \textbf{Comparar estrategias:} repita con
-  \texttt{STRATEGY\_NAME="kqnodes"} y con \texttt{"clustering"} sobre el mismo
-  sistema.
+  \item \textbf{Una $3$-partición de un sistema pequeño:}
+  \texttt{uv run exec.py run --net N10A --k 3 --strategy kgeomip}.
+  \item \textbf{Comparar $k=2,3,4$:} repita cambiando \texttt{--k}; anote la pérdida
+  de cada uno (crece con $k$).
+  \item \textbf{Comparar estrategias:} repita con \texttt{--strategy kqnodes} y con
+  \texttt{--strategy clustering} sobre la misma red.
 \end{enumerate}
 
 % ====================== 6. OPCIONES AVANZADAS ======================
@@ -237,13 +243,13 @@ Horas: 0.00 = Minutos: 0.0 = Segundos: 0.0036
 \caption{Parámetros ajustables.}
 \begin{tabular}{@{}llll@{}}
 \toprule
-Parámetro & Dónde & Valores & Por defecto \\
+Parámetro & Bandera & Valores & Por defecto \\
 \midrule
-\texttt{k} & main.py / \texttt{IIT\_K} & entero $\ge 2$ (2–5) & 3 \\
-\texttt{STRATEGY\_NAME} & main.py & kgeomip, kqnodes, clustering, exhaustive, genetic, annealing, tabu & kgeomip \\
-\texttt{method} & main.py / \texttt{IIT\_METHOD} & spectral, kmeans (solo clustering) & spectral \\
-\texttt{PAGE} & main.py & A, B, C, \dots & A \\
-\texttt{initial\_state} & main.py & cadena de $0$/$1$ de longitud $n$ & --- \\
+$k$ & \texttt{--k} & entero $\ge 2$ (2–5) & 3 \\
+estrategia & \texttt{--strategy} & kgeomip, kqnodes, clustering, exhaustivek, genetic, annealing, tabu & kgeomip \\
+método & \texttt{--method} & spectral, kmeans (solo clustering) & spectral \\
+página & \texttt{--page} & A, B, C, \dots & la de \texttt{--net} \\
+estado inicial & \texttt{--state} & cadena de $0$/$1$ de longitud $n$ & todo 1 \\
 semilla & application.py & entero & 73 \\
 \bottomrule
 \end{tabular}
@@ -251,21 +257,22 @@ semilla & application.py & entero & 73 \\
 
 \subsection{Modos de operación}
 \begin{itemize}
-  \item \textbf{Individual} (\texttt{uv run exec.py}): un sistema, configurado en
-  \texttt{main.py}.
-  \item \textbf{Por lotes} (\texttt{uv run exec.py --batch}): procesa una rejilla
-  desde Excel, controlado por variables de entorno:
-\begin{lstlisting}[style=sh]
-IIT_STRATEGY=kqnodes IIT_K=4 IIT_METHOD=spectral uv run exec.py --batch
-\end{lstlisting}
-  \item \textbf{Exacto} (\texttt{STRATEGY\_NAME="exhaustive"}): \emph{ground truth}
-  por enumeración; úselo solo en sistemas pequeños ($n \le 6$).
+  \item \textbf{Individual} (\texttt{uv run exec.py run --net \dots}): un sistema,
+  con los parámetros por línea de comandos.
+  \item \textbf{Por lotes} (\texttt{uv run exec.py batch [datos.xlsx]}): recorre
+  cada hoja \texttt{*-Elementos} del workbook, ejecuta KQNodes y KGeoMIP para
+  $k \in \{2,3,4,5\}$ y escribe la copia de resultados. Es reanudable y nunca
+  modifica la entrada.
+  \item \textbf{Ver resultados} (\texttt{uv run exec.py results [resultados.xlsx]}):
+  imprime la tabla en la terminal (estrategia, $k$, pérdida, tiempo, partición).
+  \item \textbf{Exacto} (\texttt{--strategy exhaustivek}): \emph{ground truth} por
+  enumeración; úselo solo en sistemas pequeños ($n \le 6$).
 \end{itemize}
 
 \subsection{Opciones de salida y visualización}
 \begin{lstlisting}[style=sh]
-uv run scripts/run_benchmark.py        # rejilla -> CSV/Excel en data/results/
-uv run scripts/run_benchmark.py --no-meta   # sin metaheuristicas (mas rapido)
+uv run exec.py benchmark               # estrategias x redes x k -> CSV/Excel en data/results/
+uv run exec.py benchmark --quick       # solo N10A (rapido)
 uv run scripts/make_figures.py         # graficas estaticas (PNG): escalabilidad/perdida
 uv run scripts/make_interactive.py     # graficas interactivas (HTML, Plotly)
 uv run scripts/make_viz.py --net N4A --k 3 --strategy KGeoMIP   # dibuja la particion
@@ -288,12 +295,12 @@ Las gráficas \textbf{estáticas} (PNG) quedan en \texttt{data/results/figures/}
 % ====================== 6B. INTERFAZ WEB ======================
 \section{Interfaz web (sin línea de comandos)}
 \label{sec:webui}
-Para quien prefiera no tocar \texttt{main.py}, el proyecto incluye una
+Para quien prefiera no usar la línea de comandos, el proyecto incluye una
 \textbf{interfaz web} (Streamlit) que cubre todo el flujo desde el navegador.
 Requiere los extras opcionales:
 \begin{lstlisting}[style=sh]
 uv sync --extra web        # instala streamlit + plotly
-uv run streamlit run app/streamlit_app.py
+uv run streamlit run streamlit_app.py
 \end{lstlisting}
 Se abre en \texttt{http://localhost:8501}. La interfaz tiene tres pasos:
 \begin{enumerate}
@@ -306,7 +313,7 @@ Se abre en \texttt{http://localhost:8501}. La interfaz tiene tres pasos:
   mecanismo).
   \item \textbf{Resultados.} Al pulsar \emph{Ejecutar} verá la pérdida $\dk$, la
   $k$-partición de mínima información, su distribución marginal en tabla, y el
-  diagrama \textbf{interactivo} de la partición. Si existe la rejilla de
+  diagrama \textbf{interactivo} de la partición. Si existe la tabla de
   \emph{benchmark}, se muestra además la gráfica interactiva $\dk$ vs $k$.
 \end{enumerate}
 \noindent\textit{Sugerencia de captura:} para el manual/vídeo, capture (a) el panel
@@ -349,10 +356,7 @@ deben tener longitud $n$.
 
 \subsection{Tutorial básico (4 nodos)}
 \begin{enumerate}
-  \item En \texttt{main.py}: \texttt{initial\_state="1111"},
-  \texttt{conditions="1111"}, \texttt{purview="1111"}, \texttt{mechanism="1111"},
-  \texttt{k=3}, \texttt{STRATEGY\_NAME="kgeomip"}, \texttt{PAGE="A"}.
-  \item Ejecutar \texttt{uv run exec.py}.
+  \item Ejecutar \texttt{uv run exec.py run -{}-net N4A -{}-k 3 -{}-strategy kgeomip}.
   \item Leer la pérdida y los bloques. Dibujar la partición:
   \texttt{uv run scripts/make\_viz.py -{}-net N4A -{}-k 3 -{}-strategy KGeoMIP}.
 \end{enumerate}
@@ -362,10 +366,11 @@ Con la red N10A, ejecute KGeoMIP para $k=2,3,4$ y compare la pérdida (debe crec
 $0{,}47 \to 0{,}94 \to 1{,}42$. Repita con \texttt{kqnodes} para confirmar que
 obtiene la misma calidad.
 
-\subsection{Ejemplo avanzado (rejilla completa)}
+\subsection{Ejemplo avanzado (tabla completa)}
 \begin{lstlisting}[style=sh]
-uv run scripts/run_benchmark.py        # genera la rejilla n x k
-uv run scripts/validate_correctness.py # valida contra el exacto
+uv run exec.py batch                   # llena la tabla de evaluacion (k=2..5)
+uv run exec.py results                 # ve la tabla en la terminal
+uv run scripts/validate.py correctness # valida contra el exacto
 uv run scripts/make_figures.py         # produce las graficas
 \end{lstlisting}
 Los resultados quedan en \texttt{data/results/} (CSV/Excel) y las figuras en
@@ -382,10 +387,11 @@ Los resultados quedan en \texttt{data/results/} (CSV/Excel) y las figuras en
 Comando & Descripción \\
 \midrule
 \texttt{uv sync} & Instalar dependencias \\
-\texttt{uv run exec.py} & Análisis individual (config.\ en \texttt{main.py}) \\
-\texttt{uv run exec.py -{}-batch} & Análisis por lotes (Excel) \\
+\texttt{uv run exec.py run -{}-net N10A -{}-k 3} & Análisis individual \\
+\texttt{uv run exec.py batch} & Llenar la tabla de evaluación (Excel) \\
+\texttt{uv run exec.py results} & Ver la tabla de resultados \\
+\texttt{uv run exec.py benchmark} & Benchmark de estrategias \\
 \texttt{uv run pytest} & Ejecutar los tests \\
-\texttt{uv run scripts/run\_benchmark.py} & Rejilla de resultados \\
 \texttt{uv run scripts/make\_viz.py} & Visualizar una partición \\
 \bottomrule
 \end{tabular}
@@ -408,7 +414,7 @@ Comando & Descripción \\
 \begin{itemize}
   \item \textbf{Entrada:} \texttt{data/samples/N\{n\}\{página\}.csv} — $2^n$ filas,
   $n$ columnas, $0$/$1$, little-endian.
-  \item \textbf{Salida:} resumen por consola; rejillas en
+  \item \textbf{Salida:} resumen por consola; tablas en
   \texttt{data/results/*.csv}/\texttt{*.xlsx}; figuras PNG en
   \texttt{data/results/figures/}.
 \end{itemize}
