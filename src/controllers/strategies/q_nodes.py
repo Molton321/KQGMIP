@@ -68,7 +68,7 @@ class QNodes(SIA):
 
         A subsystem of two or fewer vertices cannot enter the phase loop (which
         needs at least three vertices to form omega/delta cycles), so every
-        singleton side is evaluated directly to populate ``partition_memo`` for
+        singleton side is evaluated directly to populate partition_memo for
         the downstream cut pool.
         """
         phase_vertices = vertices
@@ -139,15 +139,13 @@ class QNodes(SIA):
     ) -> tuple[float, float, np.ndarray]:
         """
         Evaluate the individual delta and its union with omega.
-        Rebuilds the `temporal` state on every call (no shared state) to avoid the
+        Rebuilds the temporal state on every call (no shared state) to avoid the
         previous implementation's defect. Returns
         (union_emd, delta_emd, delta_marginal_dist).
 
-        Both bipartitions are scored with the **local** marginal distribution
-        (``System.bipartition_marginal_distribution``), which evaluates each
-        cube at the initial state in O(2^{dropped dims}) instead of building
-        the marginalized tensors — same float32 values, hours-to-minutes
-        difference at n=25 (PLANNING.md FASE 11).
+        Both bipartitions are scored with the local marginal distribution
+        (System.bipartition_marginal_distribution) instead of the full
+        marginalized tensors; the values are identical.
         """
         temporal: list[list[int]] = [[], []]
 

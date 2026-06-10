@@ -1,4 +1,4 @@
-"""IIT system: a collection of :class:`NCube` tensors, one per node.
+"""IIT system: a collection of :class:NCube tensors, one per node.
 Each n-cube represents the conditional distribution of a node given the states of all nodes, and is
 indexed by the node it represents. The system supports conditioning, subtraction, and partitioning
 operations that modify the n-cubes accordingly, as well as memoization

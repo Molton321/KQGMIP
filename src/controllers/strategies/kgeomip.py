@@ -55,14 +55,12 @@ class KGeoMIP(SIA):
     ) -> dict[int, Solution]:
         """Solve the same subsystem for several k values sharing the cost table.
 
-        The official spec of the cost table (``src/funcs/cost_table.py``, doc
-        §3 line 103) requires it to be computed **once per system and reused
-        for every k**; this entry point realizes that contract for grid/batch
-        runs: subsystem preparation, cost table and cut pool are built once,
-        then each requested k runs only its greedy refinement. The reported
-        per-k time charges the shared preparation to the first k and the
-        refinement to each k (so cell times remain honest and add up to the
-        real wall-clock cost).
+        The cost table is computed once per system and reused for every k.
+        This entry point realizes that for grid/batch runs: subsystem
+        preparation, cost table and cut pool are built once, then each requested
+        k runs only its greedy refinement. The reported per-k time charges the
+        shared preparation to the first k and the refinement to each k, so the
+        cell times add up to the real wall-clock cost.
         """
         ks = tuple(dict.fromkeys(ks))
         if not ks or min(ks) < 2:

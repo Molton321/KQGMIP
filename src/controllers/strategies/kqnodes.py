@@ -49,7 +49,7 @@ class KQNodes(QNodes):
     ) -> dict[int, Solution]:
         """Solve the same subsystem for several k values sharing the Queyranne run.
 
-        Mirrors ``KGeoMIP.apply_strategy_for_ks``: the submodular sequence (the
+        Mirrors KGeoMIP.apply_strategy_for_ks: the submodular sequence (the
         expensive part, independent of k) runs once to produce the candidate
         pool, then each requested k runs only its greedy refinement. The
         reported per-k time charges the shared preparation to the first k and

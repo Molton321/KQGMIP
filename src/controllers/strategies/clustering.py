@@ -6,7 +6,7 @@ import time
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.cluster.vq import kmeans2
+from scipy.cluster.vq import ClusterError, kmeans2
 from scipy.sparse.csgraph import laplacian
 
 from src.constants.base import COLS_IDX, NET_LABEL, TYPE_TAG
@@ -88,8 +88,8 @@ class ClusteringSIA(SIA):
     def _node_features(self, nodes: tuple[int, ...]) -> NDArray[np.float64]:
         """
         Binarized behaviour of each node over a deterministic TPM-row sample.
-        Returns an ``(n, sample)`` matrix where row ``i`` is the 0/1 response of
-        node ``nodes[i]`` across the sampled states. Two nodes that respond
+        Returns an (n, sample) matrix where row i is the 0/1 response of
+        node nodes[i] across the sampled states. Two nodes that respond
         alike across states are considered similar.
         """
         n_rows = self.tpm.shape[0]
@@ -130,10 +130,11 @@ class ClusteringSIA(SIA):
         labels = None
 
         try:
-            _, labels = kmeans2(
-                data, k, rng=application.numpy_seed, minit="++", missing="raise"
-            )
-        except ValueError as e:
+            with np.errstate(invalid="ignore", divide="ignore"):
+                _, labels = kmeans2(
+                    data, k, rng=application.numpy_seed, minit="++", missing="raise"
+                )
+        except (ValueError, ClusterError) as e:
             self.logger.warn(
                 f"k-means failed with error: {e}. Falling back to Fiedler split."
             )

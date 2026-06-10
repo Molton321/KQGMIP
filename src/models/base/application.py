@@ -28,7 +28,7 @@ class Application:
         self.profiler_enabled: bool = True
 
     def set_sample_network_page(self, page: str) -> None:
-        """Select the sample-network page (``A``, ``B``, ...) to auto-load."""
+        """Select the sample-network page (A, B, ...) to auto-load."""
         self.sample_network_page = page
 
     def set_notation(self, kind: Notation) -> None:

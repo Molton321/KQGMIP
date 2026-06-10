@@ -10,7 +10,7 @@ from src.viz.palette import block_color
 
 
 def _import_matplotlib():
-    """Import matplotlib with the headless Agg backend; return ``(plt, Patch)``."""
+    """Import matplotlib with the headless Agg backend; return (plt, Patch)."""
     import matplotlib
 
     matplotlib.use("Agg")
@@ -21,7 +21,7 @@ def _import_matplotlib():
 
 
 def _block_legend(patch_cls, partition: KPartition) -> list:
-    """Build one legend patch per block, colored by :func:`block_color`."""
+    """Build one legend patch per block, colored by :func:block_color."""
     return [
         patch_cls(color=block_color(r), label=f"block {r + 1}")
         for r in range(partition.k)

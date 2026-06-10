@@ -10,10 +10,11 @@ Subcommands (each forwards its remaining options to the underlying module):
         Optimality evidence at scale: exact where feasible, convergence of
         independent strategies elsewhere.
 
-    uv run scripts/validate.py external [--skip-small | --verify-partitions ...]
+    uv run scripts/validate.py external [--docente-rows N | --verify-partitions ...]
         Cross-validation against the professor's original project
-        (.core/core_00) and third-party results, plus re-evaluation of every
-        stored partition of the results workbook.
+        (.core/core_00): byte-identical TPM samples, reproduction of the
+        original GeoMIP results, and re-evaluation of every stored partition of
+        the results workbook with the official delta_k.
 """
 
 import runpy

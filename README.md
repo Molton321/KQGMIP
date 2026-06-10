@@ -32,21 +32,28 @@ Se abre en `http://localhost:8501`. Permite, desde el navegador: **generar una T
 **estrategia / k / subsistema**, y ver la **partición**, su `δ_k`, la distribución y las **figuras
 estáticas e interactivas**.
 
-### 2. Línea de comandos por banderas (sin editar código)
+### 2. Línea de comandos (sin editar código)
+
+`exec.py` ofrece las mismas acciones que la web mediante subcomandos:
 
 ```bash
-uv run exec.py --net N10A --k 3 --strategy kgeomip
-uv run exec.py --net N4A  --k 2 --strategy kqnodes
+uv run exec.py run --net N10A --k 3 --strategy kgeomip   # un análisis individual
+uv run exec.py batch  [datos.xlsx]                        # llenar la tabla de evaluación
+uv run exec.py results [resultados.xlsx]                  # ver la tabla en la terminal
+uv run exec.py benchmark --quick                          # regenerar el benchmark δ_k vs k
 ```
 
-Estrategias: `kgeomip`, `kqnodes`, `clustering`, `genetic`, `annealing`, `tabu`, `exhaustivek`.
-Opcionales: `--page B`, `--method kmeans` (clustering), `--condition/--purview/--mechanism`,
-`--profile`. Sin argumentos ejecuta una demostración.
+Estrategias de `run`: `kgeomip`, `kqnodes`, `clustering`, `genetic`, `annealing`, `tabu`,
+`exhaustivek`. Opcionales: `--page B`, `--method kmeans` (clustering),
+`--condition/--purview/--mechanism`, `--profile`. Sin argumentos imprime la ayuda y una
+demostración.
 
-### 3. Ruta avanzada (fijar el subsistema a mano)
+### 3. Lotes desde Excel (formato estándar)
 
-Editar los valores al inicio de `main.py` y `uv run main.py`. Para procesar una tabla de
-subsistemas desde Excel: `uv run exec.py --batch --strategy kqnodes --k 4`.
+`uv run exec.py batch` recorre cada hoja `*-Elementos` del workbook de entrada (por defecto
+`data/results/datos.xlsx`), ejecuta KQNodes y KGeoMIP para k ∈ {2,3,4,5} y escribe la copia de
+resultados (por defecto `data/results/resultados.xlsx`). Es reanudable: solo llena las celdas
+vacías y nunca modifica la entrada.
 
 ---
 
@@ -86,18 +93,22 @@ uv run scripts/generate_tpm.py --n 6 --continuous  # probabilidades continuas
 ## Verificación y experimentación
 
 ```bash
-uv run pytest                              # 207 tests (regresión k=2, k=3..5 vs exacto, determinismo…)
-uv run scripts/validate_optimality.py      # ¿son óptimas? exacto (n≤4) + convergencia (N10A/N15A)
-uv run scripts/validate_correctness.py     # δ_k = recomputado, y ≤ exacto, por estrategia
-uv run scripts/run_benchmark.py            # tabla de estrategias × redes × k -> data/results/
+uv run pytest                              # 275 tests (regresión k=2, k=3..5 vs exacto, determinismo…)
+uv run scripts/validate.py correctness     # δ_k = recomputado, y ≤ exacto, por estrategia
+uv run scripts/validate.py optimality      # ¿son óptimas? exacto (n≤4) + convergencia (N10A/N15A)
+uv run scripts/validate.py external        # reproducción del proyecto original de la docente
+uv run exec.py benchmark                    # tabla de estrategias × redes × k -> data/results/
 uv run scripts/make_figures.py             # figuras estáticas (PNG)
 uv run scripts/make_interactive.py         # figuras interactivas (HTML, Plotly)
 ```
 
 **Cómo se valida que las particiones son las mejores:** donde el exacto es tratable (n≤4) el sistema
-(mejor estrategia) iguala el óptimo enumerado por fuerza bruta (4/4); a n=10/15, tres búsquedas
+(mejor estrategia) iguala el óptimo enumerado por fuerza bruta; a n=10/15, tres búsquedas
 independientes (geométrica, submodular y metaheurística) **convergen** al mismo `δ_k`, lo que es
-fuerte evidencia de óptimo global. El consolidado vive en `data/results/benchmark_results_FINAL.csv`.
+fuerte evidencia de óptimo global. Como referencia externa, `validate.py external` reproduce los
+resultados del **proyecto original de la docente** (`.core/core_00`): TPM idéntica byte a byte y
+filas de `resultados_Geometric.xlsx` dentro de la tolerancia float32. El consolidado del benchmark
+vive en `data/results/benchmark.csv`.
 
 ---
 
@@ -106,8 +117,7 @@ fuerte evidencia de óptimo global. El consolidado vive en `data/results/benchma
 ```
 KQGMIP/
 ├── streamlit_app.py            # interfaz web (Streamlit)
-├── exec.py                     # CLI por banderas (individual / --batch)
-├── main_batch.py               # procesamiento por lotes desde Excel
+├── exec.py                     # CLI con subcomandos (run / batch / results / benchmark)
 ├── src/
 │   ├── constants/              # constantes centralizadas (base, errors, tags)
 │   ├── controllers/
@@ -119,7 +129,9 @@ KQGMIP/
 │   ├── middlewares/            # slogger (logs), profile (@profile)
 │   ├── models/{base,core,enums}/  # sia/application · ncube/system/solution/partition · enums
 │   └── viz/                    # figuras estáticas (matplotlib) e interactivas (Plotly)
-├── scripts/                    # benchmark, figuras, validación, generación de TPM
+├── scripts/                    # run_benchmark, make_figures/interactive, validate.py,
+│                               #   generate_tpm · validate.py → validation/{correctness,
+│                               #   optimality,external}
 ├── data/{samples,results}/     # TPMs CSV · resultados Excel/CSV + figuras
 ├── tests/{unit,integration,fixtures}/
 └── docs/                       # especificación oficial + manuales

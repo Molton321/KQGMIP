@@ -40,7 +40,7 @@ class GridTest:
 
 @dataclass(frozen=True)
 class GridSheet:
-    """One parsed ``*-Elementos`` sheet: network metadata plus its test rows."""
+    """One parsed *-Elementos sheet: network metadata plus its test rows."""
 
     name: str
     initial_state: str
@@ -55,7 +55,7 @@ class GridSheet:
 
 
 def letters_to_mask(letters: str, num_nodes: int) -> str:
-    """Convert a purview/mechanism letter string (``"ACEGI"``) to an n-bit mask."""
+    """Convert a purview/mechanism letter string ("ACEGI") to an n-bit mask."""
     bits = ["0"] * num_nodes
     for char in str(letters).strip():
         bits[string.ascii_uppercase.index(char)] = "1"
@@ -63,7 +63,7 @@ def letters_to_mask(letters: str, num_nodes: int) -> str:
 
 
 def grid_sheet_names(path: Path) -> list[str]:
-    """Return the ``*-Elementos`` sheet names of a grid workbook."""
+    """Return the *-Elementos sheet names of a grid workbook."""
     book = load_workbook(path, read_only=True)
     try:
         return [
@@ -76,9 +76,9 @@ def grid_sheet_names(path: Path) -> list[str]:
 def _sheet_values(path: Path, sheet_name: str) -> list[tuple]:
     """Read every cell value of a sheet in one streaming pass.
 
-    Random ``cell(row, column)`` access on a read-only worksheet re-parses the
+    Random cell(row, column) access on a read-only worksheet re-parses the
     XML from the top on every call (quadratic on big sheets); a single
-    ``iter_rows`` pass is linear and keeps the viewer instantaneous.
+    iter_rows pass is linear and keeps the viewer instantaneous.
     """
     book = load_workbook(path, read_only=True)
     try:
@@ -88,7 +88,7 @@ def _sheet_values(path: Path, sheet_name: str) -> list[tuple]:
 
 
 def _value_at(values: list[tuple], row: int, column: int):
-    """1-based cell lookup over a prefetched ``_sheet_values`` matrix."""
+    """1-based cell lookup over a prefetched _sheet_values matrix."""
     if row - 1 >= len(values):
         return None
     line = values[row - 1]
@@ -178,7 +178,7 @@ class GridResultsWriter:
         loss: float,
         seconds: float,
     ) -> None:
-        """Write one ``Partición / Pérdida / Tiempo`` cell group."""
+        """Write one Partición / Pérdida / Tiempo cell group."""
         sheet = self.book[sheet_name]
         base = GRID_K_BASE_COLUMN[k] + GRID_FAMILY_OFFSET[family]
         sheet.cell(row=row, column=base).value = partition
@@ -194,7 +194,7 @@ def read_grid_results(path: Path) -> list[dict]:
     """Read a filled grid workbook into tidy result rows.
 
     Each row is one (test, strategy, k) cell:
-    ``{red, n, prueba, alcance, mecanismo, estrategia, k, particion, perdida, tiempo}``.
+    {red, n, prueba, alcance, mecanismo, estrategia, k, particion, perdida, tiempo}.
     Empty cells are skipped, so partially filled workbooks are readable too.
     """
     rows: list[dict] = []

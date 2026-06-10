@@ -95,7 +95,7 @@ class StreamlitApp:
             self._execute_strategy()
         if not has_tpm and st.session_state.result is None:
             st.info(
-                "Genera o selecciona una TPM en `data/samples/` (panel izquierdo) "
+                "Genera o selecciona una TPM en data/samples/ (panel izquierdo) "
                 "para empezar el análisis."
             )
         self._render_results()
@@ -232,7 +232,7 @@ class StreamlitApp:
     def _render_advanced_masks(self, n: int) -> dict[str, str]:
         """Render the subsystem masks and return them, defaulting to all-active.
 
-        The inputs are intentionally keyless: each carries ``value="1" * n`` so
+        The inputs are intentionally keyless: each carries value="1" * n so
         that selecting a different-sized network re-derives the default to the new
         length, instead of persisting a stale mask that would mismatch the state.
         """
@@ -366,8 +366,8 @@ class StreamlitApp:
         st.divider()
         st.subheader("Tabla de evaluación (.xlsx)")
         st.caption(
-            "Cualquier workbook con hojas `*-Elementos` (formato estándar). "
-            "Equivalentes de consola: `uv run exec.py batch` · `uv run exec.py resultados`."
+            "Cualquier workbook con hojas *-Elementos (formato estándar). "
+            "Equivalentes de consola: uv run exec.py batch · uv run exec.py resultados."
         )
 
         uploaded = st.file_uploader("Subir un .xlsx con el formato estándar", type="xlsx")
@@ -379,7 +379,7 @@ class StreamlitApp:
         workbooks = self._standard_workbooks()
         if not workbooks:
             st.info(
-                "No hay workbooks con el formato estándar en `data/results/`. "
+                "No hay workbooks con el formato estándar en data/results/. "
                 "Sube uno arriba para empezar."
             )
             return
@@ -406,7 +406,7 @@ class StreamlitApp:
                 chosen_book if chosen_book.name.startswith("resultados") else GRID_RESULTS_XLSX
             )
             st.caption(
-                f"Salida: `{output_path.name}` — la entrada nunca se modifica y las "
+                f"Salida: {output_path.name} — la entrada nunca se modifica y las "
                 "celdas ya llenas se omiten (reanudable)."
             )
             sheets = grid_sheet_names(chosen_book)
@@ -431,15 +431,9 @@ class StreamlitApp:
         if not BENCHMARK_CSV.exists():
             st.info(
                 "Aún no hay benchmark generado. Genera uno rápido aquí o ejecuta "
-                "`uv run exec.py benchmark` en la terminal."
+                "uv run exec.py benchmark en la terminal."
             )
-            if st.button("Generar benchmark rápido (N10A)"):
-                with st.spinner("Corriendo todas las estrategias sobre N10A…"):
-                    subprocess.run(
-                        [sys.executable, "scripts/run_benchmark.py", "--quick"],
-                        check=False,
-                    )
-                st.rerun()
+            self._benchmark_generate_button("Generar benchmark rápido (N10A)")
             return
         df = pd.read_csv(BENCHMARK_CSV)
         valid_nets = [
@@ -454,6 +448,17 @@ class StreamlitApp:
         st.plotly_chart(self._plot_loss_k(df, str(net)), width="stretch")
         with st.expander("Tabla de resultados"):
             st.dataframe(df, width="stretch")
+        self._benchmark_generate_button("Regenerar benchmark rápido (N10A)")
+
+    def _benchmark_generate_button(self, label: str) -> None:
+        """Run the quick benchmark in a subprocess and refresh the page."""
+        if st.button(label):
+            with st.spinner("Corriendo todas las estrategias sobre N10A…"):
+                subprocess.run(
+                    [sys.executable, "scripts/run_benchmark.py", "--quick"],
+                    check=False,
+                )
+            st.rerun()
 
 
 def main() -> None:

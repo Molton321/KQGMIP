@@ -1,7 +1,7 @@
 """K-QGMIP CLI: single analyses, batch table filling, results viewing and benchmarks.
 
-Offers the same actions as the web UI over the standard ``*-Elementos`` xlsx
-format (``datos.xlsx`` in, ``resultados.xlsx`` out by default).
+Offers the same actions as the web UI over the standard *-Elementos xlsx
+format (datos.xlsx in, resultados.xlsx out by default).
 """
 
 import argparse

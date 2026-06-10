@@ -33,7 +33,7 @@ class ProfilingManager:
             self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def start_session(self, session_name: str) -> None:
-        """Open a timestamped profiling session under ``session_name``."""
+        """Open a timestamped profiling session under session_name."""
         if not self.enabled:
             return
         self._setup()
@@ -43,7 +43,7 @@ class ProfilingManager:
         self.current_session = str(session_path.relative_to(self.output_dir))
 
     def get_output_path(self, name: str) -> Path:
-        """Return the HTML path for ``name`` within the current session."""
+        """Return the HTML path for name within the current session."""
         session_dir = self.current_session or "default"
         return self.output_dir / session_dir / f"{name}.{HTML_EXTENSION}"
 

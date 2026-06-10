@@ -72,7 +72,7 @@ class CostTable:
         return table
 
     def cost(self, state_start: list, state_end: list) -> NDArray[np.float32]:
-        """Return the per-node cost vector for the ``start -> end`` transition."""
+        """Return the per-node cost vector for the start -> end transition."""
         if tuple(state_start) != tuple(self.state_start.tolist()):
             raise KeyError(
                 "CostTable solo almacena transiciones desde el estado inicial "
@@ -174,7 +174,7 @@ class LegacyCostTable:
         self._build()
 
     def _build(self) -> None:
-        """Populate :attr:`paths` and :attr:`transition_table` level by level."""
+        """Populate :attr:paths and :attr:transition_table level by level."""
         self.paths = {0: [self.state_start.tolist()]}
         for level in range(1, len(self.state_start) + 1):
             self._compute_level(level)
@@ -224,7 +224,7 @@ class LegacyCostTable:
         self.transition_table[key] = factor * cost
 
     def cost(self, state_start: list, state_end: list) -> NDArray[np.float64]:
-        """Return the per-node cost vector for the ``start -> end`` transition."""
+        """Return the per-node cost vector for the start -> end transition."""
         return self.transition_table[(tuple(state_start), tuple(state_end))]
 
     def candidate_bipartitions(self) -> list[list[list[int]]]:

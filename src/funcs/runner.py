@@ -57,7 +57,7 @@ STRATEGY_HELP: dict[str, str] = {
 
 @dataclass
 class AnalysisResult:
-    """Bundle returned by :func:`run_analysis` for the UI/CLI to render."""
+    """Bundle returned by :func:run_analysis for the UI/CLI to render."""
 
     solution: Solution
     partition: KPartition | None
@@ -92,13 +92,13 @@ def build_strategy(name: str, tpm: np.ndarray, state: str, k: int, method: str) 
 
 
 def parse_net_label(net: str) -> tuple[int, str, str]:
-    """Parse a net label like ``"N10A"`` into its number of nodes, page, and full state."""
+    """Parse a net label like "N10A" into its number of nodes, page, and full state."""
     n = int(net[1:-1])
     return n, net[-1], "1" * n
 
 
 def available_samples(base: Path) -> list[str]:
-    """List the available sample networks in a directory, by their net label (e.g. ``"N10A"``)."""
+    """List the available sample networks in a directory, by their net label (e.g. "N10A")."""
     return sorted(p.stem for p in base.glob("N*.csv"))
 
 

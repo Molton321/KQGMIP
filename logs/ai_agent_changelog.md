@@ -1367,3 +1367,36 @@ tabla… CLI y GUI deben ofrecer las mismas acciones, fáciles para quien no pro
      **3.7 s**. Tiempos finales: --help 1.4 s · demo 2 s · run N5A 1.3 s · results 2.4 s ·
      batch-resume 3.7 s.
 - **Renombre del usuario respetado:** subcomando `resultados` → `results`.
+
+### Continuación (2026-06-10): clustering kmeans, benchmark GUI, validación solo vs original, estilo de docstrings
+
+Prompt del usuario: "¿se llena el excel de resultados en 1h, es el mínimo posible? ¿mantenemos
+las estrategias extra (genética/tabú)? la GUI no deja regenerar el benchmark si ya existe el CSV;
+y el error de `exec.py benchmark` en N15A. Que validation/external solo valide contra el sistema
+original de la docente, no contra results_others, y documentar esas pruebas. No quiero backticks
+ni propiedades matemáticas dentro del código."
+
+- **Fix de Clustering(kmeans) en n grande (N15A k≥3):** `kmeans2(minit="++")` lanza
+  `scipy.cluster.vq.ClusterError` ("one of the clusters is empty") cuando dos nodos del muestreo
+  comparten su vector de comportamiento; el código solo capturaba `ValueError`, así que la
+  excepción se propagaba y la celda fallaba ("1 fail" en el benchmark). Ahora se captura
+  `(ValueError, ClusterError)` y cae al corte de Fiedler; el `RuntimeWarning: invalid value
+  encountered in divide` del kpp se silencia con `np.errstate`. Verificado: N15A kmeans k=3/4/5
+  devuelven pérdida finita (1.071/1.076/1.083). El warning de scipy ya no aparece.
+- **GUI: regenerar benchmark aunque exista el CSV:** `_render_benchmark` ahora expone el botón
+  de generación rápida en ambos caminos (CSV ausente y presente) mediante
+  `_benchmark_generate_button`. Antes solo aparecía cuando faltaba el archivo.
+- **validation/external solo contra el proyecto original (petición del usuario):** eliminadas las
+  comparaciones contra `data/results_others` (`compare_with_csv_team`, `compare_small_networks`,
+  `check_others_xlsx`, lectores `load_theirs_*`, `load_ours`). `external` conserva la
+  reproducción de `resultados_Geometric.xlsx` del `.core/core_00` (TPM byte a byte + filas dentro
+  de tolerancia float32) y la re-evaluación de cada partición almacenada con la δ oficial.
+  Docstrings de `validate.py`/`external.py` actualizados. Resultado medido hoy: TPM N15A idéntica
+  byte a byte; 3/3 filas de la docente reproducidas (p. ej. 0.0002500843 vs 0.0002501011).
+- **Estilo de documentación en el código (petición del usuario):** retirados todos los backticks
+  de resaltado (``…``/`…`) de docstrings y comentarios en 20 ficheros de `src/`, `scripts/`,
+  `exec.py` y `streamlit_app.py`; retiradas las propiedades matemáticas/complejidad de los
+  docstrings (p. ej. el `O(2^{dropped dims})` de `q_nodes.submodular_function` y el énfasis en
+  negrita de `kgeomip.apply_strategy_for_ks`/`external`). Esa parte vive en la documentación
+  técnica, no en el código.
+- **Gates:** `pytest` 275 en verde; `ruff check .` limpio; `mypy src` sin incidencias.

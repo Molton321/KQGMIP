@@ -21,7 +21,7 @@ class SIA(ABC):
     Abstract base class for every IIT analysis strategy.
     Receives the TPM and the initial state, builds the subsystem through
     conditioning and subtraction, and leaves it ready for the strategies.
-    Subclasses must implement `apply_strategy(condition, purview, mechanism)`.
+    Subclasses must implement apply_strategy(condition, purview, mechanism).
     """
 
     def __init__(self, tpm: np.ndarray, initial_state: str) -> None:

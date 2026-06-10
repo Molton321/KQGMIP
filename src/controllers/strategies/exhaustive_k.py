@@ -10,11 +10,11 @@ partition (δ_k = 0) is found.
 
 This is the *ground truth*: only feasible for small systems (it is the exact
 optimum used to validate the heuristics), so it is the reference, not a production
-strategy. The number of k-partitions of ``2n`` atoms grows as the Stirling number
-of the second kind ``S(2n, k)``, which is super-exponential — hence the ``n <= 6``
-ceiling in practice (doc §4.2). ``parallel=True`` distributes the candidate stream
-across ``n_jobs`` processes (GIL is active, so processes not threads) with a shared
-δ=0 early-exit, giving an empirical ~2-3x speedup with 4 jobs for ``n >= 6``; it
+strategy. The number of k-partitions of 2n atoms grows as the Stirling number
+of the second kind S(2n, k), which is super-exponential — hence the n <= 6
+ceiling in practice (doc §4.2). parallel=True distributes the candidate stream
+across n_jobs processes (GIL is active, so processes not threads) with a shared
+δ=0 early-exit, giving an empirical ~2-3x speedup with 4 jobs for n >= 6; it
 does not change the result, only the wall time.
 
 Usage::
@@ -58,12 +58,12 @@ def _weak_k_partitions(
     elements: tuple[int, ...], k: int
 ) -> Generator[tuple[tuple[int, ...], ...]]:
     """
-    Yield every k-tuple of subsets that partitions ``elements`` allowing empty blocks.
-    A weak k-partition is a list of ``k`` subsets that, taken together, are a
-    partition of ``elements``. Empty subsets are allowed. Order matters: the
-    same partition expressed as ``(A, B)`` versus ``(B, A)`` is yielded twice.
+    Yield every k-tuple of subsets that partitions elements allowing empty blocks.
+    A weak k-partition is a list of k subsets that, taken together, are a
+    partition of elements. Empty subsets are allowed. Order matters: the
+    same partition expressed as (A, B) versus (B, A) is yielded twice.
     The whole universe may land in a single slot (the rest being empty),
-    which is the legacy ``sub_purview=∅`` or ``sub_mechanism=∅`` semantics.
+    which is the legacy sub_purview=∅ or sub_mechanism=∅ semantics.
     """
     if k < 1:
         return
@@ -100,7 +100,7 @@ def _generate_candidates(
     Pairs each future weak-partition with every present weak-partition across
     all permutations, validating and de-duplicating. Module-level so it is
     picklable and reusable by both the sequential and the worker paths; the
-    de-dup set is local, which is correct because distinct ``future_options``
+    de-dup set is local, which is correct because distinct future_options
     yield disjoint candidate sets.
     """
     seen: set[tuple[tuple[tuple[int, ...], tuple[int, ...]], ...]] = set()
@@ -193,8 +193,8 @@ class ExhaustiveK(SIA):
             initial_state: binary initial state string.
             k: number of blocks of the k-partition to search for.
             parallel: distribute the candidate stream across processes when True
-                (same result, lower wall time for ``n >= 6``).
-            n_jobs: number of worker processes when ``parallel`` (``-1`` = all cores).
+                (same result, lower wall time for n >= 6).
+            n_jobs: number of worker processes when parallel (-1 = all cores).
         """
         super().__init__(tpm, initial_state)
         profiling_manager.start_session(

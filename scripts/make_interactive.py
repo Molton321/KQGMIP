@@ -2,7 +2,7 @@
 
 Usage:
     uv run scripts/make_interactive.py
-    uv run scripts/make_interactive.py --csv data/results/benchmark_results_FINAL.csv
+    uv run scripts/make_interactive.py --csv data/results/benchmark.csv
 """
 
 import argparse
@@ -30,7 +30,7 @@ def _export(fig, out: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Export interactive Plotly figures")
-    parser.add_argument("--csv", default="data/results/benchmark_results_FINAL.csv")
+    parser.add_argument("--csv", default="data/results/benchmark.csv")
     parser.add_argument("--out", default="data/results/figures/interactive")
     parser.add_argument(
         "--demo-net", default="N4A", help="network for the partition demo"

@@ -33,9 +33,9 @@ class Manager:
         """
         Load the TPM file matching the current state and page.
 
-        Deterministic 0/1 TPMs are returned as ``uint8`` (4x less resident
-        memory at large n); continuous TPMs keep ``float32``. Consumers doing
-        arithmetic must cast to float first (``System`` builds float32 cubes).
+        Deterministic 0/1 TPMs are returned as uint8 (4x less resident
+        memory at large n); continuous TPMs keep float32. Consumers doing
+        arithmetic must cast to float first (System builds float32 cubes).
         """
         if not self.tpm_filename.exists():
             raise FileNotFoundError(

@@ -4,14 +4,14 @@ Responde a la pregunta «¿cómo sé que, p. ej., N10A con k=2..5 da la *mejor*
 partición?» con la metodología estándar cuando el óptimo exacto no es calculable
 a gran escala:
 
-1. **Exacto donde es viable** (n ≤ 4, k ≤ 3): ``ExhaustiveK`` enumera *todas* las
+1. **Exacto donde es viable** (n ≤ 4, k ≤ 3): ExhaustiveK enumera *todas* las
    k-particiones y devuelve el mínimo real de δ_k. Si la **mejor** estrategia del
-   sistema lo iguala, el resultado es **demostrablemente óptimo** (``OPTIMO``).
+   sistema lo iguala, el resultado es **demostrablemente óptimo** (OPTIMO).
 2. **Evidencia convergente** (n grande, p. ej. N10A/N15A, donde el exacto es
    intratable): tres búsquedas *independientes* —geométrica (KGeoMIP), submodular
    (KQNodes) y metaheurística (Tabú)— se ejecutan por separado. Si **convergen al
    mismo δ_k**, esa coincidencia de métodos distintos es fuerte evidencia de
-   optimalidad global (``CONVERGENTE``).
+   optimalidad global (CONVERGENTE).
 
 El sistema entrega la **mejor** partición entre sus estrategias. Las voraces
 KGeoMIP/KQNodes son cotas superiores para k≥3 (a veces subóptimas); Tabú suele
@@ -43,9 +43,9 @@ def evaluate(net: str, k: int, with_exact: bool) -> dict:
     """Run the strategies for one (net, k) and judge optimality.
 
     El sistema entrega la MEJOR partición entre sus estrategias (mínimo δ_k) y el
-    veredicto se juzga sobre eso: con exacto disponible es ``OPTIMO`` si la mejor
+    veredicto se juzga sobre eso: con exacto disponible es OPTIMO si la mejor
     iguala al exacto; sin exacto, si las tres búsquedas independientes convergen
-    es ``CONVERGENTE`` (fuerte evidencia de óptimo global), si no se reporta la
+    es CONVERGENTE (fuerte evidencia de óptimo global), si no se reporta la
     mejor (Tabú suele ganar).
     """
     n, page, state = parse_net_label(net)
@@ -157,18 +157,18 @@ def _write_report(
         "# Validación de optimalidad de las k-particiones (K-QGMIP)",
         "",
         "¿Las particiones que entrega el sistema son las **mejores** (mínimo δ_k)?",
-        "Esta es la evidencia, generada por `scripts/validate_optimality.py`.",
+        "Esta es la evidencia, generada por scripts/validate_optimality.py.",
         "",
         "## Metodología",
         "",
         "El sistema entrega la **mejor** partición entre sus estrategias (mínimo δ_k de",
         "KGeoMIP/KQNodes/Tabú). El veredicto se juzga sobre ese *mejor*:",
         "",
-        "- **Exacto (n ≤ 4, k ≤ 3):** `ExhaustiveK` enumera *todas* las k-particiones; su",
-        "  δ_k es el mínimo real. `OPTIMO` ⇒ el mejor del sistema iguala ese mínimo.",
+        "- **Exacto (n ≤ 4, k ≤ 3):** ExhaustiveK enumera *todas* las k-particiones; su",
+        "  δ_k es el mínimo real. OPTIMO ⇒ el mejor del sistema iguala ese mínimo.",
         "- **Convergente (n grande):** el exacto es intratable; se ejecutan tres búsquedas",
-        "  independientes. `CONVERGENTE` ⇒ las tres coinciden (fuerte evidencia de óptimo);",
-        "  `MEJOR=TABU` ⇒ no coinciden y Tabú aporta la mejor (las voraces quedan por encima).",
+        "  independientes. CONVERGENTE ⇒ las tres coinciden (fuerte evidencia de óptimo);",
+        "  MEJOR=TABU ⇒ no coinciden y Tabú aporta la mejor (las voraces quedan por encima).",
         "",
         "## Resultados",
         "",

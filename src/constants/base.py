@@ -37,7 +37,7 @@ STRATEGY_TIMEOUT = 300
 
 PATH_SAMPLES: Path = PROJECT_ROOT / "data" / "samples"
 PATH_RESULTS: Path = PROJECT_ROOT / "data" / "results"
-BENCHMARK_CSV: Path = PROJECT_ROOT / "data" / "results" / "benchmark_results_FINAL.csv"
+BENCHMARK_CSV: Path = PROJECT_ROOT / "data" / "results" / "benchmark.csv"
 
 NET_LABEL: str = "NET"
 LOGS_PATH: str = "logs/runtime"

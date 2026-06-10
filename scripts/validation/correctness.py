@@ -1,10 +1,10 @@
 """Correctness validation across strategies (Phase 7).
 
 For each small network (where the exact ground truth is feasible) this runs every
-k-strategy and checks, using the strategy's ``best_partition`` KPartition object
+k-strategy and checks, using the strategy's best_partition KPartition object
 (never the formatted string):
 
-1. the reported loss equals ``delta_k`` recomputed from that partition,
+1. the reported loss equals delta_k recomputed from that partition,
 2. the loss never beats the exact ExhaustiveK optimum (exact is a lower bound),
 3. it reports the exact-hit rate, relative Φ error and Jaccard distance to exact.
 
