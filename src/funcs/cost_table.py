@@ -1,32 +1,6 @@
-"""Reusable transition-cost table T for the geometric strategies.
-
-The geometric method (GeoMIP, official doc ``docs/Proyecto_KQMIP.md`` §2.3 and
-``docs/algoritmos.md`` §4) interprets the state space as an n-dimensional
-hypercube and builds a *cost table* ``T`` of transitions between the initial
-state and the rest of the vertices. Each entry encodes, per effect n-cube, the
-energy/inertia of moving between two states, weighted by the Hamming distance:
-
-    tx(start, end)[i] = γ · |X_i[start] - X_i[end]|,   γ = 1 / 2^{d_H(start, end)}
-
-This table is the most expensive part of the geometric analysis. The official
-specification (``§3``, line 103) requires it to be **computed once per system
-and reused to evaluate every k-partition candidate, independently of k**. This
-module isolates that computation so both ``GeometricSIA`` (k=2) and ``KGeoMIP``
-(k∈{2..5}) consume the same table instead of recomputing it.
-
-Two implementations live here:
-
-- :class:`CostTable` — the production, **level-by-level vectorized** table
-  (FASE 11). It stores the whole table as one ``(2^m, num_nodes)`` ``float32``
-  array indexed by the little-endian integer of each state, and fills it with
-  the same Hamming-level dynamic program as the legacy version but using NumPy
-  gathers instead of Python dict/tuple bookkeeping. At m=25 this is ~3.36 GB
-  and builds in minutes, where the dict-based version needs tens of GB of
-  Python object overhead and cannot run (PLANNING.md FASE 11).
-- :class:`LegacyCostTable` — the original dict-of-tuples breadth-first
-  implementation, kept verbatim as the executable reference for the
-  exact-equality tests (``tests/unit/test_cost_table_vectorized.py``). Both
-  produce bit-identical tables and candidate pools.
+"""
+Cost table implementation for the transition from the initial state to all reachable states,
+with methods to retrieve costs and propose bipartition candidates based on the table.
 """
 
 import numpy as np
@@ -36,35 +10,8 @@ from src.constants.strategies import COST_TABLE_CHUNK_ROWS
 
 
 class CostTable:
-    """Hamming-weighted transition-cost table over the hypercube of states.
-
-    Vectorized implementation: the per-node cost vectors for **every** state
-    of the m-dimensional hypercube are stored in a single ``(2^m, num_nodes)``
-    ``float32`` array (:attr:`table`), where a state's row index is its
-    little-endian integer ``Σ state[j]·2^j``. The table is filled level by
-    level over the Hamming distance to ``state_start`` with the recurrence
-
-        T(s) = γ(s) · ( D(s) + Σ_{nb ∈ N⁻(s)} T(nb) ),   γ(s) = 1 / 2^{d_H(s)}
-
-    where ``D(s)[i] = |X_i[start] - X_i[s]|`` and ``N⁻(s)`` are the ``d_H(s)``
-    neighbors of ``s`` one bit closer to ``state_start`` — exactly the
-    accumulation performed by :class:`LegacyCostTable`, so the resulting
-    values are bit-identical (same float32 operations in the same order per
-    entry; equality covered by ``tests/unit/test_cost_table_vectorized.py``).
-
-    Args:
-        flat_data: One raveled probability array per effect n-cube. The array
-            for node ``i`` is indexed by the little-endian integer of a
-            mechanism substate, so ``flat_data[i][state_int]`` is the marginal
-            probability contribution of node ``i`` at that state.
-        state_start: Initial mechanism substate as a 0/1 array.
-        state_end: Target substate (``1 - state_start``), the hypercube vertex
-            antipodal to ``state_start``.
-
-    Attributes:
-        table: The ``(2^m, num_nodes)`` float32 cost table, row-indexed by the
-            little-endian state integer. Row ``state_start`` is all zeros.
-        num_nodes: Number of effect n-cubes (length of every cost vector).
+    """Class for the transition cost table, mapping every reachable state from the
+    initial state to the per-node cost vector of the transition from the initial state.
     """
 
     def __init__(
@@ -73,12 +20,7 @@ class CostTable:
         state_start: NDArray[np.int8],
         state_end: NDArray[np.int8],
     ) -> None:
-        """Keep per-node raveled views (no stacking copy) and build the table.
-
-        Avoiding the ``(num_nodes, 2^m)`` stacked copy of the legacy version
-        saves ~3.4 GB at m=n=25; each level gathers directly from the
-        individual per-node arrays instead.
-        """
+        """Stack the per-node rows and precompute the powers of two, then build."""
         self.state_start = state_start
         self.state_end = state_end
         self.num_nodes = len(flat_data)
@@ -89,16 +31,15 @@ class CostTable:
         self.table: NDArray[np.float32] = self._build()
 
     def _build(self) -> NDArray[np.float32]:
-        """Fill the table level by level over the Hamming distance to the start.
-
-        States are processed in ascending Hamming-level order so every one-bit
-        neighbor toward the origin is already final when a level is computed.
-        Levels are processed in row chunks to bound temporary memory.
+        """Populate the cost table level by level, flipping bits away from the origin
+        and accumulating costs from single-bit neighbors. The table is stored as a
+        2^m × num_nodes array, indexed by the integer representation of the state.
         """
         num_dims = self._num_dims
         size = 1 << num_dims
         states = np.arange(size, dtype=np.int64)
-        dist = _popcount(states ^ self._origin, num_dims)
+        self._dist = _popcount(states ^ self._origin, num_dims)
+        dist = self._dist
         order = np.argsort(dist, kind="stable")
         boundaries = np.searchsorted(dist[order], np.arange(num_dims + 2))
 
@@ -118,8 +59,7 @@ class CostTable:
                 acc = np.empty((chunk.size, self.num_nodes), dtype=np.float32)
                 for node, flat in enumerate(self._flats):
                     acc[:, node] = np.abs(
-                        flat[chunk].astype(np.float32, copy=False)
-                        - origin_values[node]
+                        flat[chunk].astype(np.float32, copy=False) - origin_values[node]
                     )
                 if level > 1:
                     flipped = chunk ^ self._origin
@@ -132,11 +72,7 @@ class CostTable:
         return table
 
     def cost(self, state_start: list, state_end: list) -> NDArray[np.float32]:
-        """Return the per-node cost vector for the ``start -> end`` transition.
-
-        As in the legacy table, transitions are only stored from the initial
-        state, so ``state_start`` must equal the table's origin.
-        """
+        """Return the per-node cost vector for the ``start -> end`` transition."""
         if tuple(state_start) != tuple(self.state_start.tolist()):
             raise KeyError(
                 "CostTable solo almacena transiciones desde el estado inicial "
@@ -147,21 +83,8 @@ class CostTable:
 
     def candidate_bipartitions(self) -> list[list[list[int]]]:
         """Propose bipartition candidates from the cost table.
-
-        Returns a list of ``[present_positions, future_positions]`` selections,
-        where ``present_positions`` index into the mechanism dimensions and
-        ``future_positions`` index into the effect n-cubes. The pool combines:
-
-        - the ``n`` single-node cuts (each effect node isolated), and
-        - for every Hamming level up to the midpoint, the lowest-cost
-          assignment of each node to the start side or its complement.
-
-        The per-level scan replicates the legacy semantics exactly: states are
-        ranked in the legacy breadth-first order (lexicographic order of the
-        flipped-position tuples, realized as descending bit-reversed masks),
-        per-state costs accumulate ``min(T[s][i], T[s̄][i])`` over nodes in
-        float64 (sequential, same order as the legacy Python loop), and the
-        strict ``<`` update keeps the first minimum of the level.
+        The first candidates are the single-bit flips, then the states are processed level by level,
+        starting from the closest to the origin, and the best bipartition is selected for each level.
         """
         num_dims = self._num_dims
         n_vars = self.num_nodes
@@ -169,8 +92,8 @@ class CostTable:
 
         candidates: list[list[list[int]]] = [
             [
-                [i for i in range(len(self.state_end))],
-                [i for i in range(n_vars) if i != idx],
+                list(range(len(self.state_end))),
+                list(i for i in range(n_vars) if i != idx),
             ]
             for idx in range(n_vars)
         ]
@@ -178,7 +101,7 @@ class CostTable:
         num_levels = num_dims + 1
         half = (num_levels // 2) + (1 if num_levels % 2 else 0)
         states = np.arange(1 << num_dims, dtype=np.int64)
-        dist = _popcount(states ^ self._origin, num_dims)
+        dist = self._dist
 
         for level in range(1, half):
             level_states = states[dist == level]
@@ -212,7 +135,7 @@ class CostTable:
 
 
 def _popcount(values: NDArray[np.int64], num_bits: int) -> NDArray[np.uint8]:
-    """Per-element population count of ``num_bits``-bit non-negative integers."""
+    """Per-element population count of (num_bits)-bit non-negative integers."""
     remaining = values.astype(np.uint64, copy=True)
     counts = np.zeros(values.shape, dtype=np.uint8)
     for _ in range(num_bits):
@@ -222,14 +145,7 @@ def _popcount(values: NDArray[np.int64], num_bits: int) -> NDArray[np.uint8]:
 
 
 def _bit_reverse(values: NDArray[np.int64], num_bits: int) -> NDArray[np.int64]:
-    """Reverse the lowest ``num_bits`` bits of each element.
-
-    Sorting flipped-bit masks by **descending** bit-reversed value enumerates
-    the states of a Hamming level in lexicographic order of their
-    flipped-position tuples — the exact breadth-first insertion order of the
-    legacy table (property verified empirically for m ≤ 10 over every level
-    and asserted by the candidate-equality tests).
-    """
+    """Reverse the lowest (num_bits) bits of each element."""
     reversed_values = np.zeros(values.shape, dtype=np.int64)
     for bit_pos in range(num_bits):
         reversed_values |= ((values >> bit_pos) & 1) << (num_bits - 1 - bit_pos)
@@ -237,26 +153,8 @@ def _bit_reverse(values: NDArray[np.int64], num_bits: int) -> NDArray[np.int64]:
 
 
 class LegacyCostTable:
-    """Original dict-of-tuples cost table (reference implementation).
-
-    Builds the table with a breadth-first walk that flips, level by level, the
-    bits separating ``state_start`` from its antipode, storing one per-node
-    cost vector per reached vertex in :attr:`transition_table`. Kept verbatim
-    as the executable specification for the equality tests of
-    :class:`CostTable`; do **not** use it for n ≳ 20 (the Python dict/tuple
-    overhead is ~1 KB per entry × 2^m entries → OOM far below n=25).
-
-    Args:
-        flat_data: One raveled probability array per effect n-cube.
-        state_start: Initial mechanism substate as a 0/1 array.
-        state_end: Target substate (``1 - state_start``).
-
-    Attributes:
-        transition_table: Maps ``(start_tuple, end_tuple)`` to the per-node
-            cost vector of length ``num_nodes``.
-        paths: Maps a Hamming level to the list of vertices (as ``list[int]``)
-            reachable from ``state_start`` at exactly that distance.
-        num_nodes: Number of effect n-cubes (length of every cost vector).
+    """Original dict-of-tuples cost table implementation,
+    kept for reference and testing against the new array-based version.
     """
 
     def __init__(
@@ -282,7 +180,10 @@ class LegacyCostTable:
             self._compute_level(level)
 
     def _compute_level(self, level: int) -> None:
-        """Expand every vertex at ``level - 1`` toward ``state_end`` by one bit."""
+        """Expand every vertex at the previous level by flipping one bit towards the end state,
+        then compute the cost of the transition from the initial state to the new vertex, using the
+        costs of single-bit neighbors if the Hamming distance is greater than 1.
+        """
         visited: set[tuple] = set()
         self.paths[level] = []
         for prev_state in self.paths[level - 1]:
@@ -298,11 +199,9 @@ class LegacyCostTable:
                         visited.add(tup)
 
     def _compute_cost(self, state_start: list, state_end: list) -> None:
-        """Store the per-node transition cost vector for ``start -> end``.
-
-        Single-bit jumps read the node-wise absolute difference directly; for
-        multi-bit jumps the single-bit neighbor costs are accumulated, and the
-        whole vector is finally scaled by ``γ = 1 / 2^{d_H}``.
+        """Compute the cost of the transition from (state_start) to (state_end) and
+        store it in the table, using the costs of single-bit neighbors
+        if the Hamming distance is greater than 1.
         """
         key = tuple(state_start), tuple(state_end)
         dh = self._hamming(state_start, state_end)
@@ -317,7 +216,10 @@ class LegacyCostTable:
                 if state_start[k] != state_end[k]:
                     neighbor = list(state_end)
                     neighbor[k] = state_start[k]
-                    cost = cost + self.transition_table[(tuple(state_start), tuple(neighbor))]
+                    cost = (
+                        cost
+                        + self.transition_table[(tuple(state_start), tuple(neighbor))]
+                    )
 
         self.transition_table[key] = factor * cost
 
@@ -336,8 +238,8 @@ class LegacyCostTable:
 
         candidates: list[list[list[int]]] = [
             [
-                [i for i in range(len(self.state_end))],
-                [i for i in range(n_vars) if i != idx],
+                list(range(len(self.state_end))),
+                list(i for i in range(n_vars) if i != idx),
             ]
             for idx in range(n_vars)
         ]

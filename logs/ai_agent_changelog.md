@@ -1263,3 +1263,40 @@ hasta el momento son correctos y óptimos… validación cruzada del proyecto or
   `QNodes`) se detectó porque el merge dio 0 filas; corregido y re-verificado.
 - **En curso:** optimalidad exacta sobre las 49 filas N5A de terceros (ExhaustiveK k=2..5,
   paralelo) para cuantificar % de óptimos exactos nuestros vs terceros.
+
+### Continuación (2026-06-09): estándar de documentación del usuario + mejoras de eficiencia (Fase 6) + verificación de particiones
+
+**Prompt:** "revisa bien los cambios que realicé y si implementa lo necesario para mejorar en
+tiempo y recursos, pero recuerda que no se debe afectar la precisión… verificar que dichos
+valores no solo tiempo y precisión sino también las particiones son correctas."
+
+- **Pasada de documentación del usuario (su estándar, respetada):** docstrings concisos y
+  semánticos en ~45 ficheros (sin referencias a fases ni métricas); renombres funcionales:
+  defaults de la tabla a `datos.xlsx`/`resultados.xlsx`, entrada batch `pruebas.xlsx`,
+  eliminación de `scripts/fill_official_grid.py` (la tabla se llena vía `main_batch.py` con
+  `IIT_INPUT_XLSX`), `data/results_others/` a `.gitignore`. Se normalizó el orden de imports
+  con `ruff --fix` (conflicto editor-isort recurrente, mismo patrón que en Fase 10).
+- **TPM uint8 (`Manager.load_network`):** las TPM deterministas 0/1 se devuelven como uint8
+  (4× menos memoria residente: N25 0.84 GB vs 3.36 GB); las continuas (N15A) permanecen
+  float32 — verificado con test para evitar truncamiento. `System.__init__` castea a float32
+  **por columna** (sin copia transitoria completa de la TPM), así toda la aritmética sigue en
+  float32 y no puede haber wraparound.
+- **`CostTable`:** el popcount de niveles (9.1 s a m=25) se calcula una vez y se reutiliza en
+  `candidate_bipartitions` (antes se recomputaba).
+- **Medición (precisión idéntica, mismas pérdidas exactas 0.49980735778808594):**
+  N25A k=2..5 completo — KQNodes **124.7 s → 22.8 s (5.5×)**, KGeoMIP **238.4 s → 119.6 s (2×)**;
+  pico RAM 9.6 → 8.4 GB (sin presión de swap). Tests nuevos `tests/unit/test_tpm_dtype.py`
+  (5): dtype correcto por tipo de TPM, cubos bit-idénticos uint8 vs float32, pérdidas y
+  particiones end-to-end idénticas (GeometricSIA, QNodes, KGeoMIP k=2..4).
+- **Verificación de PARTICIONES del workbook (no solo pérdidas):**
+  `validate_vs_others.py --verify-partitions`: parsea cada partición almacenada, la valida
+  como k-partición estricta (§2.1: cobertura/disyunción) y re-evalúa δ_k sobre el subsistema
+  reconstruido comparando con la celda. Resultado: **10A 392, 15B 400, 20A 400, 22A 400
+  celdas — 0 inválidas, 0 desajustes** (25A parcial en verificación al cierre).
+- **Optimalidad exacta N5A (job detenido a 25/42 filas por consumo de cores — n_jobs=-1 de
+  ExhaustiveK paralelo era lo que saturaba los 8 cores):** sobre 82 casos con exacto:
+  KGeoMIP óptimo exacto 64/77 (83%), KQNodes 49/72 (68%), terceros 36/82 (44%) con **7 valores
+  por debajo de la cota exacta** (sus particiones k≥3 inválidas). El exacto de referencia es
+  **nuestro ExhaustiveK**, validado a su vez contra el BruteForce de `.core/core_00` (golden
+  10/10) y PyPhi — cadena de confianza documentada.
+- **Gates:** suite completa + 5 tests nuevos en verde; `ruff check .` y `mypy src` limpios.

@@ -32,13 +32,20 @@ class Manager:
     def load_network(self) -> np.ndarray:
         """
         Load the TPM file matching the current state and page.
+
+        Deterministic 0/1 TPMs are returned as ``uint8`` (4x less resident
+        memory at large n); continuous TPMs keep ``float32``. Consumers doing
+        arithmetic must cast to float first (``System`` builds float32 cubes).
         """
         if not self.tpm_filename.exists():
             raise FileNotFoundError(
                 f"TPM no encontrada: {self.tpm_filename}\nColoca el archivo en {PATH_SAMPLES}/"
             )
 
-        return np.loadtxt(self.tpm_filename, delimiter=COLON_DELIM, dtype=np.float32)
+        tpm = np.loadtxt(self.tpm_filename, delimiter=COLON_DELIM, dtype=np.float32)
+        if ((tpm == 0) | (tpm == 1)).all():
+            return tpm.astype(np.uint8)
+        return tpm
 
     def generate_network(
         self, dimensions: int, deterministic: bool = True, assume_yes: bool = False
@@ -57,7 +64,10 @@ class Manager:
         print(f"Tamaño estimado: {total_gb:.6f} GB")
 
         if total_gb > 1 and not assume_yes:
-            if input("El sistema ocupará más de 1 GB. ¿Continuar? (s/n): ").lower() != "s":
+            if (
+                input("El sistema ocupará más de 1 GB. ¿Continuar? (s/n): ").lower()
+                != "s"
+            ):
                 return ""
 
         self.base_path.mkdir(parents=True, exist_ok=True)
