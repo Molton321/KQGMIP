@@ -1,10 +1,13 @@
 """Systematic benchmark: all strategies x all networks x all k values.
 
+Writes the CSV consumed by the web UI and the figures (BENCHMARK_CSV) plus a
+companion .xlsx with pivot summaries. Re-run it after changing any strategy to
+keep the benchmark current (also available as ``uv run exec.py benchmark``).
+
 Usage:
-    uv run scripts/run_benchmark.py                    # full grid (N10, N15)
-    uv run scripts/run_benchmark.py --quick            # N10 only
-    uv run scripts/run_benchmark.py --nets N6A N10A    # custom nets
-    uv run scripts/run_benchmark.py --max-n 15         # cap network size
+    uv run scripts/run_benchmark.py                    # default grid (N10, N15)
+    uv run scripts/run_benchmark.py --quick            # N10 only, k=2,3
+    uv run scripts/run_benchmark.py --nets N20A N25A   # any sampled network
 """
 
 import argparse
@@ -12,12 +15,14 @@ import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+# isort: split
 import pandas as pd
 
+from src.constants.base import BENCHMARK_CSV
 from src.funcs.runner import load_tpm, parse_net_label, run_analysis
 from src.models.base.application import application
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 def _strategy_specs(n: int, include_meta: bool) -> list[tuple[str, str, str]]:
@@ -112,7 +117,7 @@ def main():
         "--no-meta", action="store_true", help="Skip metaheuristics (GA/SA/Tabu)"
     )
     parser.add_argument(
-        "--output", default="data/results/benchmark_results.csv", help="Output CSV path"
+        "--output", default=str(BENCHMARK_CSV), help="Output CSV path"
     )
     args = parser.parse_args()
 
