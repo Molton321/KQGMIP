@@ -1441,10 +1441,10 @@ Poder generar el benchmark con las N que yo seleccione de data. Validación cruz
   (datetime2 -> tracklang.sty ausente); reimplementada como \mesano sin dependencias (mes en español
   + año) y enlazada en ambas portadas. make all en verde: 21 + 11 = 32 páginas.
 - **Validación cruzada total (medida hoy):**
-  - `external --verify-partitions` re-evalúa cada partición almacenada con la δ oficial:
-    10A/15B/20A/22A → **1592 celdas, 0 inválidas, 0 desajustes de pérdida**. N25A se re-confirma
-    aparte (re-construye 50 subsistemas completos n=25, ~50 min); la sesión previa ya verificó las
-    1992 celdas limpias.
+  - `external --verify-partitions` re-evalúa cada partición almacenada con la δ oficial. Las cinco
+    hojas re-confirmadas esta sesión: 10A 392, 15B 400, 20A 400, 22A 400, 25A 400 →
+    **1992 celdas, 0 inválidas, 0 desajustes de pérdida**. N25A tarda ~50 min porque re-construye
+    50 subsistemas completos de n=25.
   - `correctness` (vs óptimo exacto, n≤5): **30/30**; KGeoMIP y KQNodes igualan el óptimo exacto
     (jaccard 0.00) en todos los casos; el clustering baseline queda lejos (no optimiza δ).
   - `external` (vs proyecto original de la docente): TPM N15A idéntica byte a byte; **6/6** filas de
