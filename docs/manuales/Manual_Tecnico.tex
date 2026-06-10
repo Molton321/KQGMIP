@@ -447,7 +447,7 @@ construye en unos dos minutos. La igualdad con la versión original es bit a bit
 incluido el orden de desempate de los candidatos (el recorrido BFS visita los
 niveles en orden lexicográfico de las posiciones volteadas, que el código
 vectorizado reproduce con máscaras bit-invertidas); la clase original se
-conserva como \texttt{LegacyCostTable} y una batería de 38 tests verifica la
+conserva como \texttt{LegacyCostTable} y un conjunto de 38 pruebas verifica la
 igualdad de tabla, candidatos y consultas sobre TPMs aleatorias y deterministas.
 
 \subsection{KQNodes: generación submodular del \emph{cut pool}}
@@ -718,7 +718,7 @@ def delta_k(subsystem, partition, baseline_distribution=None):
 \end{itemize}
 
 \subsection{Tests implementados}
-La batería (\texttt{uv run pytest}, $275$ casos) cubre: regresión $k=2$
+El conjunto de pruebas (\texttt{uv run pytest}, $275$) cubre: regresión $k=2$
 (KGeoMIP$\equiv$GeoMIP, KQNodes$\equiv$QNodes), validación $k\in\{3,4,5\}$ contra el
 exacto, semántica estricta de \texttt{KPartition}, determinismo del clustering y de
 las \textbf{metaheurísticas} (misma semilla $\Rightarrow$ misma partición), cota

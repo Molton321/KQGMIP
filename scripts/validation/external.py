@@ -15,7 +15,7 @@ https://github.com/JuManoel/projecto-analisis-20261):
    reported loss/time.
 
     uv run scripts/validate.py external                  # reproduce the original
-    uv run scripts/validate.py external --docente-rows 12
+    uv run scripts/validate.py external --rows 12
     uv run scripts/validate.py external --verify-partitions
 """
 
@@ -61,7 +61,7 @@ def _load_workbook_retrying(path: Path, attempts: int = 3):
             time.sleep(2)
 
 
-def reproduce_docente(num_rows: int) -> None:
+def reproduce(num_rows: int) -> None:
     """Reproduce the original resultados_Geometric.xlsx rows with GeometricSIA."""
     sample_ours = PROJECT_ROOT / "data" / "samples" / "N15A.csv"
     sample_core = PATH_CORE / "data" / "samples" / "N15A.csv"
@@ -215,7 +215,7 @@ def main() -> None:
         description="Cross-validation vs the professor's original project."
     )
     parser.add_argument(
-        "--docente-rows",
+        "--rows",
         type=int,
         default=6,
         help="Rows of resultados_Geometric to reproduce.",
@@ -235,7 +235,7 @@ def main() -> None:
         verify_workbook_partitions(args.verify_partitions or None)
         return
 
-    reproduce_docente(args.docente_rows)
+    reproduce(args.rows)
 
 
 if __name__ == "__main__":

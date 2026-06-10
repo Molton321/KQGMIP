@@ -6,7 +6,7 @@ skinparam defaultFontName "Helvetica"
 title K-QGMIP — Secuencia: búsqueda de la k-MIP (KGeoMIP)
 
 actor Usuario as U
-participant "exec.py /\nmain.py" as Main
+participant "exec.py\n(run)" as Main
 participant "Manager" as Mgr
 participant "KGeoMIP\n(SIA)" as K
 participant "System" as Sys

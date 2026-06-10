@@ -73,6 +73,17 @@ def grid_sheet_names(path: Path) -> list[str]:
         book.close()
 
 
+def _match_sheet_name(book, sheet_name: str) -> str:
+    """Resolve a sheet name tolerating surrounding whitespace."""
+    if sheet_name in book.sheetnames:
+        return sheet_name
+    target = sheet_name.strip()
+    for name in book.sheetnames:
+        if name.strip() == target:
+            return name
+    raise KeyError(f"La hoja '{sheet_name}' no existe en el workbook.")
+
+
 def _sheet_values(path: Path, sheet_name: str) -> list[tuple]:
     """Read every cell value of a sheet in one streaming pass.
 
@@ -82,7 +93,9 @@ def _sheet_values(path: Path, sheet_name: str) -> list[tuple]:
     """
     book = load_workbook(path, read_only=True)
     try:
-        return list(book[sheet_name].iter_rows(values_only=True))
+        return list(
+            book[_match_sheet_name(book, sheet_name)].iter_rows(values_only=True)
+        )
     finally:
         book.close()
 
@@ -237,20 +250,26 @@ def format_results_text(rows: list[dict], max_rows: int | None = None) -> str:
     to one line. Designed to be readable without knowing the project.
     """
     if not rows:
-        return "Sin resultados: el archivo no tiene celdas llenas con el formato estándar."
+        return (
+            "Sin resultados: el archivo no tiene celdas llenas con el formato estándar."
+        )
 
     lines: list[str] = []
     networks = sorted({r["red"] for r in rows}, key=lambda red: (len(red), red))
     for red in networks:
         net_rows = [r for r in rows if r["red"] == red]
         lines.append("")
-        lines.append(f"━━━ {red} (n={net_rows[0]['n']}, {len(net_rows)} resultados) ━━━")
+        lines.append(
+            f"━━━ {red} (n={net_rows[0]['n']}, {len(net_rows)} resultados) ━━━"
+        )
         lines.append("")
         lines.append("  Resumen por estrategia y k:")
         lines.append("  Estrategia  k   casos   δ media      δ máx        t medio (s)")
         for family in sorted({r["estrategia"] for r in net_rows}):
             for k in sorted({r["k"] for r in net_rows}):
-                cell = [r for r in net_rows if r["estrategia"] == family and r["k"] == k]
+                cell = [
+                    r for r in net_rows if r["estrategia"] == family and r["k"] == k
+                ]
                 if not cell:
                     continue
                 losses = [r["perdida"] for r in cell]
@@ -279,7 +298,9 @@ def format_results_text(rows: list[dict], max_rows: int | None = None) -> str:
                 f"{r['perdida']:<12.8f}  {r['tiempo']:<9.4f}  {partition}"
             )
         if max_rows is not None and len(net_rows) > max_rows:
-            lines.append(f"  … {len(net_rows) - max_rows} filas más (use --completo para verlas).")
+            lines.append(
+                f"  … {len(net_rows) - max_rows} filas más (use --complete para verlas)."
+            )
     return "\n".join(lines)
 
 

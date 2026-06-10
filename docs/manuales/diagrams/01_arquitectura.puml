@@ -7,7 +7,7 @@ skinparam defaultFontName "Helvetica"
 title K-QGMIP — Arquitectura general
 
 actor Usuario as user
-rectangle "Punto de entrada\n(exec.py → main.py / main_batch.py)" as entry
+rectangle "Punto de entrada\nexec.py (run / batch / results / benchmark)\nstreamlit_app.py (web)" as entry
 
 package "Configuración" {
   component "application\n(singleton)" as app
@@ -38,7 +38,7 @@ package "Funcs" {
   component "emd / delta_k" as emd
   component "metrics" as met
   component "parallel (PCD)" as par
-  component "accelerate (Numba)" as acc
+  component "runner\n(registro de estrategias)" as run
 }
 
 package "Middlewares" {
@@ -77,7 +77,7 @@ kgeo --> sol
 kqn --> sol
 sia ..> log
 sia ..> prof
-kref ..> acc
+entry ..> run
 clus ..> par
 sol --> out
 viz --> kp

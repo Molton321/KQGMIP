@@ -115,7 +115,7 @@ def main():
     parser.add_argument(
         "--no-meta", action="store_true", help="Skip metaheuristics (GA/SA/Tabu)"
     )
-    parser.add_argument("--output", default=str(BENCHMARK_CSV), help="Output CSV path")
+    parser.add_argument("--out", default=str(BENCHMARK_CSV), help="Output CSV path")
     args = parser.parse_args()
 
     application.disable_profiling()

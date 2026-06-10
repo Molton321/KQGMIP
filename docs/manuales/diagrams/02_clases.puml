@@ -80,9 +80,9 @@ class KPartition {
 }
 
 class CostTable {
-  -_flat : ndarray (n, 2^m)
+  +table : ndarray[float32] (2^m, n)
+  -_flats : list[ndarray]
   -_powers : ndarray
-  -transition_table : dict
   +cost(state_start, state_end) : ndarray
   +candidate_bipartitions() : list
 }

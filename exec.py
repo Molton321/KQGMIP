@@ -11,12 +11,7 @@ from pathlib import Path
 
 from src.constants.base import PROJECT_ROOT
 from src.constants.grid import GRID_RESULTS_XLSX, GRID_TEMPLATE_XLSX
-from src.funcs.grid import (
-    fill_grid,
-    format_results_text,
-    grid_sheet_names,
-    read_grid_results,
-)
+from src.funcs.grid import fill_grid, format_results_text, grid_sheet_names, read_grid_results
 from src.funcs.runner import load_tpm, parse_net_label, run_analysis
 from src.models.base.application import application
 
@@ -26,8 +21,8 @@ K-QGMIP: análisis de k-particiones de mínima información (IIT).
 Comandos (los mismos que ofrece la interfaz web):
     uv run exec.py                                  → demostración + ayuda
     uv run exec.py run --net N10A --k 3             → un análisis individual
-    uv run exec.py batch [archivo.xlsx]             → llenar la tabla de evaluación
-    uv run exec.py results [archivo.xlsx]        → ver la tabla de resultados
+    uv run exec.py batch [file.xlsx]             → llenar la tabla de evaluación
+    uv run exec.py results [file.xlsx]        → ver la tabla de resultados
     uv run exec.py benchmark [--quick]              → regenerar el benchmark δ_k vs k
 """
 
@@ -76,16 +71,22 @@ class ExecApp:
             description=USAGE_ES,
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-        parser.add_argument("--profile", action="store_true", help="Activa el profiler.")
+        parser.add_argument(
+            "--profile", action="store_true", help="Activa el profiler."
+        )
         commands = parser.add_subparsers(dest="command")
 
         single = commands.add_parser("run", help="Un análisis individual.")
         single.add_argument("--net", required=True, help="Red, p. ej. N10A.")
         single.add_argument("--k", type=int, default=3, help="Bloques (k >= 2).")
-        single.add_argument("--strategy", default="kgeomip", choices=self._STRATEGY_CHOICES)
+        single.add_argument(
+            "--strategy", default="kgeomip", choices=self._STRATEGY_CHOICES
+        )
         single.add_argument("--page", help="Página de la red (A, B, ...).")
         single.add_argument("--state", help="Estado inicial binario (defecto: todo 1).")
-        single.add_argument("--method", default="spectral", choices=self._METHOD_CHOICES)
+        single.add_argument(
+            "--method", default="spectral", choices=self._METHOD_CHOICES
+        )
         single.add_argument("--condition")
         single.add_argument("--purview")
         single.add_argument("--mechanism")
@@ -94,30 +95,39 @@ class ExecApp:
             "batch", help="Llenar la tabla de evaluación (formato estándar)."
         )
         batch.add_argument(
-            "archivo",
+            "file",
             nargs="?",
             help=f"Workbook con hojas *-Elementos (defecto: {GRID_TEMPLATE_XLSX.name}).",
         )
-        batch.add_argument("--salida", help="Workbook de resultados (nunca pisa la entrada).")
-        batch.add_argument("--hojas", nargs="*", default=None, help="Hojas a llenar.")
+        batch.add_argument(
+            "--out", help="Workbook de resultados (nunca pisa la entrada)."
+        )
+        batch.add_argument("--sheets", nargs="*", default=None, help="Hojas a llenar.")
 
         results = commands.add_parser(
             "results", help="Ver una tabla de resultados en la terminal."
         )
         results.add_argument(
-            "archivo",
+            "file",
             nargs="?",
             help=f"Workbook de resultados (defecto: {GRID_RESULTS_XLSX.name}).",
         )
         results.add_argument(
-            "--completo", action="store_true", help="Muestra todas las filas (sin recorte)."
+            "--complete",
+            action="store_true",
+            help="Muestra todas las filas (sin recorte).",
         )
 
         benchmark = commands.add_parser(
-            "benchmark", help="Regenerar el benchmark δ_k (alimenta la sección de la web)."
+            "benchmark",
+            help="Regenerar el benchmark δ_k (alimenta la sección de la web).",
         )
-        benchmark.add_argument("--quick", action="store_true", help="Solo N10A (rápido).")
-        benchmark.add_argument("--nets", nargs="*", default=None, help="Redes, p. ej. N10A N15A.")
+        benchmark.add_argument(
+            "--quick", action="store_true", help="Solo N10A (rápido)."
+        )
+        benchmark.add_argument(
+            "--nets", nargs="*", default=None, help="Redes, p. ej. N10A N15A."
+        )
         return parser
 
     @staticmethod
@@ -166,7 +176,9 @@ class ExecApp:
         output = Path(args.salida) if args.salida else GRID_RESULTS_XLSX
         if output.resolve() == source.resolve():
             raise SystemExit("La salida no puede ser el mismo archivo de entrada.")
-        print(f"Entrada: {source}\nSalida:  {output} (reanudable; la entrada no se modifica)\n")
+        print(
+            f"Entrada: {source}\nSalida:  {output} (reanudable; la entrada no se modifica)\n"
+        )
         fill_grid(source, output, sheet_names=args.hojas)
         print(f"\nPara ver la tabla: uv run exec.py results {output}")
 
