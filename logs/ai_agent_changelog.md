@@ -1234,3 +1234,32 @@ QNodes como con GeoMIP, así que sí, debe haber una manera para que esos 2 lleg
 - **P-6 del PM (cambios sin commitear) — RESUELTO:** todo commiteado en la rama de fase.
 - **Llenado de la tabla oficial n≥20 lanzado:** `fill_official_grid.py --sheets 20A/22A/25A`
   en background (`logs/fill_grid_n20_25.log`), reanudable por celda.
+
+### Continuación (2026-06-09): validación cruzada vs .core/core_00 (docente) y data/results_others
+
+**Prompt:** "cancelé el grid en N25A… aún más importante es saber si los resultados obtenidos
+hasta el momento son correctos y óptimos… validación cruzada del proyecto original .core/core_00
+(dado por la docente) y los resultados obtenidos por terceros data/results_others/*".
+
+- **Script permanente `scripts/validate_vs_others.py`** (reproducible, Invariante 3/4):
+  1. **vs proyecto de la docente (.core/core_00/GeoMIP):** TPMs N5A/N8A/N10A/N15B **idénticas
+     byte a byte**; `Pruebas_Metodo2.xlsx` y `resultados_Geometric.xlsx` idénticos a los nuestros;
+     filas de `resultados_Geometric.xlsx` (N15A continua, estado 1000…0, condición todo-unos)
+     **reproducidas 6/6** con nuestra GeometricSIA (diferencia ≤2e-5 relativa, precisión float32
+     validada en Fase 6).
+  2. **vs terceros CSV (kqnodes/qnodes, la fuente comparable):** misma convención δ verificada
+     (sus k=2 reproducen el ground truth oficial). Sobre 880 casos comparables por estrategia
+     (N5A/N8A/N10A/N15B/N20A/N22A/N25A-parcial × k=2..5): **k=2 empate exacto 220/220**
+     (consistencia triple: nosotros ≡ terceros ≡ GeoMIP oficial/PyPhi); **k≥3 ganamos 660/660,
+     perdemos 0** (gaps hasta ~9.9 de δ a favor nuestro en N22/N25).
+  3. **Particiones k≥3 de terceros son inválidas según la spec §2.1:** sus bloques no cubren el
+     universo del mecanismo (∅ en todos los lados presentes; verificado parseando sus CSV y un
+     xlsx kGeoMIP: omiten el elemento `i`). Nuestro validador KPartition las rechaza; corregida
+     la cobertura, su partición k=3 de N10A test 1 da δ oficial **3.707** vs nuestra **0.953**.
+  4. **Workbook xlsx de terceros NO comparable:** en N10A k=2, 21/47 (QNodes) y 42/49 (Geometric)
+     de sus pérdidas están **por debajo del mínimo exhaustivo validado** — imposible bajo la δ
+     oficial (nada baja del mínimo exacto de la misma función) → métrica distinta; 0 coincidencias.
+- **Nota:** el bug del primer borrador del script (filtro `family=='KQNodes'` vs etiqueta real
+  `QNodes`) se detectó porque el merge dio 0 filas; corregido y re-verificado.
+- **En curso:** optimalidad exacta sobre las 49 filas N5A de terceros (ExhaustiveK k=2..5,
+  paralelo) para cuantificar % de óptimos exactos nuestros vs terceros.
