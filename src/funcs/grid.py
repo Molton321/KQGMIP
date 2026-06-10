@@ -171,6 +171,104 @@ class GridResultsWriter:
         self.book.save(self.output_path)
 
 
+def read_grid_results(path: Path) -> list[dict]:
+    """Read a filled grid workbook into tidy result rows.
+
+    Each row is one (test, strategy, k) cell:
+    ``{red, n, prueba, alcance, mecanismo, estrategia, k, particion, perdida, tiempo}``.
+    Empty cells are skipped, so partially filled workbooks are readable too.
+    """
+    rows: list[dict] = []
+    for sheet_name in grid_sheet_names(path):
+        sheet = read_grid_sheet(path, sheet_name)
+        red = "N" + sheet_name.strip().replace(f"-{GRID_SHEET_SUFFIX}", "")
+        book = load_workbook(path, read_only=True)
+        try:
+            cells = book[sheet_name]
+            for test in sheet.tests:
+                for k in GRID_K_VALUES:
+                    for family, offset in GRID_FAMILY_OFFSET.items():
+                        base = GRID_K_BASE_COLUMN[k] + offset
+                        loss = cells.cell(row=test.row, column=base + 1).value
+                        if loss in (None, ""):
+                            continue
+                        rows.append(
+                            {
+                                "red": red,
+                                "n": sheet.num_nodes,
+                                "prueba": test.row - sheet.header_row,
+                                "alcance": test.purview_letters,
+                                "mecanismo": test.mechanism_letters,
+                                "estrategia": family,
+                                "k": k,
+                                "particion": str(
+                                    cells.cell(row=test.row, column=base).value or ""
+                                ),
+                                "perdida": float(loss),
+                                "tiempo": float(
+                                    cells.cell(row=test.row, column=base + 2).value or 0
+                                ),
+                            }
+                        )
+        finally:
+            book.close()
+    return rows
+
+
+def format_results_text(rows: list[dict], max_rows: int | None = None) -> str:
+    """Render tidy result rows as an aligned, console-friendly table.
+
+    One block per network: a per-(strategy, k) summary first (count, mean and
+    max loss, mean time) and then the detailed rows with partitions compacted
+    to one line. Designed to be readable without knowing the project.
+    """
+    if not rows:
+        return "Sin resultados: el archivo no tiene celdas llenas con el formato estándar."
+
+    lines: list[str] = []
+    networks = sorted({r["red"] for r in rows}, key=lambda red: (len(red), red))
+    for red in networks:
+        net_rows = [r for r in rows if r["red"] == red]
+        lines.append("")
+        lines.append(f"━━━ {red} (n={net_rows[0]['n']}, {len(net_rows)} resultados) ━━━")
+        lines.append("")
+        lines.append("  Resumen por estrategia y k:")
+        lines.append("  Estrategia  k   casos   δ media      δ máx        t medio (s)")
+        for family in sorted({r["estrategia"] for r in net_rows}):
+            for k in sorted({r["k"] for r in net_rows}):
+                cell = [r for r in net_rows if r["estrategia"] == family and r["k"] == k]
+                if not cell:
+                    continue
+                losses = [r["perdida"] for r in cell]
+                times = [r["tiempo"] for r in cell]
+                lines.append(
+                    f"  {family:<10}  {k}   {len(cell):>5}   "
+                    f"{sum(losses) / len(losses):<10.6f}  {max(losses):<10.6f}  "
+                    f"{sum(times) / len(times):>10.3f}"
+                )
+        lines.append("")
+        lines.append(
+            "  #   k  Estrategia  Alcance/Mecanismo            δ (pérdida)   t (s)      Partición"
+        )
+        detail = sorted(net_rows, key=lambda r: (r["prueba"], r["k"], r["estrategia"]))
+        if max_rows is not None:
+            detail = detail[:max_rows]
+        for r in detail:
+            subsystem = f"{r['alcance']}|{r['mecanismo']}"
+            if len(subsystem) > 27:
+                subsystem = subsystem[:24] + "..."
+            partition = " · ".join(p.strip() for p in r["particion"].splitlines())
+            if len(partition) > 48:
+                partition = partition[:45] + "..."
+            lines.append(
+                f"  {r['prueba']:<3} {r['k']}  {r['estrategia']:<10}  {subsystem:<27}  "
+                f"{r['perdida']:<12.8f}  {r['tiempo']:<9.4f}  {partition}"
+            )
+        if max_rows is not None and len(net_rows) > max_rows:
+            lines.append(f"  … {len(net_rows) - max_rows} filas más (use --completo para verlas).")
+    return "\n".join(lines)
+
+
 def fill_grid(
     template_path: Path,
     output_path: Path,

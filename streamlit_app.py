@@ -5,7 +5,9 @@ and visualize the results. It also includes a batch runner for the official eval
 grid and a benchmark viewer for δ_k vs k when a results CSV is present.
 """
 
+import subprocess
 import sys
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -13,10 +15,15 @@ import streamlit as st
 from streamlit.runtime import exists as _st_runtime_exists
 from streamlit.web import cli as stcli
 
-from src.constants.base import BENCHMARK_CSV, PATH_SAMPLES, STRATEGY_TIMEOUT
-from src.constants.grid import GRID_RESULTS_XLSX, GRID_TEMPLATE_XLSX
+from src.constants.base import BENCHMARK_CSV, PATH_RESULTS, PATH_SAMPLES, STRATEGY_TIMEOUT
+from src.constants.grid import GRID_RESULTS_XLSX
 from src.controllers.manager import Manager
-from src.funcs.grid import fill_grid, grid_sheet_names
+from src.funcs.grid import (
+    fill_grid,
+    format_results_text,
+    grid_sheet_names,
+    read_grid_results,
+)
 from src.funcs.runner import (
     STRATEGY_BUILDERS,
     STRATEGY_HELP,
@@ -338,40 +345,97 @@ class StreamlitApp:
             width="stretch",
         )
 
+    def _standard_workbooks(self) -> list[Path]:
+        """Workbooks in data/results/ that follow the standard *-Elementos format."""
+        found = []
+        for path in sorted(PATH_RESULTS.glob("*.xlsx")):
+            try:
+                if grid_sheet_names(path):
+                    found.append(path)
+            except Exception:
+                continue
+        return found
+
     def _render_official_grid(self) -> None:
-        """Render the batch runner for the official evaluation grid when the template is present."""
-
-        if not GRID_TEMPLATE_XLSX.exists():
-            return
+        """Batch runner + results viewer over any standard workbook (CLI parity)."""
         st.divider()
-        st.subheader("Tabla de evaluación oficial (.xlsx)")
+        st.subheader("Tabla de evaluación (.xlsx)")
         st.caption(
-            f"Entrada: `{GRID_TEMPLATE_XLSX.name}` · Salida: `{GRID_RESULTS_XLSX.name}` "
-            "(la plantilla nunca se modifica; las celdas ya llenas se omiten)."
+            "Cualquier workbook con hojas `*-Elementos` (formato estándar). "
+            "Equivalentes de consola: `uv run exec.py batch` · `uv run exec.py resultados`."
         )
-        sheets = grid_sheet_names(GRID_TEMPLATE_XLSX)
-        chosen = st.multiselect("Hojas a llenar", sheets, default=[])
-        if st.button("▶ Llenar tabla", disabled=not chosen):
-            log_box = st.empty()
-            lines: list[str] = []
 
-            def report(line: str) -> None:
-                """Stream per-row progress lines into the UI log box."""
-                lines.append(line)
-                log_box.code("\n".join(lines[-15:]))
+        uploaded = st.file_uploader("Subir un .xlsx con el formato estándar", type="xlsx")
+        if uploaded is not None:
+            destination = PATH_RESULTS / uploaded.name
+            destination.write_bytes(uploaded.getvalue())
+            st.success(f"Guardado en {destination}")
 
-            with st.spinner("Ejecutando KQNodes + KGeoMIP sobre la tabla de evaluación…"):
-                fill_grid(
-                    GRID_TEMPLATE_XLSX, GRID_RESULTS_XLSX, sheet_names=chosen, progress=report
+        workbooks = self._standard_workbooks()
+        if not workbooks:
+            st.info(
+                "No hay workbooks con el formato estándar en `data/results/`. "
+                "Sube uno arriba para empezar."
+            )
+            return
+        chosen_book: Path = st.selectbox("Workbook", workbooks, format_func=lambda p: p.name)
+
+        view_tab, fill_tab = st.tabs(["Ver resultados", "Llenar tabla"])
+
+        with view_tab:
+            rows = read_grid_results(chosen_book)
+            if not rows:
+                st.info("Este workbook aún no tiene resultados; llénalo en la otra pestaña.")
+            else:
+                st.code(format_results_text(rows, max_rows=16), language=None)
+                with st.expander("Tabla completa (filtrable)"):
+                    st.dataframe(pd.DataFrame(rows), width="stretch")
+                st.download_button(
+                    "Descargar .xlsx",
+                    chosen_book.read_bytes(),
+                    file_name=chosen_book.name,
                 )
-            st.success(f"Tabla de resultados guardada en {GRID_RESULTS_XLSX}")
+
+        with fill_tab:
+            output_path = (
+                chosen_book if chosen_book.name.startswith("resultados") else GRID_RESULTS_XLSX
+            )
+            st.caption(
+                f"Salida: `{output_path.name}` — la entrada nunca se modifica y las "
+                "celdas ya llenas se omiten (reanudable)."
+            )
+            sheets = grid_sheet_names(chosen_book)
+            chosen_sheets = st.multiselect("Hojas a llenar", sheets, default=[])
+            if st.button("▶ Llenar tabla", disabled=not chosen_sheets):
+                log_box = st.empty()
+                lines: list[str] = []
+
+                def report(line: str) -> None:
+                    """Stream per-row progress lines into the UI log box."""
+                    lines.append(line)
+                    log_box.code("\n".join(lines[-15:]))
+
+                with st.spinner("Ejecutando KQNodes + KGeoMIP sobre la tabla…"):
+                    fill_grid(chosen_book, output_path, sheet_names=chosen_sheets, progress=report)
+                st.success(f"Tabla de resultados guardada en {output_path}")
 
     def _render_benchmark(self) -> None:
-        """Render the δ_k-vs-k benchmark grid when a FINAL CSV is present."""
-        if not BENCHMARK_CSV.exists():
-            return
+        """Render the δ_k-vs-k benchmark, with one-click generation when absent."""
         st.divider()
-        st.subheader("Tabla de benchmark (δ_k vs k)")
+        st.subheader("Benchmark (δ_k vs k, todas las estrategias)")
+        if not BENCHMARK_CSV.exists():
+            st.info(
+                "Aún no hay benchmark generado. Genera uno rápido aquí o ejecuta "
+                "`uv run exec.py benchmark` en la terminal."
+            )
+            if st.button("Generar benchmark rápido (N10A)"):
+                with st.spinner("Corriendo todas las estrategias sobre N10A…"):
+                    subprocess.run(
+                        [sys.executable, "scripts/run_benchmark.py", "--quick"],
+                        check=False,
+                    )
+                st.rerun()
+            return
         df = pd.read_csv(BENCHMARK_CSV)
         valid_nets = [
             n
@@ -379,6 +443,7 @@ class StreamlitApp:
             if not df[(df["network"] == n) & df["loss"].notna()].empty
         ]
         if not valid_nets:
+            st.warning("El CSV de benchmark existe pero no tiene filas válidas; regenéralo.")
             return
         net = st.selectbox("Red", valid_nets)
         st.plotly_chart(self._plot_loss_k(df, str(net)), width="stretch")

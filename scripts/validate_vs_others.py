@@ -35,15 +35,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pandas as pd
 from openpyxl import load_workbook
 
-from src.constants.base import PATH_RESULTS, PROJECT_ROOT
-from src.constants.grid import GRID_FAMILY_OFFSET, GRID_K_BASE_COLUMN, GRID_K_VALUES
+from src.constants.base import PROJECT_ROOT
+from src.constants.grid import (
+    GRID_FAMILY_OFFSET,
+    GRID_K_BASE_COLUMN,
+    GRID_K_VALUES,
+    GRID_RESULTS_XLSX,
+)
 from src.controllers.manager import Manager
 from src.controllers.strategies.geometric import GeometricSIA
 from src.models.base.application import application
 
 PATH_OTHERS = PROJECT_ROOT / "data" / "results_others"
 PATH_CORE = PROJECT_ROOT / ".core" / "core_00" / "GeoMIP"
-OURS_XLSX = PATH_RESULTS / "Resultados_DatosPruebas2026_1.xlsx"
+OURS_XLSX = GRID_RESULTS_XLSX
 
 LOSS_EPS = 1e-6
 """Comparison tolerance: above the 8-decimal rounding of our stored losses."""

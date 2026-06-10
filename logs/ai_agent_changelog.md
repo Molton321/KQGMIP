@@ -1313,3 +1313,32 @@ valores no solo tiempo y precisión sino también las particiones son correctas.
 - **Notas al pie obsoletas eliminadas** (ítem 🔶 del usuario): las 3 notas de Fase 10 sobre el
   "techo práctico/OOM a n=25" en 20A/22A/25A contradicen los datos ya presentes; eliminadas del
   workbook de resultados (la plantilla oficial nunca se tocó).
+
+## 2026-06-09 — FASE 11 (cont.): CLI/GUI unificadas, vista de resultados y renombre genérico de workbooks
+
+**Prompt:** "por qué no se está renderizando completo streamlit… es necesario main_batch.py o
+puede estar dentro de exec.py… cargar un .xlsx del estándar y una vista como consola con la
+tabla… CLI y GUI deben ofrecer las mismas acciones, fáciles para quien no programa."
+
+- **Causa del renderizado incompleto (verificada):** las secciones de Streamlit hacían `return`
+  silencioso: `GRID_TEMPLATE_XLSX` apuntaba a `datos.xlsx` (inexistente tras el cambio de
+  constantes del usuario sin renombrar los ficheros) y `BENCHMARK_CSV` se borró en la limpieza.
+- **Renombre completado (intención del usuario):** `DatosPruebas2026_1.xlsx → datos.xlsx`,
+  `Resultados_… → resultados.xlsx` (git mv): nombres genéricos para cualquier entrada estándar.
+  Incidente registrado: el editor guardó buffers viejos encima (resucitó main_batch/fill_grid/
+  consolidate_results y borró del worktree los xlsx renombrados); se restauraron del índice
+  (`git checkout --`) sin pérdida de datos.
+- **CLI única `exec.py` con subcomandos** (paridad con la web): `run` (individual),
+  `batch [archivo]` (llenado reanudable, salida nunca pisa la entrada), `resultados [archivo]`
+  (vista de consola), `benchmark [--quick]`. Se eliminan `main_batch.py`,
+  `scripts/fill_grid.py` y `scripts/consolidate_results.py` (absorbidos; el consolidador
+  existía solo por el techo pre-Fase 11 — ahora `run_benchmark.py` escribe el CSV final
+  directo a `BENCHMARK_CSV`).
+- **Vista de resultados (CLI y GUI):** `src/funcs/grid.py` gana `read_grid_results` (filas
+  tidy por celda) y `format_results_text` (tabla alineada: resumen por estrategia×k con δ
+  media/máx y t medio + detalle con partición compacta). En la web: uploader de .xlsx
+  estándar, selector de workbooks detectados, pestañas Ver resultados / Llenar tabla,
+  descarga, y generación del benchmark con un clic cuando falta el CSV.
+- **Estándar corregido tras observación del usuario:** docstring de módulo de exec.py vuelto a
+  inglés; la guía de uso en español vive en la constante `USAGE_ES` (cadena de UX).
+- **Gates:** ruff limpio; smoke de `exec.py resultados` y `--help` en verde.
