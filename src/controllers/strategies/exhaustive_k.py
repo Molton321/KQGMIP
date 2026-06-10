@@ -54,7 +54,9 @@ from src.models.core.partition import KPartition
 from src.models.core.solution import Solution
 
 
-def _weak_k_partitions(elements: tuple[int, ...], k: int) -> Generator[tuple[tuple[int, ...], ...]]:
+def _weak_k_partitions(
+    elements: tuple[int, ...], k: int
+) -> Generator[tuple[tuple[int, ...], ...]]:
     """
     Yield every k-tuple of subsets that partitions ``elements`` allowing empty blocks.
     A weak k-partition is a list of ``k`` subsets that, taken together, are a
@@ -157,7 +159,9 @@ def _exact_search_worker(
         for candidate in _generate_candidates(
             future_slice, present_options, future_universe, present_universe, k
         ):
-            loss, distribution = delta_k(system, candidate, baseline_distribution=baseline)
+            loss, distribution = delta_k(
+                system, candidate, baseline_distribution=baseline
+            )
             if loss < best_loss:
                 best_loss = loss
                 best_partition = candidate
@@ -206,7 +210,9 @@ class ExhaustiveK(SIA):
         """Run exact search for the best k-partition under the current subsystem."""
         self.sia_prepare_subsystem(condition, purview, mechanism)
 
-        future_universe = tuple(int(i) for i in self.sia_subsystem.ncube_indices.tolist())
+        future_universe = tuple(
+            int(i) for i in self.sia_subsystem.ncube_indices.tolist()
+        )
         present_universe = tuple(int(i) for i in self.sia_subsystem.ncube_dims.tolist())
 
         if self.k < 2:
@@ -223,7 +229,9 @@ class ExhaustiveK(SIA):
             )
 
         if self.best_partition is None:
-            raise RuntimeError("ExactK failed to generate any valid k-partition candidate.")
+            raise RuntimeError(
+                "ExactK failed to generate any valid k-partition candidate."
+            )
 
         return Solution(
             strategy=f"{EXACT_K_LABEL}(k={self.k})",

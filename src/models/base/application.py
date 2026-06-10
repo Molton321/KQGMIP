@@ -1,8 +1,10 @@
-"""Global configuration singleton for the IIT framework.
-
-Exposes the :data:`application` singleton that strategies, models and the EMD
-read directly: random seed, sample-network page, ground metric, index notation,
-temporal EMD variant and the profiling switch. Set it in ``exec.py`` before a run.
+"""
+Global application configuration and state management. This module defines
+the Application class, which holds global settings for the application,
+such as the random seed, selected sample network page, distance metric,
+notation, and profiling options. The Application instance is a singleton
+that can be imported and modified by any module to access or change the
+application's settings.
 """
 
 from src.models.enums.distance import MetricDistance
@@ -12,15 +14,9 @@ from src.models.enums.temporal_emd import TimeEMD
 
 class Application:
     """
-    Global configuration singleton for the IIT framework.
-
-    Configurable attributes:
-    - `numpy_seed`: deterministic seed for random network generation.
-    - `sample_network_page`: suffix of the network to load (A, B, C...) from data/samples/.
-    - `metric_distance`: ground metric for the causal EMD (Hamming by default).
-    - `indexing_notation`: binary notation used to index the n-cubes (LIL_ENDIAN by default).
-    - `emd_time`: temporal EMD variant to use (effect by default).
-    - `profiler_enabled`: stores HTML profiles under review/profiling/ when True.
+    Class for global application configuration and state.
+    This is a singleton instance that can be imported and
+    modified by any module to access or change the application's settings.
     """
 
     def __init__(self) -> None:
@@ -41,7 +37,9 @@ class Application:
 
     def set_distance(self, kind: MetricDistance) -> None:
         """Set the ground distance metric used by the causal EMD."""
-        self.metric_distance = kind.value if isinstance(kind, MetricDistance) else str(kind)
+        self.metric_distance = (
+            kind.value if isinstance(kind, MetricDistance) else str(kind)
+        )
 
     def set_emd_time(self, kind: TimeEMD) -> None:
         """Set the temporal EMD variant (cause / effect / integrated)."""

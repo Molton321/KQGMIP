@@ -1,9 +1,5 @@
-"""Opt-in profiling built on pyinstrument.
-
-A :data:`profiling_manager` singleton organizes HTML profiles under
-``review/profiling/<session>/<day>/<hour>hrs/`` and the :func:`profile` decorator
-wraps a function so it is profiled only when profiling is enabled in the global
-``application`` config — otherwise it runs with zero overhead.
+"""
+Central profiling manager and utilities built on pyinstrument.
 """
 
 from collections.abc import Callable
@@ -78,7 +74,11 @@ class ProfilerContext:
         try:
             html_path = self.manager.get_output_path(self.name)
             with open(html_path, "w", encoding="utf-8") as f:
-                f.write(self.profiler.output(renderer=HTMLRenderer(show_all=True, timeline=True)))
+                f.write(
+                    self.profiler.output(
+                        renderer=HTMLRenderer(show_all=True, timeline=True)
+                    )
+                )
         except Exception:
             pass
 

@@ -77,7 +77,9 @@ class GeometricSIA(SIA):
         for present_sel, future_sel in candidates:
             present = self.sia_subsystem.ncube_dims[present_sel]
             effects = self.sia_subsystem.ncube_indices[future_sel]
-            dist = self.sia_subsystem.bipartition(effects, present).marginal_distribution()
+            dist = self.sia_subsystem.bipartition(
+                effects, present
+            ).marginal_distribution()
             emd = effect_emd(dist, self.sia_marginal_dists)
             key = [(ACTUAL, x) for x in present] + [(EFECTO, x) for x in effects]
             self.partition_memo[tuple(key)] = (emd, dist)

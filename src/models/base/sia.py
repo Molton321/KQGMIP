@@ -1,9 +1,5 @@
-"""Abstract base (Template Method) for every IIT analysis strategy.
-
-:class:`SIA` owns the shared subsystem-preparation pipeline — build the
-:class:`System` from the TPM, apply background conditioning, subtract the
-purview/mechanism, and cache the resulting subsystem and its marginal
-distribution — leaving only the partition search to each concrete strategy.
+"""Abstract base (Template Method) for every IIT analysis strategy,
+responsible for preparing the subsystem through conditioning and subtraction.
 """
 
 import time
@@ -23,10 +19,8 @@ from src.models.core.system import System
 class SIA(ABC):
     """
     Abstract base class for every IIT analysis strategy.
-
     Receives the TPM and the initial state, builds the subsystem through
     conditioning and subtraction, and leaves it ready for the strategies.
-
     Subclasses must implement `apply_strategy(condition, purview, mechanism)`.
     """
 
@@ -42,19 +36,12 @@ class SIA(ABC):
     def apply_strategy(self, condition: str, purview: str, mechanism: str) -> Solution:
         """Implement the MIP search algorithm."""
 
-    def sia_prepare_subsystem(self, condition: str, purview: str, mechanism: str) -> None:
+    def sia_prepare_subsystem(
+        self, condition: str, purview: str, mechanism: str
+    ) -> None:
         """
-        Build the subsystem from the input parameters.
-
-        1. Create the full system from the TPM.
-        2. Apply background conditions (condition).
-        3. Subtract the given purviews and mechanisms (subtract).
-        4. Store the subsystem and its marginal distribution.
-
-        Args:
-            condition: bits set to 0 mark the variables to condition.
-            purview:   bits set to 0 mark the future variables to remove.
-            mechanism: bits set to 0 mark the present variables to remove.
+        Prepare the subsystem for the strategy by conditioning on
+        (condition) and subtracting (purview) and (mechanism).
         """
         if not self._check_parameters(condition, purview, mechanism):
             raise ValueError(ERROR_INCOMPATIBLE_SIZES)
@@ -62,7 +49,9 @@ class SIA(ABC):
         conditioned_dims = np.array(
             [i for i, b in enumerate(condition) if b == STR_ZERO], dtype=np.int8
         )
-        purview_dims = np.array([i for i, b in enumerate(purview) if b == STR_ZERO], dtype=np.int8)
+        purview_dims = np.array(
+            [i for i, b in enumerate(purview) if b == STR_ZERO], dtype=np.int8
+        )
         mechanism_dims = np.array(
             [i for i, b in enumerate(mechanism) if b == STR_ZERO], dtype=np.int8
         )
@@ -84,4 +73,10 @@ class SIA(ABC):
     def _check_parameters(self, condition: str, purview: str, mechanism: str) -> bool:
         """Return True if every parameter has the correct length."""
         n = self.tpm.shape[COLS_IDX]
-        return len(self.initial_state) == len(condition) == len(purview) == len(mechanism) == n
+        return (
+            len(self.initial_state)
+            == len(condition)
+            == len(purview)
+            == len(mechanism)
+            == n
+        )

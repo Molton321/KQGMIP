@@ -1,9 +1,4 @@
-"""Result container and colored console renderer for a strategy's solution.
-
-:class:`Solution` bundles the subsystem and partition distributions, the minimal
-δ_k/φ loss, the formatted best partition and the execution time, and renders them
-as the colored report printed by the CLI.
-"""
+"""Result container and colored console renderer for a strategy's solution."""
 
 import re
 
@@ -20,9 +15,8 @@ init()
 class Solution:
     """
     Represents and renders the solution found by an IIT strategy.
-
-    Holds the subsystem distribution, the distribution of the optimal
-    bipartition, and the φ (phi) loss value.
+    Contains the strategy name, the loss value ( φ ), the subsystem and
+    partition distributions, the best partition found, and the execution time.
     """
 
     def __init__(
@@ -47,9 +41,8 @@ class Solution:
         triple_line = "≡" * spacing
 
         def fmt_dist(dist: np.ndarray) -> str:
-            LIMIT = spacing
-            count = min(dist.size, LIMIT)
-            overflow = dist.size - LIMIT
+            count = min(dist.size, spacing)
+            overflow = dist.size - spacing
             suffix = f" {overflow} valores más.." if overflow > 0 else ""
             values = WHITESPACE.join(
                 (

@@ -54,14 +54,14 @@ subsistemas desde Excel: `uv run exec.py --batch --strategy kqnodes --k 4`.
 
 Todas heredan de `SIA` y se puntúan con la **misma** pérdida `δ_k`.
 
-| Estrategia | Clase | k | Rol |
-|---|---|---|---|
-| **KGeoMIP** | `KGeoMIP` | 2–5 | Núcleo geométrico (cortes sucesivos guiados por la tabla de costos) |
-| **KQNodes** | `KQNodes` | 2–5 | Núcleo submodular (minimización tipo Queyranne) |
-| **Clustering** | `ClusteringSIA` | 2–n | Baseline determinista (espectral / KMeans); sólo *propone* la partición |
-| **Genetic / Annealing / Tabu** | `GeneticSIA` … | 2–5 | Metaheurísticas comparativas (deterministas con la semilla global) |
-| **ExhaustiveK** | `ExhaustiveK` | 2–5 | Óptimo exacto por enumeración — *ground truth* sólo para n pequeño |
-| BruteForce / GeometricSIA / QNodes / Phi | — | 2 | Referencias k=2 (regresión y validación PyPhi) |
+| Estrategia                               | Clase           | k   | Rol                                                                     |
+| ---------------------------------------- | --------------- | --- | ----------------------------------------------------------------------- |
+| **KGeoMIP**                              | `KGeoMIP`       | 2–5 | Núcleo geométrico (cortes sucesivos guiados por la tabla de costos)     |
+| **KQNodes**                              | `KQNodes`       | 2–5 | Núcleo submodular (minimización tipo Queyranne)                         |
+| **Clustering**                           | `ClusteringSIA` | 2–n | Baseline determinista (espectral / KMeans); sólo _propone_ la partición |
+| **Genetic / Annealing / Tabu**           | `GeneticSIA` …  | 2–5 | Metaheurísticas comparativas (deterministas con la semilla global)      |
+| **ExhaustiveK**                          | `ExhaustiveK`   | 2–5 | Óptimo exacto por enumeración — _ground truth_ sólo para n pequeño      |
+| BruteForce / GeometricSIA / QNodes / Phi | —               | 2   | Referencias k=2 (regresión y validación PyPhi)                          |
 
 **KGeoMIP/KQNodes son heurísticas voraces:** para k=2 dan el óptimo (= legado validado); para k≥3 son
 cotas superiores y a veces subóptimas (la metaheurística **Tabú** suele recuperar el óptimo). Por eso
@@ -145,15 +145,15 @@ uv sync --extra emd     # pyemd (EMD causal opcional de comprobación)
 
 ## Stack
 
-| Componente | Uso |
-|---|---|
-| NumPy 2.4 · SciPy 1.17 · pandas 3.0 | tensores/EMD · clustering espectral · E/S |
-| more_itertools | particiones de Stirling (exacto) |
-| matplotlib · plotly *(extra)* | figuras estáticas · interactivas |
-| streamlit *(extra)* | interfaz web |
-| pyphi *(validación)* · pyemd *(extra)* | oráculo IIT k=2 · EMD causal |
-| joblib · psutil | paralelismo por procesos (PCD) |
-| pytest · ruff · mypy *(dev)* | tests · lint · tipos |
+| Componente                             | Uso                                       |
+| -------------------------------------- | ----------------------------------------- |
+| NumPy 2.4 · SciPy 1.17 · pandas 3.0    | tensores/EMD · clustering espectral · E/S |
+| more_itertools                         | particiones de Stirling (exacto)          |
+| matplotlib · plotly _(extra)_          | figuras estáticas · interactivas          |
+| streamlit _(extra)_                    | interfaz web                              |
+| pyphi _(validación)_ · pyemd _(extra)_ | oráculo IIT k=2 · EMD causal              |
+| joblib · psutil                        | paralelismo por procesos (PCD)            |
+| pytest · ruff · mypy _(dev)_           | tests · lint · tipos                      |
 
 GIL activo → el paralelismo es **por procesos** (no hilos).
 

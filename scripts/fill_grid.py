@@ -1,11 +1,6 @@
 """Fill the official evaluation grid (DatosPruebas2026_1.xlsx) with KQNodes/KGeoMIP.
 
-Thin CLI wrapper over the standardized grid engine ``src/funcs/grid.py``
-(FASE 11): the template format, the results layout and the shared-k execution
-all live there and are reused by ``main_batch.py`` and the Streamlit UI. The
-official template is never modified; results go to a separate workbook and
-interrupted runs resume (already-filled loss cells are skipped).
-
+Usage:
     uv run scripts/fill_official_grid.py --sheets 10A-Elementos
     uv run scripts/fill_official_grid.py            # every sheet
 """
@@ -14,12 +9,11 @@ import argparse
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-# isort: split
 from src.constants.grid import GRID_RESULTS_XLSX, GRID_TEMPLATE_XLSX
 from src.funcs.grid import fill_grid
 from src.models.base.application import application
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 def main() -> None:

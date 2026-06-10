@@ -1,10 +1,4 @@
-"""Validated k-partition data model for the IIT subsystem.
-
-Defines :class:`KPartition`, an immutable, self-validating partition of the
-present (mechanism) and future (purview) index universes into ``k`` paired,
-non-vacuous, disjoint blocks that exactly cover each universe — the strict
-k-partition required by the official spec (``docs/Proyecto_KQMIP.md`` §2.1).
-"""
+"""Validated k-partition data model for the IIT subsystem partitioning problem."""
 
 import typing
 from dataclasses import dataclass
@@ -26,24 +20,10 @@ def _normalize_unique(
 @dataclass(frozen=True)
 class KPartition:
     """Validated k-partition for present/future IIT indices.
-
-    A k-partition is represented by paired blocks:
-    - ``purview_blocks[r]``: future indices assigned to block ``r``.
-    - ``mechanism_blocks[r]``: present indices assigned to block ``r``.
-
-    Validation guarantees:
-    - same number of purview/mechanism blocks,
-    - at least 2 blocks,
-    - **all k blocks non-vacuous** (a non-vacuous block has non-empty purview
-      *or* mechanism). This enforces the strict k-partition definition of the
-      official spec (``docs/Proyecto_KQMIP.md`` §2.1: every part S_i is
-      non-empty), so a k-partition has exactly k genuine parts and cannot
-      degenerate to a coarser partition by padding with empty blocks. For k=2
-      this coincides with the legacy bipartition constraint (both sides
-      non-vacuous, excluding the trivial "identity" partition),
-    - no duplicates inside each block,
-    - disjoint blocks (separately for purview and mechanism),
-    - full coverage of the provided universes.
+    Enforces:
+    - Matching number of purview and mechanism blocks.
+    - All blocks are non-vacuous (doc §2.1).
+    - Blocks are disjoint and exactly cover their respective universes.
     """
 
     purview_blocks: tuple[tuple[int, ...], ...]
@@ -56,7 +36,9 @@ class KPartition:
         present_universe = _normalize_unique(self.present_universe, "present_universe")
 
         if len(self.purview_blocks) != len(self.mechanism_blocks):
-            raise ValueError("purview_blocks and mechanism_blocks must have the same length.")
+            raise ValueError(
+                "purview_blocks and mechanism_blocks must have the same length."
+            )
         if len(self.purview_blocks) < 2:
             raise ValueError("k-partitions require at least 2 blocks.")
 
@@ -138,9 +120,11 @@ class KPartition:
         future_universe: tuple[int, ...] | list[int] | NDArray[np.int8],
         present_universe: tuple[int, ...] | list[int] | NDArray[np.int8],
     ) -> KPartition:
-        """Build a validated ``KPartition`` from array-like block definitions."""
+        """Build a validated (KPartition) from array-like block definitions."""
         purview_blocks = tuple(tuple(int(i) for i in purview) for purview, _ in blocks)
-        mechanism_blocks = tuple(tuple(int(i) for i in mechanism) for _, mechanism in blocks)
+        mechanism_blocks = tuple(
+            tuple(int(i) for i in mechanism) for _, mechanism in blocks
+        )
         return cls(
             purview_blocks=purview_blocks,
             mechanism_blocks=mechanism_blocks,

@@ -1,9 +1,4 @@
-"""Node-label generation and binary index (re)ordering helpers.
-
-Provides the Excel-style alphabet used to name nodes (``ABECEDARY``) and the
-little/big-endian index permutations selected by the configured notation. The
-little-endian builder is blocked to bound peak memory at large ``n``.
-"""
+"""Node-label generation and binary index (re)ordering helpers."""
 
 import numpy as np
 
@@ -28,11 +23,8 @@ LOWER_ABECEDARY: list[str] = [letter.lower() for letter in ABECEDARY]
 
 
 def lil_endian(n: int) -> np.ndarray:
-    """Build the little-endian index permutation (bit-reversal of 0..2ⁿ-1).
-
-    The permutation is produced block by block, reversing the bit order in small
-    groups and accumulating into a reusable buffer, so peak memory stays bounded
-    for large ``n``.
+    """Build the little-endian index permutation,
+    where the binary representation of each index is reversed.
     """
     if n <= 0:
         return np.array([0], dtype=np.uint32)

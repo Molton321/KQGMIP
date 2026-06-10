@@ -1,8 +1,4 @@
-"""Shared block-color accessor for the static and interactive figures.
-
-Single source for mapping a partition block index to its color, so neither
-``partition_plot`` (matplotlib) nor ``interactive`` (Plotly) redefines it.
-"""
+"""Shared block-color accessor for the static and interactive figures."""
 
 from src.constants.base import BLOCK_PALETTE
 

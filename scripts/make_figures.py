@@ -1,12 +1,6 @@
-"""Generate the Phase 7 figures from a benchmark CSV.
+"""Generate figures from benchmark results.
 
-Reads the grid produced by ``run_benchmark.py`` and writes reproducible
-matplotlib figures (no display backend required):
-
-- scalability: runtime vs n (log scale) per strategy, for a fixed k;
-- loss vs k per strategy, for a fixed network;
-- strategy comparison: loss by strategy across the grid.
-
+Usage:
     uv run scripts/make_figures.py
     uv run scripts/make_figures.py --csv data/results/benchmark_results.csv
 """

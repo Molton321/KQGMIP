@@ -1,8 +1,5 @@
 """Systematic benchmark: all strategies x all networks x all k values.
 
-Generates a CSV + Excel with: strategy, network, n, k, loss, time_s, partition.
-Designed to feed Fase 7 (experimentation) and docs/manuales/.
-
 Usage:
     uv run scripts/run_benchmark.py                    # full grid (N10, N15)
     uv run scripts/run_benchmark.py --quick            # N10 only
@@ -17,19 +14,14 @@ from pathlib import Path
 
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-# isort: split
 from src.funcs.runner import load_tpm, parse_net_label, run_analysis
 from src.models.base.application import application
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 
 def _strategy_specs(n: int, include_meta: bool) -> list[tuple[str, str, str]]:
-    """Return the (label, strategy_key, method) specs to run for an n-node net.
-
-    Metaheuristics (GA/SA/Tabú) are added only when ``include_meta`` is set; the
-    exact ``ExhaustiveK`` ground truth is added only for ``n <= 6`` (tractable).
-    """
+    """Return a list of (label, key, method) for the strategies to run on a net of size n."""
     specs = [
         ("KGeoMIP", "KGeoMIP", "spectral"),
         ("KQNodes", "KQNodes", "spectral"),
@@ -103,14 +95,22 @@ def run_one(net: str, k: int, include_meta: bool = True) -> list[dict]:
 
 def main():
     """Parse CLI options, run the benchmark grid and write the CSV/XLSX."""
-    parser = argparse.ArgumentParser(description="Benchmark all strategies x networks x k")
+    parser = argparse.ArgumentParser(
+        description="Benchmark all strategies x networks x k"
+    )
     parser.add_argument(
         "--nets", nargs="*", default=None, help="Networks to test (default: N10A, N15A)"
     )
-    parser.add_argument("--ks", nargs="*", type=int, default=[2, 3, 4, 5], help="k values to test")
-    parser.add_argument("--max-n", type=int, default=15, help="Max network size")
-    parser.add_argument("--quick", action="store_true", help="Quick mode: N10 only, k=2,3")
-    parser.add_argument("--no-meta", action="store_true", help="Skip metaheuristics (GA/SA/Tabu)")
+    parser.add_argument(
+        "--ks", nargs="*", type=int, default=[2, 3, 4, 5], help="k values to test"
+    )
+    parser.add_argument("--max-n", type=int, default=25, help="Max network size")
+    parser.add_argument(
+        "--quick", action="store_true", help="Quick mode: N10 only, k=2,3"
+    )
+    parser.add_argument(
+        "--no-meta", action="store_true", help="Skip metaheuristics (GA/SA/Tabu)"
+    )
     parser.add_argument(
         "--output", default="data/results/benchmark_results.csv", help="Output CSV path"
     )
@@ -158,7 +158,9 @@ def main():
     xlsx_path = output.with_suffix(".xlsx")
     with pd.ExcelWriter(xlsx_path, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name="Benchmark")
-        pivot = df.pivot_table(index=["strategy", "network", "n"], columns="k", values="loss")
+        pivot = df.pivot_table(
+            index=["strategy", "network", "n"], columns="k", values="loss"
+        )
         pivot.to_excel(writer, sheet_name="Loss Summary")
     print(f"Excel saved: {xlsx_path}")
 
@@ -167,7 +169,9 @@ def main():
     print(pivot.to_string())
 
     print("\n=== TIME SUMMARY (seconds) ===")
-    pivot_t = df.pivot_table(index=["strategy", "network"], columns="k", values="time_s")
+    pivot_t = df.pivot_table(
+        index=["strategy", "network"], columns="k", values="time_s"
+    )
     print(pivot_t.to_string())
 
 

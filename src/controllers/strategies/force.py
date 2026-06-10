@@ -56,7 +56,9 @@ class BruteForce(SIA):
         causes = self.sia_subsystem.ncube_dims
         m, n = effects.size, causes.size
 
-        for sub_purview, sub_mechanism in bipartitions(effects, causes, (1 << m) * (1 << n)):
+        for sub_purview, sub_mechanism in bipartitions(
+            effects, causes, (1 << m) * (1 << n)
+        ):
             purview_arr = np.array(sub_purview, dtype=np.int8)
             mechanism_arr = np.array(sub_mechanism, dtype=np.int8)
 

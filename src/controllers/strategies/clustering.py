@@ -68,8 +68,12 @@ class ClusteringSIA(SIA):
         features = self._node_features(nodes)
         labels = self._cluster(features, self.k)
 
-        partition = self._labels_to_kpartition(nodes, labels, future_universe, present_universe)
-        loss, distribution = delta_k(subsystem, partition, baseline_distribution=baseline)
+        partition = self._labels_to_kpartition(
+            nodes, labels, future_universe, present_universe
+        )
+        loss, distribution = delta_k(
+            subsystem, partition, baseline_distribution=baseline
+        )
         self.best_partition = partition
 
         return Solution(
@@ -126,9 +130,13 @@ class ClusteringSIA(SIA):
         labels = None
 
         try:
-            _, labels = kmeans2(data, k, rng=application.numpy_seed, minit="++", missing="raise")
+            _, labels = kmeans2(
+                data, k, rng=application.numpy_seed, minit="++", missing="raise"
+            )
         except ValueError as e:
-            self.logger.warn(f"k-means failed with error: {e}. Falling back to Fiedler split.")
+            self.logger.warn(
+                f"k-means failed with error: {e}. Falling back to Fiedler split."
+            )
 
         if labels is None or len(set(int(x) for x in labels)) < k:
             labels = self._fiedler_split(eigenvectors, k)
@@ -161,13 +169,16 @@ class ClusteringSIA(SIA):
         the set of future indices whose nodes have label r, and the set of present indices
         whose nodes have label r (or a default label if not present in node_label).
         """
-        node_label = {node: int(label) for node, label in zip(nodes, labels, strict=True)}
+        node_label = {
+            node: int(label) for node, label in zip(nodes, labels, strict=True)
+        }
         k = len(set(node_label.values()))
         future_blocks: list[list[int]] = [[] for _ in range(k)]
         present_blocks: list[list[int]] = [[] for _ in range(k)]
 
         label_order = {
-            label: position for position, label in enumerate(sorted(set(node_label.values())))
+            label: position
+            for position, label in enumerate(sorted(set(node_label.values())))
         }
 
         for future_index in future_universe:

@@ -1,21 +1,8 @@
 """K-QGMIP web UI — generate TPMs, run k-partition strategies, view results.
-
-A single-file Streamlit application that exposes the whole pipeline without the
-command line: pick or generate a TPM, choose a strategy/``k``/subsystem masks,
-run it, and inspect the minimal partition, its δ_k loss, the reconstructed
-marginal distribution and the interactive Plotly figures (plus the benchmark
-grid when present).
-
-The look is themed in two cohesive layers: the documented ``[theme]`` palette in
-``.streamlit/config.toml`` (the official way) and a thin CSS layer injected by
-:meth:`StreamlitApp._inject_theme` for the gradient header and metric cards.
-
-    uv run streamlit run streamlit_app.py
-
-Running ``python streamlit_app.py`` directly works too: with no Streamlit runtime
-present the entry guard re-launches the script through ``streamlit run``.
-
-Requires the optional extras: ``uv sync --extra web`` (Streamlit + Plotly).
+This Streamlit app provides an interactive interface for the k-partition framework,
+allowing users to generate or select TPMs, choose strategies and parameters,
+and visualize the results. It also includes a batch runner for the official evaluation
+grid and a benchmark viewer for δ_k vs k when a results CSV is present.
 """
 
 import sys
@@ -27,7 +14,9 @@ from streamlit.runtime import exists as _st_runtime_exists
 from streamlit.web import cli as stcli
 
 from src.constants.base import BENCHMARK_CSV, PATH_SAMPLES, STRATEGY_TIMEOUT
+from src.constants.grid import GRID_RESULTS_XLSX, GRID_TEMPLATE_XLSX
 from src.controllers.manager import Manager
+from src.funcs.grid import fill_grid, grid_sheet_names
 from src.funcs.runner import (
     STRATEGY_BUILDERS,
     STRATEGY_HELP,
@@ -41,15 +30,7 @@ from src.viz import plot_kpartition_interactive, plot_loss_vs_k_interactive
 
 
 class StreamlitApp:
-    """Web front-end for the k-partition framework (Strategy pipeline + viz).
-
-    Class constants group the tunables: ``_*_CEILING``/``_*_MAX_N`` are the
-    network-size thresholds that drive the per-strategy feasibility warnings;
-    ``_THEME`` is the single source of truth for the CSS color layer (it mirrors
-    the accent declared in ``.streamlit/config.toml``); and
-    ``_STRATEGY_FAMILY_COLOR`` maps each strategy to its family color so the
-    result badge distinguishes core / baseline / metaheuristic / exact runs.
-    """
+    """Web front-end for the k-partition framework (Strategy pipeline + viz)."""
 
     _EXHAUSTIVE_MAX_N = 6
     _GEOMETRIC_SOFT_CEILING = 15
@@ -115,8 +96,7 @@ class StreamlitApp:
         self._render_benchmark()
 
     def _inject_theme(self) -> None:
-        """Inject the CSS polish layer on top of the config.toml ``[theme]``.
-
+        """Inject the CSS polish layer on top of the config.toml theme.
         Streamlit's official theming covers colors/radius via config.toml; the
         gradient header banner and the accented metric cards need a small CSS
         layer, which is the common community pattern for finer styling.
@@ -186,12 +166,7 @@ class StreamlitApp:
         return True
 
     def _render_initial_state(self, n: int, default_state: str) -> str:
-        """Render the editable initial-state field; fall back to all-ones if invalid.
-
-        The state is a binary string of ``n`` digits that conditions the analysis
-        (it is not hardcoded to all-ones, mirroring the ``--state`` CLI flag). The
-        ``value`` re-derives from ``n`` so switching networks resets a stale state.
-        """
+        """Render the initial state input and return the validated value."""
         state = st.sidebar.text_input(
             "Estado inicial",
             value=default_state,
@@ -218,11 +193,7 @@ class StreamlitApp:
             st.sidebar.success(f"Creada: {filename}")
 
     def _render_strategy_section(self, n: int) -> None:
-        """Render the strategy, k, method and subsystem-mask controls.
-
-        ``k`` is capped at ``min(5, 2n)`` because a k-partition cannot have more
-        blocks than the ``2n`` subsystem atoms (present + future indices).
-        """
+        """Render the strategy selection and parameter controls."""
         st.sidebar.header("2 · Estrategia")
         strategy = st.sidebar.selectbox("Estrategia", list(self._strategy_builders))
         st.sidebar.caption(self._strategy_help[strategy])
@@ -368,15 +339,7 @@ class StreamlitApp:
         )
 
     def _render_official_grid(self) -> None:
-        """Render the official-grid batch runner (standardized .xlsx I/O).
-
-        Delegates to the single grid engine (``src/funcs/grid.py``): the
-        official template is the input contract, the results workbook the
-        output contract, and the run shares the expensive preparation across
-        k = 2..5 per subsystem (FASE 11). Interrupted runs resume.
-        """
-        from src.constants.grid import GRID_RESULTS_XLSX, GRID_TEMPLATE_XLSX
-        from src.funcs.grid import fill_grid, grid_sheet_names
+        """Render the batch runner for the official evaluation grid when the template is present."""
 
         if not GRID_TEMPLATE_XLSX.exists():
             return

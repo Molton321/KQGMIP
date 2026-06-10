@@ -36,7 +36,9 @@ class KQNodes(QNodes):
     @profile(context={TYPE_TAG: KQNODES_ANALYSIS_TAG})
     def apply_strategy(self, condition: str, purview: str, mechanism: str) -> Solution:
         """Search for a low-loss k-partition using the submodular candidate pool."""
-        return self.apply_strategy_for_ks(condition, purview, mechanism, (self.k,))[self.k]
+        return self.apply_strategy_for_ks(condition, purview, mechanism, (self.k,))[
+            self.k
+        ]
 
     def apply_strategy_for_ks(
         self,

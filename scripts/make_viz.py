@@ -1,8 +1,6 @@
-"""Render k-partition visualizations for the demo (Phase 7).
+"""Script to render k-partition figures for the paper.
 
-Runs a strategy on a small network and renders its best k-partition both as a
-layered block diagram and (for n<=4) as a node-hypercube projection.
-
+Usage:
     uv run scripts/make_viz.py
     uv run scripts/make_viz.py --net N4A --k 3 --strategy KGeoMIP
 """
@@ -13,15 +11,13 @@ import io
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-# isort: split
 from src.controllers.manager import Manager
 from src.controllers.strategies.kgeomip import KGeoMIP
 from src.controllers.strategies.kqnodes import KQNodes
 from src.models.base.application import application
 from src.viz import plot_hypercube_partition, plot_kpartition
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 STRATEGIES = {"KGeoMIP": KGeoMIP, "KQNodes": KQNodes}
 
 
@@ -52,7 +48,9 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
     base = f"{args.strategy}_{args.net}_k{args.k}"
     title = f"{args.strategy} {args.net} k={args.k}"
-    p1 = plot_kpartition(partition, f"{title} — block diagram", str(out / f"partition_{base}.png"))
+    p1 = plot_kpartition(
+        partition, f"{title} — block diagram", str(out / f"partition_{base}.png")
+    )
     p2 = plot_hypercube_partition(
         partition, f"{title} — hypercube", str(out / f"hypercube_{base}.png")
     )

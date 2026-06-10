@@ -1,17 +1,4 @@
-"""Evaluation metrics for the k-partition strategies (Phase 7).
-
-These quantify how a strategy's k-partition compares to the exact ground truth
-(``ExhaustiveK``) and to other strategies, for the official evaluation grid:
-
-- **exact-hit rate** — did the strategy reach the global k-MIP loss?
-- **relative Φ error** — how far its loss is from the exact loss.
-- **Jaccard partition distance** — how structurally different two partitions are
-  (pair-counting over the atom co-assignment).
-- **speedup** — runtime ratio against a baseline (e.g. the exact search).
-
-The metrics take ``KPartition`` objects / scalar losses, never the formatted
-partition strings, so they are exact and parser-free.
-"""
+"""Evaluation metrics for the k-partition strategies."""
 
 import numpy as np
 
@@ -20,20 +7,19 @@ from src.models.core.partition import KPartition
 LOSS_TOL: float = 1e-6
 
 
-def is_exact_hit(strategy_loss: float, exact_loss: float, tol: float = LOSS_TOL) -> bool:
-    """True if ``strategy_loss`` equals the exact ground-truth loss within ``tol``.
-
-    A heuristic loss can never beat the exact optimum, so this is effectively
-    ``strategy_loss <= exact_loss + tol``.
+def is_exact_hit(
+    strategy_loss: float, exact_loss: float, tol: float = LOSS_TOL
+) -> bool:
+    """
+    Whether the strategy loss is close enough to the exact loss to be considered a hit.
     """
     return strategy_loss <= exact_loss + tol
 
 
 def relative_phi_error(strategy_loss: float, exact_loss: float) -> float:
-    """Relative error of the strategy loss vs the exact loss.
-
-    Falls back to the absolute error when the exact loss is ~0 (the system is
-    perfectly separable), since a relative error is undefined there.
+    """
+    Relative error of the strategy loss compared to the exact loss.
+    If the exact loss is close to zero, returns the absolute error instead.
     """
     if abs(exact_loss) <= LOSS_TOL:
         return abs(strategy_loss - exact_loss)
@@ -52,13 +38,9 @@ def _atom_labels(partition: KPartition) -> dict[tuple[str, int], int]:
 
 
 def jaccard_partition_distance(part_a: KPartition, part_b: KPartition) -> float:
-    """Pair-counting Jaccard distance between two partitions in ``[0, 1]``.
-
-    Considers every unordered pair of atoms and whether the two partitions put
-    them in the same block. With ``S`` = pairs together in both and ``D`` =
-    pairs together in at least one, the similarity is ``S / D`` (1.0 when the
-    partitions are identical) and the distance is ``1 - S / D``. Returns 0.0
-    when neither partition groups any pair (both fully singleton).
+    """Distance between two partitions in the style of clustering evaluation metrics.
+    Counts how many pairs of atoms are together in both partitions vs together in either partition.
+    Returns a value between 0.0 (identical partitions) and 1.0 (completely different partitions).
     """
     labels_a = _atom_labels(part_a)
     labels_b = _atom_labels(part_b)
@@ -66,10 +48,10 @@ def jaccard_partition_distance(part_a: KPartition, part_b: KPartition) -> float:
 
     together_both = 0
     together_either = 0
-    for k, _ in enumerate(atoms):
+    for k, v in enumerate(atoms):
         for j in range(k + 1, len(atoms)):
-            same_a = labels_a[atoms[k]] == labels_a[atoms[j]]
-            same_b = labels_b[atoms[k]] == labels_b[atoms[j]]
+            same_a = labels_a[v] == labels_a[atoms[j]]
+            same_b = labels_b[v] == labels_b[atoms[j]]
             if same_a or same_b:
                 together_either += 1
                 if same_a and same_b:
@@ -81,7 +63,10 @@ def jaccard_partition_distance(part_a: KPartition, part_b: KPartition) -> float:
 
 
 def speedup(baseline_time: float, strategy_time: float) -> float:
-    """Speedup of ``strategy_time`` relative to ``baseline_time`` (×)."""
+    """Speedup of (strategy_time) relative to (baseline_time).
+    Returns a positive number where higher is better,
+    and infinity if the strategy is faster than any measurable time.
+    """
     if strategy_time <= 0:
         return float("inf")
     return baseline_time / strategy_time
@@ -91,15 +76,16 @@ def exact_hit_rate(strategy_losses: list[float], exact_losses: list[float]) -> f
     """Fraction of cases where the strategy reached the exact optimum."""
     if not strategy_losses:
         return 0.0
-    hits = sum(is_exact_hit(s, e) for s, e in zip(strategy_losses, exact_losses, strict=True))
+    hits = sum(
+        is_exact_hit(s, e) for s, e in zip(strategy_losses, exact_losses, strict=True)
+    )
     return hits / len(strategy_losses)
 
 
 def scalability_slope(sizes: list[int], times: list[float]) -> float:
-    """Empirical exponent ``p`` of ``time ~ size^p`` via a log-log fit.
-
-    Useful to summarize how a strategy scales with ``n`` (or ``k``). Returns
-    ``nan`` when fewer than two positive samples are available.
+    """Estimated slope of the log-log plot of (times) vs (sizes).
+    A slope of 1.0 suggests linear scaling, 2.0 suggests quadratic, etc.
+    Returns NaN if there are fewer than 2 valid (size, time) pairs.
     """
     pairs = [(s, t) for s, t in zip(sizes, times, strict=True) if s > 0 and t > 0]
     if len(pairs) < 2:

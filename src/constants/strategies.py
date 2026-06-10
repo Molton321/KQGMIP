@@ -1,8 +1,4 @@
-"""Centralized strategy labels and logging/profiling tags.
-
-One place defining the display label and the ``*_strategy`` / ``*_analysis`` tags
-for every strategy, so no strategy module hard-codes its own name strings.
-"""
+"""Defines strategy and analysis tags for the various strategies implemented in this module."""
 
 CLUSTERING_LABEL: str = "Clustering"
 CLUSTERING_STRATEGY_TAG: str = f"{CLUSTERING_LABEL}_strategy"
@@ -20,27 +16,18 @@ GEOMETRIC_LABEL: str = "Geometric"
 GEOMETRIC_STRATEGY_TAG: str = f"{GEOMETRIC_LABEL}_strategy"
 GEOMETRIC_ANALYSIS_TAG: str = f"{GEOMETRIC_LABEL}_analysis"
 COST_TABLE_CHUNK_ROWS: int = 1 << 20
-"""Row-chunk size for the vectorized CostTable (build and candidate scan).
-
-Bounds each temporary ``(rows, num_nodes)`` float32 gather to roughly
-``COST_TABLE_CHUNK_ROWS · num_nodes · 4`` bytes (~100 MB at n=25) instead of
-materializing whole Hamming mid-levels (C(25,12) ≈ 5.2M rows ≈ 1 GB)."""
-
 
 KGEOMIP_LABEL: str = "KGeoMIP"
 KGEOMIP_STRATEGY_TAG: str = f"{KGEOMIP_LABEL}_strategy"
 KGEOMIP_ANALYSIS_TAG: str = f"{KGEOMIP_LABEL}_analysis"
 
-
 KQNODES_LABEL: str = "KQNodes"
 KQNODES_STRATEGY_TAG: str = f"{KQNODES_LABEL}_strategy"
 KQNODES_ANALYSIS_TAG: str = f"{KQNODES_LABEL}_analysis"
 
-
 PYPHI_LABEL: str = "Pyphi"
 PYPHI_STRATEGY_TAG: str = f"{PYPHI_LABEL}_strategy"
 PYPHI_ANALYSIS_TAG: str = f"{PYPHI_LABEL}_analysis"
-
 
 QNODES_LABEL: str = "Q-Nodes"
 QNODES_STRATEGY_TAG: str = f"{QNODES_LABEL}_strategy"

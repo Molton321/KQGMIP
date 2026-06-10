@@ -1,18 +1,4 @@
-"""Shared greedy hierarchical engine for k-partition strategies.
-
-Both KGeoMIP (geometric) and KQNodes (submodular) build a k-partition the same
-way (official doc ``docs/Proyecto_KQMIP.md`` §2.2: a k-partition as k−1
-successive bipartitions): starting from the whole subsystem as a single block,
-repeatedly split one block with the best available *cut* until k non-vacuous
-blocks are reached. The two strategies differ only in **how the cut pool is
-produced** (the geometric cost table vs. the submodular Queyranne candidates),
-so the refinement loop itself lives here and is reused by both.
-
-A cut and a block are both represented as a pair ``(future_indices,
-present_indices)`` of frozensets. Splitting block ``b`` with cut ``c`` yields
-``(b ∩ c, b \\ c)``; for the first split (``b`` = whole subsystem) this is just
-``c`` and its complement, so the search reduces to the legacy bipartition.
-"""
+"""Shared greedy hierarchical engine for k-partition strategies."""
 
 import numpy as np
 from numpy.typing import NDArray
@@ -22,8 +8,6 @@ from src.models.core.partition import KPartition
 from src.models.core.system import System
 
 Block = tuple[frozenset[int], frozenset[int]]
-"""A block/cut: future (purview) indices paired with present (mechanism) indices,
-non-vacuous when either set is non-empty."""
 
 
 def greedy_k_partition(
@@ -34,24 +18,7 @@ def greedy_k_partition(
     present_universe: tuple[int, ...],
     k: int,
 ) -> tuple[KPartition, float, NDArray[np.float32]]:
-    """Greedily build a k non-vacuous-block partition minimizing ``delta_k``.
-
-    Args:
-        subsystem: The prepared subsystem to partition.
-        baseline: Its marginal distribution (the δ_k reference).
-        cut_pool: Candidate cuts proposed by the strategy (geometric/submodular).
-        future_universe: All future (purview) indices of the subsystem.
-        present_universe: All present (mechanism) indices of the subsystem.
-        k: Target number of non-vacuous blocks (k ≥ 2).
-
-    Returns:
-        ``(partition, loss, distribution)`` for the resulting k-partition.
-
-    Raises:
-        ValueError: if ``k`` exceeds the number of available atoms.
-        RuntimeError: if the pool cannot refine the system into k non-vacuous
-            blocks.
-    """
+    """Greedily build a k non-vacuous-block partition minimizing (delta_k)."""
     atoms = len(future_universe) + len(present_universe)
     if k > atoms:
         raise ValueError(
@@ -83,16 +50,7 @@ def _best_refinement(
     future_universe: tuple[int, ...],
     present_universe: tuple[int, ...],
 ) -> list[Block] | None:
-    """Return the blocks after the single best (lowest δ_k) split.
-
-    Tries every (block, cut) pairing that divides a block into two non-vacuous
-    sub-blocks, scores the resulting full partition with ``delta_k``, and keeps
-    the minimum. The cost here is the marginalization inside ``delta_k`` (the
-    EMD itself is <1% of runtime); a Numba EMD kernel was measured and rejected
-    because marginalization — not EMD — is the bottleneck, and ``np.mean`` over
-    axes (memory-bound C) already beats a Numba reduction. Returns ``None`` if no
-    block can be split into two non-vacuous parts with the available cuts.
-    """
+    """Return the blocks after the single best refinement, or None if no refinement is possible."""
     best_loss = np.inf
     best_blocks: list[Block] | None = None
 
@@ -122,9 +80,12 @@ def _to_kpartition(
     future_universe: tuple[int, ...],
     present_universe: tuple[int, ...],
 ) -> KPartition:
-    """Build a validated ``KPartition`` from the current working blocks."""
+    """Build a validated (KPartition) from the current working blocks."""
     return KPartition.from_blocks(
-        blocks=[(tuple(sorted(effects)), tuple(sorted(present))) for effects, present in blocks],
+        blocks=[
+            (tuple(sorted(effects)), tuple(sorted(present)))
+            for effects, present in blocks
+        ],
         future_universe=future_universe,
         present_universe=present_universe,
     )

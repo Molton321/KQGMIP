@@ -1,8 +1,5 @@
-"""Safe, colorized logging with a date/hour log-file layout.
-
-``SafeLogger`` wraps the standard library logger to add colored console output
-(via colorama), UTF-8-safe stringification of arbitrary objects, and per-run log
-files organized under ``logs/runtime/<day>/<hour>hrs/``.
+"""
+A logging utility that provides colorized console output, UTF-8 safety, and organized file logging.
 """
 
 import logging
@@ -54,19 +51,16 @@ class SafeLogger:
             return "[Objeto no representable]"
 
     def _fmt(self, *args, **kwargs) -> str:
-        """Join positional args and ``key=value`` kwargs into one safe message."""
+        """Join positional args and (key=value) kwargs into one safe message."""
         parts = " ".join(self._safe_str(a) for a in args)
         if kwargs:
-            parts += " " + " ".join(f"{k}={self._safe_str(v)}" for k, v in kwargs.items())
+            parts += " " + " ".join(
+                f"{k}={self._safe_str(v)}" for k, v in kwargs.items()
+            )
         return parts
 
     def _setup(self, name: str) -> logging.Logger:
-        """Build the named logger with file + colored-console handlers.
-
-        The logger level is ``DEBUG`` so that per-handler levels become the
-        effective filter; a higher level here would silently drop ``debug()`` and
-        ``info()`` records before any handler could emit them.
-        """
+        """Set up a logger with file and console handlers, color support, and UTF-8 encoding."""
         base = Path(LOGS_PATH)
         base.mkdir(exist_ok=True)
 

@@ -67,89 +67,93 @@ candidato), evitando construir tablas de costos O(2ⁿ × 2ⁿ) que serían invi
 > con el repo 20263. El árbol de abajo refleja el **estado actual real** tras Fases 0-5A.
 
 ```text
-KQGMIP/                              # repo/carpeta renombrada (nomenclatura oficial)
-├── exec.py                          # punto de entrada (individual / --batch)
+KQGMIP/                             # repo/carpeta renombrada (nomenclatura oficial)
+├── exec.py                         # punto de entrada (individual / --batch)
 ├── main.py · main_batch.py
-├── pyproject.toml                   # deps reales + grupo dev
-├── README.md                        # reescrito y alineado (Fase 8)
-├── PLANNING.md                  # este documento
-├── CLAUDE.md                        # guía para agentes (incl. bitácora obligatoria)
+├── pyproject.toml                  # deps reales + grupo dev
+├── README.md                       # reescrito y alineado (Fase 8)
+├── PLANNING.md                     # este documento
+├── CLAUDE.md                       # guía para agentes (incl. bitácora obligatoria)
 ├── pyphi_config.yml
 ├── .core/                          # proyectos originales de Bi-particion (referencia, no tocar)
 │   └── core_00
 │   └── core_01
 ├── logs/
-│   └── ai_agent_changelog.md        # BITÁCORA: fecha, acción, parámetros reales, justificación
+│   └── ai_agent_changelog.md       # BITÁCORA: fecha, acción, parámetros reales, justificación
 ├── docs/
 │   ├── (PDFs y .md oficiales — no tocar)
-│   └── manuales/                    # ENTREGABLES A CREAR en Fase 8 (basados en specs de docs/)
+│   └── manuales/                   # ENTREGABLES A CREAR en Fase 8 (basados en specs de docs/)
 │       ├── Manual_Tecnico_KQGMIP.tex
 │       └── Manual_Usuario_KQGMIP.tex
 ├── data/
-│   ├── samples/                     # N2A … N10A … N25A (generados)
-│   └── results/                     # salidas Excel + métricas
+│   ├── samples/                    # N2A … N10A … N25A (generados)
+│   └── results/                    # salidas Excel + métricas
+│   └── results_others/             # resultados de terceros comparativos
 ├── src/
-│   ├── base/                        # application.py, sia.py
-│   ├── constants/                   # base.py, errors.py, tags.py
+│   ├── base/                       # application.py, sia.py
+│   ├── constants/                  # base.py, errors.py, tags.py
 │   ├── controllers/
-│   │   ├── manager.py               # carga TPM, genera redes
-│   │   └── strategies/              # 8 ARCHIVOS PLANOS (no subdirectorios)
-│   │       ├── force.py             # BruteForce (k=2 exacto)
-│   │       ├── geometric.py         # GeometricSIA (k=2 legacy)
-│   │       ├── q_nodes.py           # QNodes (k=2 legacy)
-│   │       ├── phi.py               # PyPhi wrapper (validación)
-│   │       ├── exhaustive_k.py      # ExhaustiveK (k=2..5 ground truth) ← FASE 2
-│   │       ├── kgeomip.py           # KGeoMIP (k=2..5 geométrico) ← FASE 3
-│   │       ├── kqnodes.py           # KQNodes (k=2..5 submodular) ← FASE 4
-│   │       └── clustering.py        # ClusteringSIA (k=2..n baseline) ← FASE 5A
+│   │   ├── manager.py              # carga TPM, genera redes
+│   │   └── strategies/             # 8 ARCHIVOS PLANOS (no subdirectorios)
+│   │       ├── force.py            # BruteForce (k=2 exacto)
+│   │       ├── geometric.py        # GeometricSIA (k=2 legacy)
+│   │       ├── q_nodes.py          # QNodes (k=2 legacy)
+│   │       ├── phi.py              # PyPhi wrapper (validación)
+│   │       ├── exhaustive_k.py     # ExhaustiveK (k=2..5 ground truth) ← FASE 2
+│   │       ├── kgeomip.py          # KGeoMIP (k=2..5 geométrico) ← FASE 3
+│   │       ├── kqnodes.py          # KQNodes (k=2..5 submodular) ← FASE 4
+│   │       └── clustering.py       # ClusteringSIA (k=2..n baseline) ← FASE 5A
 │   ├── funcs/
-│   │   ├── emd.py                   # effect_emd, causal_emd, delta_k, select_emd
-│   │   ├── partitions.py            # generadores biparticiones, subsistemas
-│   │   ├── labels.py                # lil_endian, big_endian, reindex, select_state
-│   │   ├── format.py                # fmt_bipartition, fmt_kpartition
-│   │   ├── cost_table.py            # CostTable (tabla T reusable) ← FASE 3
-│   │   ├── k_refine.py              # greedy_k_partition (motor compartido) ← FASE 3-4
-│   │   ├── accelerate.py            # Numba JIT prep (FASE 6)
-│   │   └── parallel.py              # Joblib/multiprocessing prep (FASE 6)
+│   │   ├── emd.py                  # effect_emd, causal_emd, delta_k, select_emd
+│   │   ├── partitions.py           # generadores biparticiones, subsistemas
+│   │   ├── labels.py               # lil_endian, big_endian, reindex, select_state
+│   │   ├── format.py               # fmt_bipartition, fmt_kpartition
+│   │   ├── cost_table.py           # CostTable (tabla T reusable) ← FASE 3
+│   │   ├── k_refine.py             # greedy_k_partition (motor compartido) ← FASE 3-4
+│   │   ├── accelerate.py           # Numba JIT prep (FASE 6)
+│   │   └── parallel.py             # Joblib/multiprocessing prep (FASE 6)
 │   ├── middlewares/
-│   │   ├── slogger.py               # SafeLogger
-│   │   └── profile.py               # @profile decorator
+│   │   ├── slogger.py              # SafeLogger
+│   │   └── profile.py              # @profile decorator
 │   ├── models/
-│   │   ├── base/                    # application.py, sia.py
+│   │   ├── base/                   # application.py, sia.py
 │   │   ├── core/
 │   │   │   ├── ncube.py
 │   │   │   ├── system.py
 │   │   │   ├── solution.py
-│   │   │   └── partition.py         # KPartition ← FASE 1
+│   │   │   └── partition.py        # KPartition ← FASE 1
 │   │   └── enums/
 │   │       ├── distance.py
 │   │       ├── notation.py
 │   │       └── temporal_emd.py
-│   └── viz/                         # NUEVO: visualización hipercubo / k-particiones (FASE 7)
+│   └── viz/                        # NUEVO: visualización hipercubo / k-particiones (FASE 7)
 └── tests/
-    ├── unit/                        # 142 tests passing
-    ├── integration/                 # (vacío, para Fase 7/9)
-    └── fixtures/                    # golden_k2.py (oráculo PyPhi k=2)
+    ├── unit/                       # 142 tests passing
+    ├── integration/                # (vacío, para Fase 7/9)
+    └── fixtures/                   # golden_k2.py (oráculo PyPhi k=2)
 ```
 
 ---
 
 ## 4. Seguimiento de fases
 
-| Fase | Nombre                                                                                                                                | Estado           | Depende de  |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ----------- |
-| 0    | Cimientos y saneamiento                                                                                                               | ✅ Completada    | —           |
-| 1    | Núcleo de dominio k-genérico                                                                                                          | ✅ Completada    | 0           |
-| 2    | k-particiones exactas (ground truth)                                                                                                  | ✅ Completada    | 1           |
-| 3    | KGeoMIP (geométrico)                                                                                                                  | ✅ Completada    | 1, 2        |
-| 4    | KQNodes (submodular)                                                                                                                  | ✅ Completada    | 1, 2        |
-| 5    | Baselines comparativos: clustering/espectral (det.) ✅ + metaheurísticas (opc., diferidas)                                            | ✅ 5A Completada | 1, 2        |
-| 6    | Eficiencia y PCD (paralelismo)                                                                                                        | ✅ Completada    | 3, 4, 5     |
-| 7    | Experimentación y métricas                                                                                                            | ✅ Completada    | 3, 4, 5     |
-| 8    | Documentación y manuales                                                                                                              | ✅ Completada    | todas       |
-| 9    | Validación final y entrega                                                                                                            | 🟨 En progreso   | todas       |
-| 10   | Pulido: --state CLI/UI, validación cruzada vs .core/core_00, tuning GA, rejilla oficial #30                                           | 🟨 En progreso   | todas       |
-| 11   | Escala N25 (la tabla de evaluación oficial exige QNodes+Geometric a n=25): CostTable vectorizada por niveles, marginal local, cache por k, I/O xlsx estándar | 🟨 En progreso   | 3, 4, 6, 10 |
+| Fase | Nombre                                                                            | Estado           | Depende de  |
+| ---- | --------------------------------------------------------------------------------- | ---------------- | ----------- |
+| 0    | Cimientos y saneamiento                                                           | ✅ Completada    | —           |
+| 1    | Núcleo de dominio k-genérico                                                      | ✅ Completada    | 0           |
+| 2    | k-particiones exactas (ground truth)                                              | ✅ Completada    | 1           |
+| 3    | KGeoMIP (geométrico)                                                              | ✅ Completada    | 1, 2        |
+| 4    | KQNodes (submodular)                                                              | ✅ Completada    | 1, 2        |
+| 5    | Baselines comparativos: clustering/espectral (det.) ✅                            | ✅ 5A Completada | 1, 2        |
+|      | + metaheurísticas (opc., diferidas)                                               |                  |             |
+| 6    | Eficiencia y PCD (paralelismo)                                                    | ✅ Completada    | 3, 4, 5     |
+| 7    | Experimentación y métricas                                                        | ✅ Completada    | 3, 4, 5     |
+| 8    | Documentación y manuales                                                          | ✅ Completada    | todas       |
+| 9    | Validación final y entrega                                                        | 🟨 En progreso   | todas       |
+| 10   | Pulido: --state CLI/UI, validación cruzada                                        | 🟨 En progreso   | todas       |
+|      | vs .core/core_00, tuning GA, rejilla oficial #30                                  |                  |             |
+| 11   | Escala N25 (la tabla de evaluación oficial exige QNodes+Geometric a n=25):        | 🟨 En progreso   | 3, 4, 6, 10 |
+| 11   | CostTable vectorizada por niveles, marginal local, cache por k, I/O xlsx estándar |                  |             |
 
 Leyenda: ⬜ Pendiente · 🟨 En progreso · ✅ Completada · ⛔ Bloqueada
 
@@ -488,7 +492,7 @@ Regla del proyecto: nada crítico avanza sobre un supuesto sin probar.
 | NumPy admite hasta 64 dims                              | `reshape((2,)*n)` ok hasta n=64; barrera = memoria                                         |
 | GIL activo (no free-threaded)                           | `sys._is_gil_enabled()=True` → PCD por procesos                                            |
 | Capacidad medida                                        | GeoMIP 0.06 s@n10, 2.5 s@n15; QNodes 0.41/0.03 s                                           |
-| Datos oficiales presentes                               | `Pruebas_Metodo2` (ground truth PyPhi), `DatosPruebas2026_1` (tabla de evaluación k×n)                 |
+| Datos oficiales presentes                               | `Pruebas_Metodo2` (ground truth PyPhi), `DatosPruebas2026_1` (tabla de evaluación k×n)     |
 | Stirling: herramienta correcta                          | `more_itertools.set_partitions` (NO graphillion)                                           |
 
 ### A.2 Pendiente de probar (no asumir)

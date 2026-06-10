@@ -50,15 +50,23 @@ class ExecApp:
             epilog=self._EPILOG,
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
-        parser.add_argument("--net", help="Red a analizar, p. ej. N10A (define n y página).")
-        parser.add_argument("--k", type=int, default=3, help="Número de bloques (k >= 2).")
-        parser.add_argument("--strategy", default="kgeomip", choices=self._STRATEGY_CHOICES)
+        parser.add_argument(
+            "--net", help="Red a analizar, p. ej. N10A (define n y página)."
+        )
+        parser.add_argument(
+            "--k", type=int, default=3, help="Número de bloques (k >= 2)."
+        )
+        parser.add_argument(
+            "--strategy", default="kgeomip", choices=self._STRATEGY_CHOICES
+        )
         parser.add_argument("--page", help="Página de la red (A, B, ...).")
         parser.add_argument(
             "--state",
             help="Estado inicial binario, p. ej. 1000 (por defecto todo en 1).",
         )
-        parser.add_argument("--method", default="spectral", choices=self._METHOD_CHOICES)
+        parser.add_argument(
+            "--method", default="spectral", choices=self._METHOD_CHOICES
+        )
         parser.add_argument("--condition")
         parser.add_argument("--purview")
         parser.add_argument("--mechanism")

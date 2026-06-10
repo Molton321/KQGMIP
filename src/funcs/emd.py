@@ -1,9 +1,6 @@
-"""Earth Mover's Distance variants and the δ_k partition loss.
-
-Provides the analytic effect-repertoire EMD (a sum of node-wise absolute
-differences under conditional independence), the optional ``pyemd``-backed causal
-EMD, the selectors that read the configured variant/metric from ``application``,
-and :func:`delta_k` — the single loss every k-partition strategy is scored with.
+"""Earth Mover's Distance (EMD) for both the effect and cause distributions
+in the context of SIA. The EMD is a measure of the distance between two probability
+distributions, and it is used to quantify the loss of information when partitioning a subsystem.
 """
 
 from collections.abc import Callable
@@ -21,22 +18,19 @@ from src.models.enums.temporal_emd import TimeEMD
 
 
 def effect_emd(u: NDArray[np.float32], v: NDArray[np.float32]) -> float:
-    """
-    Analytic EMD for the effect repertoire (present → future).
-
-    Under conditional independence, the EMD between two marginal distributions
-    is the sum of the node-by-node absolute differences.
+    """The ground distance is the L1 distance between the probability values of the
+    distributions. This is equivalent to the total variation distance, which is half
+    of the L1 distance, but we keep it as the L1 distance for consistency with the
+    causal EMD, which also uses the L1 distance as the ground distance.
     """
     return float(np.sum(np.abs(u - v)))
 
 
 def causal_emd(u: NDArray[np.float64], v: NDArray[np.float64]) -> float:
-    """
-    EMD for the causal repertoire (present → past) using the Hamming distance
-    as the ground metric. Requires the `pyemd` package.
-
-    The symmetric ground-cost matrix is built once from the configured distance
-    before delegating to ``pyemd.emd``.
+    """The ground distance is defined by the configured distance function between
+    state indices. The EMD is calculated with the pyemd library, which requires
+    a cost matrix of shape (n, n) where n is the number of states in the
+    distribution.
     """
     try:
         n = u.size
@@ -50,7 +44,9 @@ def causal_emd(u: NDArray[np.float64], v: NDArray[np.float64]) -> float:
 
         return emd(u.astype(np.float64), v.astype(np.float64), costs)
     except ImportError as err:
-        raise ImportError("pyemd no está instalado. Instálalo con: pip install pyemd") from err
+        raise ImportError(
+            "pyemd no está instalado. Instálalo con: pip install pyemd"
+        ) from err
 
 
 def select_emd() -> Callable[[NDArray[np.float32], NDArray[np.float32]], float]:
@@ -87,7 +83,7 @@ def select_distance() -> Callable[[int, int], int]:
 
 
 def hamming_distance(a: int, b: int) -> int:
-    """Hamming distance between two state indices (popcount of ``a ^ b``)."""
+    """Hamming distance between two state indices (popcount of a ^ b)."""
     return bin(a ^ b).count(STR_ONE)
 
 
@@ -96,16 +92,8 @@ def delta_k(
     partition: KPartition,
     baseline_distribution: NDArray[np.float32] | None = None,
 ) -> tuple[float, NDArray[np.float32]]:
-    """Compute δ_k for a validated k-partition on a subsystem.
-
-    Definition used in this project:
-    δ_k = EMD(P(subsystem), P(partitioned_subsystem))
-
-    where ``partitioned_subsystem`` is built by the tensor-product style
-    reconstruction induced by the paired purview/mechanism blocks.
-
-    Returns:
-        A tuple ``(loss, partition_distribution)``.
+    """Calculate the δ_k loss of a k-partition by comparing the original marginal
+    distribution to the partitioned distribution with the configured EMD function.
     """
     original = baseline_distribution
     if original is None:

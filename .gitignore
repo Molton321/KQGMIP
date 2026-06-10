@@ -68,3 +68,5 @@ logs/runtime/
 data/samples/N20*.csv
 data/samples/N22*.csv
 data/samples/N25*.csv
+
+data/results_others/

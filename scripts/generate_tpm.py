@@ -1,9 +1,6 @@
-"""Generate a TPM sample network from the command line (non-interactive).
+"""Generate a TPM sample network from the command line.
 
-Creates ``data/samples/N{n}{suffix}.csv`` (deterministic 0/1 by default), the
-same format the analysis auto-loads. Mirrors what the web UI offers, so a CSV can
-be produced either by command or by UI.
-
+Usage:
     uv run scripts/generate_tpm.py --n 4
     uv run scripts/generate_tpm.py --n 6 --continuous
     uv run scripts/generate_tpm.py --n 10 --seed 7 --yes
@@ -13,11 +10,10 @@ import argparse
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-# isort: split
 from src.controllers.manager import Manager
 from src.models.base.application import application
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 def main() -> None:
@@ -28,7 +24,9 @@ def main() -> None:
         action="store_true",
         help="probabilidades continuas en vez de 0/1 deterministas",
     )
-    parser.add_argument("--seed", type=int, default=application.numpy_seed, help="semilla NumPy")
+    parser.add_argument(
+        "--seed", type=int, default=application.numpy_seed, help="semilla NumPy"
+    )
     parser.add_argument(
         "--yes",
         action="store_true",

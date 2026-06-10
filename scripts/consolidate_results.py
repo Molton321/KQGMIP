@@ -66,12 +66,18 @@ def main() -> None:
     out_xlsx = RESULTS / "benchmark_results_FINAL.xlsx"
     with pd.ExcelWriter(out_xlsx, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name="Benchmark")
-        pivot = df.pivot_table(index=["strategy", "network", "n"], columns="k", values="loss")
+        pivot = df.pivot_table(
+            index=["strategy", "network", "n"], columns="k", values="loss"
+        )
         pivot.to_excel(writer, sheet_name="Loss Summary")
     print(f"XLSX -> {out_xlsx}")
 
     print("\n=== δ_k by strategy x (net, k) ===")
-    print(df.pivot_table(index=["strategy", "network"], columns="k", values="loss").to_string())
+    print(
+        df.pivot_table(
+            index=["strategy", "network"], columns="k", values="loss"
+        ).to_string()
+    )
 
 
 if __name__ == "__main__":

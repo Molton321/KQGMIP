@@ -1,11 +1,4 @@
-"""Interactive Plotly views for k-partitions and benchmark grids (Fase 9-B).
-
-These complement the static matplotlib figures in :mod:`src.viz.partition_plot`
-with browser-interactive equivalents (hover, zoom, toggle traces). Every
-function returns a :class:`plotly.graph_objects.Figure`, so the same code feeds
-both the standalone HTML export (:mod:`scripts.make_interactive`) and the
-Streamlit web UI (``streamlit_app.py``).
-"""
+"""Interactive Plotly views for k-partitions and benchmark grids."""
 
 from __future__ import annotations
 
@@ -23,17 +16,8 @@ if TYPE_CHECKING:
 
 def plot_kpartition_interactive(partition: KPartition, title: str) -> Any:
     """Return an interactive two-layer block diagram of a k-partition.
-
-    Present (mechanism) atoms sit on the bottom row and future (purview) atoms
-    on the top row; each atom is coloured by the block it belongs to and shows
-    its block index on hover. Mirrors :func:`src.viz.plot_kpartition`.
-
-    Args:
-        partition: the validated k-partition to render.
-        title: figure title.
-
-    Returns:
-        A :class:`plotly.graph_objects.Figure`.
+    Each block is colored and labeled with its index. Hovering over a block shows
+    the block index and its future/present nodes.
     """
     fig = go.Figure()
     for block_index, (purview, mechanism) in enumerate(partition.signature):
@@ -90,14 +74,8 @@ def plot_kpartition_interactive(partition: KPartition, title: str) -> Any:
 
 def plot_loss_vs_k_interactive(df: pd.DataFrame, net: str) -> Any:
     """Return an interactive δ_k-vs-k line chart for one network.
-
-    Args:
-        df: a benchmark grid with columns ``strategy``, ``network``, ``k``,
-            ``loss``.
-        net: the network label to filter on (e.g. ``"N10A"``).
-
-    Returns:
-        A :class:`plotly.graph_objects.Figure` with one line per strategy.
+    Each strategy is a separate line. Hovering over a point shows the strategy name,
+    the k value, and the δ_k value.
     """
     subset = df[(df["network"] == net) & df["loss"].notna()]
     fig = go.Figure()
@@ -124,13 +102,8 @@ def plot_loss_vs_k_interactive(df: pd.DataFrame, net: str) -> Any:
 
 def plot_scalability_interactive(df: pd.DataFrame, k: int) -> Any:
     """Return an interactive runtime-vs-n chart (log y) at a fixed k.
-
-    Args:
-        df: a benchmark grid with columns ``strategy``, ``n``, ``k``, ``time_s``.
-        k: the number of blocks to filter on.
-
-    Returns:
-        A :class:`plotly.graph_objects.Figure` with one line per strategy.
+    Each strategy is a separate line. Hovering over a point shows the strategy name,
+    the n value, and the runtime in seconds.
     """
     subset = df[(df["k"] == k) & df["time_s"].notna()]
     fig = go.Figure()

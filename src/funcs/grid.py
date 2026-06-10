@@ -1,19 +1,5 @@
-"""Standardized reader/writer/runner for the official evaluation grid (FASE 11).
-
-One place implementing the ``.xlsx`` contract of the project: the **input** is
-the official template format (``DatosPruebas2026_1.xlsx``: one ``*-Elementos``
-sheet per network with the candidate initial state and ~50 purview/mechanism
-test rows) and the **output** is a filled copy of that same workbook with the
-``Partición / Pérdida / Tiempo`` cells of the QNodes and Geometric families
-completed for k ∈ {2,3,4,5}. The CLI batch mode (``main_batch.py``), the
-dedicated script (``scripts/fill_official_grid.py``) and the Streamlit UI all
-delegate here, so the format is parsed and produced in exactly one module
-(layout constants in ``src/constants/grid.py``).
-
-The grid convention was cross-validated against ``Pruebas_Metodo2.xlsx``
-(known GeoMIP/PyPhi losses, Fase 10): candidate state = the sheet's
-``Estado inicial``, background condition = all-ones, subsystem = the
-purview/mechanism letter masks.
+"""Standardized reader/writer/runner for grid workbooks,
+which have a fixed format and are used for batch evaluation of the core strategies.
 """
 
 import contextlib
@@ -36,6 +22,9 @@ from src.constants.grid import (
     GRID_SHEET_SUFFIX,
     GRID_STATE_LABEL,
 )
+from src.controllers.manager import Manager
+from src.funcs.runner import build_strategy
+from src.models.base.application import application
 
 
 @dataclass(frozen=True)
@@ -77,21 +66,15 @@ def grid_sheet_names(path: Path) -> list[str]:
     """Return the ``*-Elementos`` sheet names of a grid workbook."""
     book = load_workbook(path, read_only=True)
     try:
-        return [name for name in book.sheetnames if name.strip().endswith(GRID_SHEET_SUFFIX)]
+        return [
+            name for name in book.sheetnames if name.strip().endswith(GRID_SHEET_SUFFIX)
+        ]
     finally:
         book.close()
 
 
 def read_grid_sheet(path: Path, sheet_name: str) -> GridSheet:
-    """Parse one grid sheet into its standardized representation.
-
-    Anchors are located by their column-A labels (``Estado inicial`` and
-    ``#Prueba``); test rows run from the row after the header until the first
-    row without both letter masks.
-
-    Raises:
-        ValueError: if an anchor is missing or a letter mask exceeds n.
-    """
+    """Parse one grid sheet into its standardized representation."""
     book = load_workbook(path, read_only=True)
     try:
         sheet = book[sheet_name]
@@ -100,7 +83,9 @@ def read_grid_sheet(path: Path, sheet_name: str) -> GridSheet:
         for row in range(1, 12):
             label = sheet.cell(row=row, column=1).value
             if label == GRID_STATE_LABEL:
-                initial_state = str(sheet.cell(row=row, column=GRID_PURVIEW_COLUMN).value).strip()
+                initial_state = str(
+                    sheet.cell(row=row, column=GRID_PURVIEW_COLUMN).value
+                ).strip()
             elif label == GRID_HEADER_LABEL:
                 header_row = row
                 break
@@ -142,17 +127,16 @@ def read_grid_sheet(path: Path, sheet_name: str) -> GridSheet:
 
 
 class GridResultsWriter:
-    """Incremental writer for the results workbook (template never modified).
-
-    Opens the results workbook if it exists (resumable runs) or a fresh copy of
-    the template otherwise, and exposes per-cell-group operations: which k
-    values are still missing for a (row, family) and writing one result triple.
+    """Incremental writer for the results workbook,
+    with utilities to find missing k values and write results in the right cells.
     """
 
     def __init__(self, template_path: Path, output_path: Path) -> None:
         """Load the output workbook (or seed it from the template)."""
         self.output_path = output_path
-        self.book = load_workbook(output_path if output_path.exists() else template_path)
+        self.book = load_workbook(
+            output_path if output_path.exists() else template_path
+        )
 
     def missing_ks(self, sheet_name: str, row: int, family: str) -> tuple[int, ...]:
         """Return the k values whose loss cell is still empty for this row/family."""
@@ -161,7 +145,8 @@ class GridResultsWriter:
         return tuple(
             k
             for k in GRID_K_VALUES
-            if sheet.cell(row=row, column=GRID_K_BASE_COLUMN[k] + offset + 1).value in (None, "")
+            if sheet.cell(row=row, column=GRID_K_BASE_COLUMN[k] + offset + 1).value
+            in (None, "")
         )
 
     def write_result(
@@ -193,24 +178,7 @@ def fill_grid(
     k_values: tuple[int, ...] = GRID_K_VALUES,
     progress: Callable[[str], None] = print,
 ) -> None:
-    """Run KQNodes + KGeoMIP over a grid workbook and fill the results copy.
-
-    For every test row and strategy family the expensive preparation runs
-    **once** and every missing k reuses it (``apply_strategy_for_ks``,
-    FASE 11). Progress is saved after each row, so interrupted runs resume by
-    skipping already-filled loss cells.
-
-    Args:
-        template_path: Official grid template (read-only).
-        output_path: Results workbook (created from the template if absent).
-        sheet_names: Sheets to fill (default: every ``*-Elementos`` sheet).
-        k_values: Subset of k blocks to fill (default: the official 2..5).
-        progress: Sink for per-row progress lines (CLI: ``print``; UI: callback).
-    """
-    from src.controllers.manager import Manager
-    from src.funcs.runner import build_strategy
-    from src.models.base.application import application
-
+    """Run KQNodes + KGeoMIP over a grid workbook and fill the results copy."""
     writer = GridResultsWriter(template_path, output_path)
     names = sheet_names or grid_sheet_names(template_path)
 
@@ -219,12 +187,16 @@ def fill_grid(
         application.set_sample_network_page(sheet.page)
         condition = "1" * sheet.num_nodes
         tpm = Manager(sheet.initial_state).load_network()
-        progress(f"=== {sheet_name} (n={sheet.num_nodes}, estado={sheet.initial_state}) ===")
+        progress(
+            f"=== {sheet_name} (n={sheet.num_nodes}, estado={sheet.initial_state}) ==="
+        )
 
         for test in sheet.tests:
             for family, strategy_name in GRID_FAMILY_STRATEGY.items():
                 missing = tuple(
-                    k for k in writer.missing_ks(sheet_name, test.row, family) if k in k_values
+                    k
+                    for k in writer.missing_ks(sheet_name, test.row, family)
+                    if k in k_values
                 )
                 if not missing:
                     continue

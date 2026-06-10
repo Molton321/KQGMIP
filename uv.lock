@@ -503,26 +503,13 @@ dependencies = [
     { name = "pandas" },
     { name = "plotly" },
     { name = "psutil" },
+    { name = "pyemd" },
     { name = "pyinstrument" },
     { name = "pyphi" },
     { name = "scipy" },
     { name = "streamlit" },
-    { name = "tqdm" },
-]
-
-[package.optional-dependencies]
-emd = [
-    { name = "pyemd" },
-]
-perf = [
     { name = "threadpoolctl" },
-]
-viz = [
-    { name = "plotly" },
-]
-web = [
-    { name = "plotly" },
-    { name = "streamlit" },
+    { name = "tqdm" },
 ]
 
 [package.dev-dependencies]
@@ -544,19 +531,15 @@ requires-dist = [
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pandas", specifier = ">=3.0.3" },
     { name = "plotly", specifier = ">=6.8.0" },
-    { name = "plotly", marker = "extra == 'viz'", specifier = ">=5.20.0" },
-    { name = "plotly", marker = "extra == 'web'", specifier = ">=5.20.0" },
     { name = "psutil", specifier = ">=6.0.0" },
-    { name = "pyemd", marker = "extra == 'emd'", specifier = ">=0.5.1" },
+    { name = "pyemd", specifier = ">=0.5.1" },
     { name = "pyinstrument", specifier = ">=5.1.2" },
     { name = "pyphi", specifier = ">=1.2.0" },
     { name = "scipy", specifier = ">=1.17.1" },
     { name = "streamlit", specifier = ">=1.58.0" },
-    { name = "streamlit", marker = "extra == 'web'", specifier = ">=1.40.0" },
-    { name = "threadpoolctl", marker = "extra == 'perf'", specifier = ">=3.0" },
+    { name = "threadpoolctl", specifier = ">=3.0.0" },
     { name = "tqdm", specifier = ">=4.66.0" },
 ]
-provides-extras = ["emd", "perf", "viz", "web"]
 
 [package.metadata.requires-dev]
 dev = [

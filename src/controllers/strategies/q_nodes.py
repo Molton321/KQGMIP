@@ -93,8 +93,8 @@ class QNodes(SIA):
                 mip_index = 0
 
                 for k, v in enumerate(cycle_deltas):
-                    union_emd, delta_emd, delta_marginal_dist = self.submodular_function(
-                        v, cycle_omegas
+                    union_emd, delta_emd, delta_marginal_dist = (
+                        self.submodular_function(v, cycle_omegas)
                     )
                     iteration_emd = union_emd - delta_emd
 
@@ -121,7 +121,9 @@ class QNodes(SIA):
                 if isinstance(cycle_omegas[LAST_IDX], tuple)
                 else cycle_omegas[LAST_IDX]
             ) + (
-                cycle_deltas[LAST_IDX] if isinstance(cycle_deltas[LAST_IDX], list) else cycle_deltas
+                cycle_deltas[LAST_IDX]
+                if isinstance(cycle_deltas[LAST_IDX], list)
+                else cycle_deltas
             )
 
             cycle_omegas.pop()

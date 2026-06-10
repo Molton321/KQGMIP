@@ -62,7 +62,9 @@ class _MetaheuristicSIA(SIA):
         if self.k < 2:
             raise ValueError("k must be >= 2.")
 
-        future_universe = tuple(int(i) for i in self.sia_subsystem.ncube_indices.tolist())
+        future_universe = tuple(
+            int(i) for i in self.sia_subsystem.ncube_indices.tolist()
+        )
         present_universe = tuple(int(i) for i in self.sia_subsystem.ncube_dims.tolist())
         atoms = len(future_universe) + len(present_universe)
 
@@ -124,7 +126,9 @@ class AnnealingSIA(_MetaheuristicSIA):
         return super().apply_strategy(condition, purview, mechanism)
 
     def _search(self, future_universe, present_universe, rng) -> SearchResult:
-        return self._run(simulated_annealing_search, future_universe, present_universe, rng)
+        return self._run(
+            simulated_annealing_search, future_universe, present_universe, rng
+        )
 
 
 class TabuSIA(_MetaheuristicSIA):

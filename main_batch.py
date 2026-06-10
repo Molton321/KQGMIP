@@ -1,23 +1,12 @@
 """
-Batch processing of subsystems from Excel.
-
-Two input formats are supported and auto-detected (FASE 11):
-
-1. **Official grid** (standard): a workbook with ``*-Elementos`` sheets in the
-   ``DatosPruebas2026_1.xlsx`` format. The standardized engine
-   (``src/funcs/grid.py``) runs KQNodes + KGeoMIP for every test row and
-   k ∈ {2..5}, sharing the expensive preparation across k, and writes the
-   official results workbook (the input template is never modified).
-2. **Legacy list** (``Pruebas_Metodo2.xlsx``): a single column of ``AC|abc``
-   subsystem masks, run with one chosen strategy/k into a flat results sheet.
+Batch execution of strategies from an Excel file.
 
 Environment variables:
-  IIT_INPUT_XLSX   → path to the input Excel  (default: data/results/Pruebas_Metodo2.xlsx)
+  IIT_INPUT_XLSX   → path to the input Excel  (default: data/results/pruebas.xlsx)
   IIT_OUTPUT_XLSX  → path to the output Excel  (default: data/results/resultados.xlsx)
   IIT_STRATEGY     → strategy name (default: kgeomip; legacy format only)
   IIT_K            → partition count (default: 3; legacy format only)
   IIT_ESTADO_INI   → initial state in bits     (auto-detected from data/samples/)
-  IIT_SAMPLES_DIR  → samples directory         (default: data/samples/)
 
 Usage:
     uv run exec.py --batch                          # default: KGeoMIP(k=3) on N10A
@@ -33,7 +22,10 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.constants.grid import GRID_RESULTS_XLSX
 from src.controllers.manager import Manager
+from src.funcs.grid import fill_grid, grid_sheet_names
+from src.funcs.runner import build_strategy
 from src.models.base.application import application
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -43,6 +35,7 @@ def _to_binary(text: str, n_bits: int) -> str:
     """Convert labels like 'AC|abc' to a binary string of length n_bits."""
     positions = "ABCDEFGHIJKLMNOPQRST"[:n_bits]
     result = ["0"] * n_bits
+
     for letter in text.upper():
         if letter in positions:
             result[positions.index(letter)] = "1"
@@ -52,20 +45,25 @@ def _to_binary(text: str, n_bits: int) -> str:
 def _infer_initial_state(samples_dir: Path) -> str:
     """Pick the initial state from the largest available dataset."""
     pattern = re.compile(r"N(\d+)[A-Z]\.csv$")
-    sizes = [int(m.group(1)) for f in samples_dir.glob("N*.csv") if (m := pattern.match(f.name))]
+    sizes = [
+        int(m.group(1))
+        for f in samples_dir.glob("N*.csv")
+        if (m := pattern.match(f.name))
+    ]
+
     if not sizes:
         raise FileNotFoundError(f"No hay archivos TPM en {samples_dir}")
+
     n = max(sizes)
     return "1" + "0" * (n - 1)
 
 
-def _worker(condition, purview, mechanism, tpm, initial_state, strategy_name, k, method, queue):
+def _worker(
+    condition, purview, mechanism, tpm, initial_state, strategy_name, k, method, queue
+):
     """Worker process for batch evaluation of one subsystem.
-
-    The strategy is built through the single registry (``src/funcs/runner.py``)
-    and the result (or error) is pushed onto ``queue`` for the parent process.
+    This function runs in a separate process to allow for timeouts and isolation.
     """
-    from src.funcs.runner import build_strategy
 
     try:
         analyzer = build_strategy(strategy_name, tpm, initial_state, k, method)
@@ -100,12 +98,10 @@ def run_from_excel(
     initial_state: str | None = None,
     fixed_conditions: str | None = None,
 ) -> None:
-    """Run a strategy over the subsystems listed in an Excel file.
-
-    The TPM is loaded through ``Manager.load_network`` (the single source of
-    truth: float32, no duplicate ``genfromtxt``) using page ``"A"``.
-    """
-    df = pd.read_excel(input_path, sheet_name=8, usecols="B", skiprows=3, names=["Subsistema"])
+    """Run a strategy over the subsystems listed in an Excel file."""
+    df = pd.read_excel(
+        input_path, sheet_name=8, usecols="B", skiprows=3, names=["Subsistema"]
+    )
     rows = df["Subsistema"].dropna().tolist()[start : start + count]
 
     samples_dir = Manager(initial_state or "").base_path
@@ -162,7 +158,12 @@ def run_from_excel(
             result = (
                 queue.get()
                 if not queue.empty()
-                else {"partition": None, "loss": None, "time": None, "error": "empty queue"}
+                else {
+                    "partition": None,
+                    "loss": None,
+                    "time": None,
+                    "error": "empty queue",
+                }
             )
 
         results.append(
@@ -186,21 +187,16 @@ def run_from_excel(
 
 def run():
     """CLI entry point (reads env vars or uses defaults).
-
-    Workbooks containing ``*-Elementos`` sheets are dispatched to the
-    standardized official-grid engine; anything else uses the legacy
-    single-strategy list mode.
+    Detects if the input Excel has grid sheets and runs the appropriate function.
     """
-    from src.constants.grid import GRID_RESULTS_XLSX
-    from src.funcs.grid import fill_grid, grid_sheet_names
-
     input_path = Path(
         os.getenv(
             "IIT_INPUT_XLSX",
-            str(PROJECT_ROOT / "data" / "results" / "Pruebas_Metodo2.xlsx"),
+            str(PROJECT_ROOT / "data" / "results" / "pruebas.xlsx"),
         )
     )
     grid_sheets = grid_sheet_names(input_path) if input_path.exists() else []
+
     if grid_sheets:
         output_path = Path(os.getenv("IIT_OUTPUT_XLSX", str(GRID_RESULTS_XLSX)))
         print(f"Formato rejilla oficial detectado ({len(grid_sheets)} hojas).")
@@ -213,6 +209,7 @@ def run():
             str(PROJECT_ROOT / "data" / "results" / "resultados.xlsx"),
         )
     )
+
     strategy_name = os.getenv("IIT_STRATEGY", "kgeomip")
     k = int(os.getenv("IIT_K", "3"))
     method = os.getenv("IIT_METHOD", "spectral")

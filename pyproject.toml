@@ -19,19 +19,8 @@ dependencies = [
     "matplotlib>=3.9.0",
     "streamlit>=1.58.0",
     "plotly>=6.8.0",
-]
-
-[project.optional-dependencies]
-emd = ["pyemd>=0.5.1"]
-perf = [
-    "threadpoolctl>=3.0",
-]
-viz = [
-    "plotly>=5.20.0",
-]
-web = [
-    "plotly>=5.20.0",
-    "streamlit>=1.40.0",
+    "threadpoolctl>=3.0.0",
+    "pyemd>=0.5.1",
 ]
 
 [dependency-groups]

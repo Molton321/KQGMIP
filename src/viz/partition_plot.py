@@ -1,18 +1,4 @@
-"""Render k-partitions for the demo (Phase 7, official spec §4.4).
-
-Two complementary views of a validated :class:`KPartition`:
-
-- :func:`plot_kpartition` — a layered block diagram (present/mechanism row and
-  future/purview row, each atom coloured by its block). Works for any ``n`` and
-  any ``k``, so it is the general-purpose figure for the manuals/demo.
-- :func:`plot_hypercube_partition` — for small systems (``n <= 4``), the
-  n-dimensional hypercube of node indices drawn as a 2-D projection, with nodes
-  coloured by their block. This is the literal "k regions of the hypercube"
-  picture of the geometric interpretation (doc §2.3).
-
-matplotlib is imported lazily (and forced to the headless ``Agg`` backend) so
-importing this module never requires a display.
-"""
+"""Functions to plot k-partitions as block diagrams and hypercube projections."""
 
 from itertools import combinations
 
@@ -36,7 +22,10 @@ def _import_matplotlib():
 
 def _block_legend(patch_cls, partition: KPartition) -> list:
     """Build one legend patch per block, colored by :func:`block_color`."""
-    return [patch_cls(color=block_color(r), label=f"block {r + 1}") for r in range(partition.k)]
+    return [
+        patch_cls(color=block_color(r), label=f"block {r + 1}")
+        for r in range(partition.k)
+    ]
 
 
 def _save_figure(fig, plt, output_path: str) -> str:
@@ -49,14 +38,8 @@ def _save_figure(fig, plt, output_path: str) -> str:
 
 def plot_kpartition(partition: KPartition, title: str, output_path: str) -> str:
     """Draw a k-partition as a two-layer block diagram and save a PNG.
-
-    Args:
-        partition: the validated k-partition to render.
-        title: figure title.
-        output_path: destination ``.png`` path.
-
-    Returns:
-        ``output_path`` (for convenience/chaining).
+    Each block is colored and labeled with its index. The x-axis shows node indices,
+    and the y-axis distinguishes present (t) from future (t+1) nodes.
     """
     plt, Patch = _import_matplotlib()
 
@@ -104,16 +87,10 @@ def plot_kpartition(partition: KPartition, title: str, output_path: str) -> str:
     return _save_figure(fig, plt, output_path)
 
 
-def plot_hypercube_partition(partition: KPartition, title: str, output_path: str) -> str:
-    """Draw the node hypercube (n<=4) with nodes coloured by their block.
-
-    The node indices ``0..n-1`` are the hypercube dimensions. Each vertex (a bit
-    pattern over the ``n`` dims) is placed by summing unit vectors at angles
-    spread over the circle (a standard n-cube projection) and connected to its
-    Hamming-1 neighbours. Single-bit vertices map to a node/dimension and are
-    coloured by that future index's block; the rest are drawn neutral. Falls back
-    to :func:`plot_kpartition` for ``n > 4``.
-    """
+def plot_hypercube_partition(
+    partition: KPartition, title: str, output_path: str
+) -> str:
+    """Draw a k-partition as a projection of the n-dimensional hypercube of future states."""
     universe = sorted(partition.future_universe)
     n = len(universe)
     if n > 4:
@@ -121,10 +98,14 @@ def plot_hypercube_partition(partition: KPartition, title: str, output_path: str
 
     plt, Patch = _import_matplotlib()
 
-    future_block = {idx: r for r, (purview, _) in enumerate(partition.signature) for idx in purview}
+    future_block = {
+        idx: r for r, (purview, _) in enumerate(partition.signature) for idx in purview
+    }
 
     angles = np.linspace(0, np.pi, n, endpoint=False)
-    axes_xy = np.array([[np.cos(a), np.sin(a)] for a in angles]) if n else np.zeros((0, 2))
+    axes_xy = (
+        np.array([[np.cos(a), np.sin(a)] for a in angles]) if n else np.zeros((0, 2))
+    )
 
     coords = {}
     for vertex in range(1 << n):
@@ -143,7 +124,9 @@ def plot_hypercube_partition(partition: KPartition, title: str, output_path: str
             color = block_color(future_block.get(universe[dim], 0))
         else:
             color = "#dddddd"
-        ax.scatter(x, y, s=240, color=color, edgecolors="black", linewidths=0.5, zorder=2)
+        ax.scatter(
+            x, y, s=240, color=color, edgecolors="black", linewidths=0.5, zorder=2
+        )
 
     ax.set_title(title)
     ax.set_aspect("equal")

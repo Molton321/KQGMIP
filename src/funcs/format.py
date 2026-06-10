@@ -1,10 +1,4 @@
-"""Human-readable formatters for k-partitions and bipartitions.
-
-Render the internal block signatures into the bracketed ``mechanism | purview``
-notation shown in the CLI, the web UI and the result tables, mapping future
-(purview) indices to upper-case letters and present (mechanism) ones to
-lower-case, with ``∅`` for empty sides.
-"""
+"""Human-readable formatters for k-partitions and bipartitions."""
 
 from src.constants.base import COLON_DELIM, EMPTY_STR, VOID_STR, WIDTH_PADDING
 from src.funcs.labels import ABECEDARY, LOWER_ABECEDARY
@@ -13,18 +7,13 @@ from src.funcs.labels import ABECEDARY, LOWER_ABECEDARY
 def fmt_kpartition(
     signature: tuple[tuple[tuple[int, ...], tuple[int, ...]], ...],
 ) -> str:
-    """Render a k-partition in human-readable block format.
-
-    ``signature`` is a sequence of ``(purview_block, mechanism_block)`` pairs
-    (as produced by ``KPartition.signature``). Each block is shown on its own
-    line as ``Bi: <mechanism> | <purview>``, using upper-case letters for
-    purview (future) indices and lower-case for mechanism (present) indices;
-    an empty side is rendered as ``∅``.
-    """
+    """Render a k-partition signature in human-readable block format."""
     lines: list[str] = []
     for idx, (purview_block, mechanism_block) in enumerate(signature, start=1):
         purview_text = (
-            VOID_STR if not purview_block else EMPTY_STR.join(ABECEDARY[i] for i in purview_block)
+            VOID_STR
+            if not purview_block
+            else EMPTY_STR.join(ABECEDARY[i] for i in purview_block)
         )
         mechanism_text = (
             VOID_STR
@@ -39,20 +28,26 @@ def fmt_bipartition(
     part_one: list,
     part_two: list,
 ) -> str:
-    """
-    Format a bipartition using mathematical bracket notation.
-
-    Each part is [mechanism_indices, purview_indices]. Inputs may be
-    numpy arrays, tuples or sets; the emptiness check uses `len()` to
-    work uniformly across all of them.
-    """
+    """Render a bipartition in human-readable block format."""
     mech_p, pur_p = part_one
     mech_d, purv_d = part_two
 
-    purv_prim = COLON_DELIM.join(ABECEDARY[j] for j in pur_p) if len(pur_p) else VOID_STR
-    mech_prim = COLON_DELIM.join(LOWER_ABECEDARY[i] for i in mech_p) if len(mech_p) else VOID_STR
-    purv_dual = COLON_DELIM.join(ABECEDARY[i] for i in purv_d) if len(purv_d) else VOID_STR
-    mech_dual = COLON_DELIM.join(LOWER_ABECEDARY[j] for j in mech_d) if len(mech_d) else VOID_STR
+    purv_prim = (
+        COLON_DELIM.join(ABECEDARY[j] for j in pur_p) if len(pur_p) else VOID_STR
+    )
+    mech_prim = (
+        COLON_DELIM.join(LOWER_ABECEDARY[i] for i in mech_p)
+        if len(mech_p)
+        else VOID_STR
+    )
+    purv_dual = (
+        COLON_DELIM.join(ABECEDARY[i] for i in purv_d) if len(purv_d) else VOID_STR
+    )
+    mech_dual = (
+        COLON_DELIM.join(LOWER_ABECEDARY[j] for j in mech_d)
+        if len(mech_d)
+        else VOID_STR
+    )
 
     width_prim = max(len(purv_prim), len(mech_prim)) + WIDTH_PADDING
     width_dual = max(len(purv_dual), len(mech_dual)) + WIDTH_PADDING

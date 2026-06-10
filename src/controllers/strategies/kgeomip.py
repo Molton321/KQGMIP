@@ -42,7 +42,9 @@ class KGeoMIP(SIA):
     @profile(context={TYPE_TAG: KGEOMIP_ANALYSIS_TAG})
     def apply_strategy(self, condition: str, purview: str, mechanism: str) -> Solution:
         """Search for a low-loss k-partition under the current subsystem."""
-        return self.apply_strategy_for_ks(condition, purview, mechanism, (self.k,))[self.k]
+        return self.apply_strategy_for_ks(condition, purview, mechanism, (self.k,))[
+            self.k
+        ]
 
     def apply_strategy_for_ks(
         self,

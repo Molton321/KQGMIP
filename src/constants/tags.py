@@ -1,8 +1,4 @@
-"""Sentinel values and logging/profiling tags for the SIA pipeline.
-
-Dummy EMD/array placeholders for empty solutions, the partition error strings and
-the ``sia`` preparation tags consumed by the loggers and the ``@profile`` wrapper.
-"""
+"""Sentinel values and logging/profiling tags for the SIA pipeline."""
 
 import numpy as np
 

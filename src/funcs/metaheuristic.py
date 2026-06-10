@@ -1,28 +1,4 @@
-"""Shared metaheuristic engine for k-partition search (optional baselines).
-
-The official specification lists metaheuristics (Genetic Algorithm, Simulated
-Annealing, Tabu Search) as an *optional comparative* family of strategies
-(``docs/Proyecto_KQMIP.md`` §portafolio). They all search the same space as the
-core strategies — the strict k-partitions of the subsystem's atoms — and are
-scored with the *same* loss ``delta_k``, so they are directly comparable in the
-evaluation grid.
-
-Solution encoding
------------------
-A candidate is a label vector ``labels`` of length ``a = |F| + |M|`` (future
-atoms first, present atoms last); ``labels[i] ∈ {0..k-1}`` is the block that atom
-``i`` belongs to. Decoding splits the vector by layer into paired blocks
-``(F_b, M_b)`` and builds a validated :class:`KPartition`. A candidate is
-*feasible* iff every one of the ``k`` blocks is non-vacuous (strict semantics,
-doc §2.1); infeasible candidates are repaired so the search stays in the feasible
-region.
-
-Determinism
------------
-Every search takes an explicit ``numpy.random.Generator`` (seeded from
-``application.numpy_seed`` by the strategy), so runs are reproducible.
-``delta_k`` evaluations are memoized per search because they dominate the cost.
-"""
+"""Shared metaheuristic engine for k-partition search (optional baselines)."""
 
 from dataclasses import dataclass
 
@@ -62,11 +38,12 @@ def _decode(
     present_universe: tuple[int, ...],
     k: int,
 ) -> KPartition | None:
-    """Build a :class:`KPartition` from a label vector, or ``None`` if infeasible."""
     n_future = len(future_universe)
     blocks: list[tuple[tuple[int, ...], tuple[int, ...]]] = []
     for block in range(k):
-        future_block = tuple(future_universe[i] for i in range(n_future) if labels[i] == block)
+        future_block = tuple(
+            future_universe[i] for i in range(n_future) if labels[i] == block
+        )
         present_block = tuple(
             present_universe[j]
             for j in range(len(present_universe))
@@ -83,9 +60,10 @@ def _decode(
         return None
 
 
-def _repair(labels: NDArray[np.intp], k: int, rng: np.random.Generator) -> NDArray[np.intp]:
-    """Make ``labels`` surjective onto ``{0..k-1}`` (every block non-empty).
-
+def _repair(
+    labels: NDArray[np.intp], k: int, rng: np.random.Generator
+) -> NDArray[np.intp]:
+    """Make (labels) surjective onto {0..k-1} (every block non-empty).
     For each empty block, move one atom from a block that currently owns more
     than one atom. This guarantees strict feasibility while changing as few
     assignments as possible.
@@ -105,8 +83,7 @@ def _repair(labels: NDArray[np.intp], k: int, rng: np.random.Generator) -> NDArr
 
 
 def _random_solution(a: int, k: int, rng: np.random.Generator) -> NDArray[np.intp]:
-    """Return a feasible random label vector of length ``a`` over ``k`` blocks.
-
+    """Return a feasible random label vector of length (a) with (k) blocks.
     Each block is seeded with one distinct atom to guarantee surjectivity, then
     any remaining empties are repaired (cheap, and keeps the rest random).
     """
@@ -118,7 +95,7 @@ def _random_solution(a: int, k: int, rng: np.random.Generator) -> NDArray[np.int
 
 
 class _Evaluator:
-    """Memoized ``delta_k`` scorer over label vectors (lower is better)."""
+    """Memoized (delta_k) scorer over label vectors (lower is better)."""
 
     def __init__(
         self,
@@ -141,7 +118,6 @@ class _Evaluator:
     def score(
         self, labels: NDArray[np.intp]
     ) -> tuple[float, NDArray[np.float32] | None, KPartition | None]:
-        """Return ``(loss, distribution, partition)``; ``inf`` if infeasible."""
         key = tuple(int(x) for x in labels)
         cached = self._cache.get(key)
         if cached is not None:
@@ -164,10 +140,12 @@ class _Evaluator:
 
 
 def _to_result(labels: NDArray[np.intp], evaluator: _Evaluator) -> SearchResult:
-    """Wrap the best label vector into a :class:`SearchResult` (must be feasible)."""
+    """Wrap the best label vector into a class (SearchResult) (must be feasible)."""
     loss, distribution, partition = evaluator.score(labels)
     if partition is None or distribution is None:
-        raise RuntimeError("metaheuristic ended on an infeasible solution (bug in repair).")
+        raise RuntimeError(
+            "metaheuristic ended on an infeasible solution (bug in repair)."
+        )
     return SearchResult(partition, loss, distribution, evaluator.evaluations)
 
 
@@ -232,7 +210,7 @@ def simulated_annealing_search(
     initial_temp: float = ANNEALING_INITIAL_TEMP,
     cooling: float = ANNEALING_COOLING,
 ) -> SearchResult:
-    """Simulated Annealing with ``delta_k`` as the energy to minimize."""
+    """Simulated Annealing with (delta_k) as the energy to minimize."""
     a = len(future_universe) + len(present_universe)
     evaluator = _Evaluator(subsystem, baseline, future_universe, present_universe, k)
 
@@ -266,8 +244,7 @@ def tabu_search(
     neighbors_per_step: int = TABU_NEIGHBORS_PER_STEP,
     tenure: int = TABU_TENURE,
 ) -> SearchResult:
-    """Tabu Search: best non-tabu neighbor each step, with a move tabu list.
-
+    """Tabu Search best non-tabu neighbor each step, with a move tabu list.
     Aspiration is applied: a tabu move is still allowed when it improves on the
     global best loss.
     """
@@ -311,7 +288,9 @@ def tabu_search(
     return _to_result(best, evaluator)
 
 
-def _neighbor(labels: NDArray[np.intp], k: int, rng: np.random.Generator) -> NDArray[np.intp]:
+def _neighbor(
+    labels: NDArray[np.intp], k: int, rng: np.random.Generator
+) -> NDArray[np.intp]:
     """Return a feasible neighbor by relabeling one atom (with repair)."""
     neighbor = labels.copy()
     atom = int(rng.integers(0, labels.size))
