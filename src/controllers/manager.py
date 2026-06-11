@@ -8,8 +8,7 @@ from pathlib import Path
 
 import numpy as np
 
-from src.constants.base import (ABC_START, COLON_DELIM, CSV_EXTENSION,
-                                PATH_SAMPLES)
+from src.constants.base import ABC_START, COLON_DELIM, CSV_EXTENSION, PATH_SAMPLES
 from src.models.base.application import application
 
 
