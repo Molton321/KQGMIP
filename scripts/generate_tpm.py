@@ -10,10 +10,9 @@ import argparse
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.controllers.manager import Manager
 from src.models.base.application import application
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 def main() -> None:

@@ -8,7 +8,8 @@ from pathlib import Path
 
 import numpy as np
 
-from src.constants.base import ABC_START, COLON_DELIM, CSV_EXTENSION, PATH_SAMPLES
+from src.constants.base import (ABC_START, COLON_DELIM, CSV_EXTENSION,
+                                PATH_SAMPLES)
 from src.models.base.application import application
 
 
@@ -89,13 +90,11 @@ class Manager:
         filename = f"N{dimensions}{suffix}.{CSV_EXTENSION}"
         filepath = self.base_path / filename
 
-        t0 = time.time()
         states = (
             np.random.randint(2, size=(num_states, dimensions), dtype=np.int8)
             if deterministic
             else np.random.random(size=(num_states, dimensions))
         )
-        print(f"Generación en {time.time() - t0:.2f}s")
 
         t0 = time.time()
         np.savetxt(
