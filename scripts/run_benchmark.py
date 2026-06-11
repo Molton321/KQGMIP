@@ -152,7 +152,7 @@ def main():
 
     df = pd.DataFrame(all_rows)
 
-    output = Path(args.output)
+    output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output, index=False)
     print(f"\nCSV saved: {output}")
