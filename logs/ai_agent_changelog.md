@@ -1453,3 +1453,11 @@ Poder generar el benchmark con las N que yo seleccione de data. Validación cruz
     auto-detección lo maneja, pero pasarla explícita a `--verify-partitions` exige el espacio.
 - **Fuente del proyecto original citada:** github.com/JuManoel/projecto-analisis-20261 (manual
   técnico, README, docstring de validation/external).
+
+## 2026-06-10 — Fix args.output → args.out
+
+- **Prompt:** "hacer commit y push fix"
+- **Acción:** corregido `scripts/run_benchmark.py` línea 155: `args.output` → `args.out` (el argparse
+  tiene el atributo `out`, no `output`).
+- **Contexto:** diferencia detectada entre el nombre del flag CLI (`--output`) y el nombre del
+  atributo en el namespace (`out`). El fix ya estaba aplicado en working tree, pendiente de commit.
