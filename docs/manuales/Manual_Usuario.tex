@@ -276,7 +276,7 @@ uv run exec.py benchmark               # estrategias x redes x k -> CSV/Excel en
 uv run exec.py benchmark --quick       # solo N10A (rapido)
 uv run scripts/make_figures.py         # graficas estaticas (PNG): escalabilidad/perdida
 uv run scripts/make_interactive.py     # graficas interactivas (HTML, Plotly)
-uv run scripts/make_viz.py --net N4A --k 3 --strategy KGeoMIP   # dibuja la particion
+uv run scripts/make_viz.py --net N4A --k 3 --strategy kgeomip   # dibuja la particion
 \end{lstlisting}
 Las gráficas \textbf{estáticas} (PNG) quedan en \texttt{data/results/figures/} y las
 \textbf{interactivas} (HTML, navegables con \emph{zoom} y \emph{hover}) en
@@ -384,12 +384,12 @@ deben tener longitud $n$.
 \begin{enumerate}
 	\item Ejecutar \texttt{uv run exec.py run -{}-net N4A -{}-k 3 -{}-strategy kgeomip}.
 	\item Leer la pérdida y los bloques. Dibujar la partición:
-	      \texttt{uv run scripts/make\_viz.py -{}-net N4A -{}-k 3 -{}-strategy KGeoMIP}.
+	      \texttt{uv run scripts/make\_viz.py -{}-net N4A -{}-k 3 -{}-strategy kgeomip}.
 \end{enumerate}
 
 \subsection{Caso intermedio (10 nodos, varios $k$)}
 Con la red N10A, ejecute KGeoMIP para $k=2,3,4$ y compare la pérdida (debe crecer):
-$0{,}47 \to 0{,}94 \to 1{,}42$. Repita con \texttt{kqnodes} para confirmar que
+$0{,}4727 \to 0{,}9424 \to 1{,}4229$. Repita con \texttt{kqnodes} para confirmar que
 obtiene la misma calidad.
 
 \subsection{Ejemplo avanzado (tabla completa)}

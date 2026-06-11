@@ -51,7 +51,7 @@ uv run exec.py           # análisis individual (subcommand run)
 uv run exec.py batch     # análisis por lotes (formato oficial: datos.xlsx → resultados.xlsx)
 uv run exec.py results    # ver tabla de resultados en consola
 uv run exec.py benchmark # regenerar benchmark completo
-uv run pytest            # 275 tests
+uv run pytest            # 276 tests
 uv run ruff check . && uv run mypy src   # lint + tipos
 ```
 
