@@ -16,7 +16,7 @@
 	{\large Estrategias \textbf{KGeoMIP} y \textbf{KQNodes}}\\[3cm]
 	{\small\itshape Guía de instalación y uso para usuarios finales}\\[1.5cm]
 	{\large\textbf{Autores}}\\[0.2cm]
-	{\normalsize Milton Arias - }\\[0.1cm]
+	{\normalsize Milton Pablo Arias Rincon - 38790}\\[0.1cm]
 	{\normalsize Nelson Daniel Estrada Leiton - 9665}\\[1.5cm]
 	{\small \mesano}
 	\vfill
@@ -43,7 +43,7 @@ modularidad de sistemas dinámicos, y experimentación académica sobre IIT.
 
 \subsection{Conceptos básicos}
 \begin{itemize}
-	\item \textbf{Sistema:} conjunto de $n$ nodos que pueden estar en $0$ o $1$.
+	\item \textbf{Sistema:} conjunto de $n$ nodos que pueden estar en estado $0$ o $1$ (binarios) o probabilidades continuas.
 	\item \textbf{$k$-partición:} una división del sistema en exactamente $k$ grupos
 	      (bloques). Con $k=2$ es un solo corte; con $k=3,4,5$ son cortes múltiples.
 	\item \textbf{Partición de mínima información (MIP):} la división que menos
@@ -80,8 +80,8 @@ modularidad de sistemas dinámicos, y experimentación académica sobre IIT.
 		                  & Mínimo                      & Recomendado                            \\
 		\midrule
 		Sistema operativo & Linux / macOS / Windows 10+ & Linux (probado en Arch)                \\
-		Python            & 3.14                        & 3.14.5                                 \\
-		RAM               & 4 GB ($n\le 12$)            & 8–16 GB ($n\le 20$); 8 GB+ para $n=25$ \\
+		Python            & 3.14.5                      & 3.14.5                                 \\
+		RAM               & 4 GB ($n\le 12$)            & 8 GB ($n\le 20$); 16 GB para $n=25$    \\
 		Disco             & 500 MB                      & 2 GB (incluye muestras grandes)        \\
 		CPU               & 2 núcleos                   & 4+ núcleos (paralelismo PCD)           \\
 		\bottomrule
@@ -152,8 +152,8 @@ valores de $k$; (4) interpretación de la salida; (5) generación de figuras.
 \subsection{Preparación de los datos de entrada}
 El sistema se describe con una \textbf{TPM} (matriz de transición) en un archivo
 CSV: \texttt{data/samples/N\{n\}\{página\}.csv}, con $2^n$ filas y $n$ columnas de
-$0$/$1$, en orden \emph{little-endian} (la fila $0$ es el estado $00\dots0$). El
-programa la carga automáticamente según el número de nodos y la página.
+$0$/$1$ o probabilidades continuas, en orden \emph{little-endian} (la fila $0$
+es el estado $00\dots0$). El programa la carga automáticamente según el número de nodos y la página.
 
 \noindent Si no tiene una TPM, puede generar una desde la \textbf{línea de comandos}
 con el script dedicado (no interactivo con \texttt{--yes}):
@@ -200,26 +200,27 @@ Distancia metrica: distancia-hamming
 Notacion indexado: little-endian
 
 Distribucion marginal del Subsistema:
-[ 0.2500 0.5000 1.0000 ]
+[ 0. 1.0000 0. 0. 1.0000 1.0000 1.0000 0. 0. 0. ]
 Distribucion marginal de la Particion:
-[ 0.4062 0.4688 1.0000 ]
+[ 0. 1.0000 0. 0.4697 1.0000 1.0000 1.0000 0. 0.4727 0. ]
 
-Mejor particion:
-B1:  | C
-B2:  | G
-B3: agh | H
-Perdida minima ( phi ) = 0.1875
+Mejor 3-Particion:
+B1: abcdefghij | ABCEFGHJ
+B2: ∅ | D
+B3: ∅ | I
+Perdida minima ( phi ) = 0.9424
 
 Tiempos de ejecucion:
-Horas: 0.00 = Minutos: 0.0 = Segundos: 0.0036
+Horas: 0.00 = Minutos: 0.0 = Segundos: 0.0188
 \end{lstlisting}
 
 \noindent\textbf{Cómo leerlo:}
 \begin{itemize}
-	\item \textbf{Bloques B1–B3:} cada bloque es \texttt{futuro | presente}. Las
-	      letras minúsculas son nodos de efecto ($t{+}1$); las mayúsculas, de mecanismo
-	      ($t$). Un lado vacío significa que ese bloque no aporta átomos de ese tiempo.
-	\item \textbf{Pérdida mínima ($\varphi$):} $0{,}1875$. Es el indicador clave:
+	\item \textbf{Bloques B1–B3:} cada bloque es \texttt{presente | futuro}. Las
+	      letras minúsculas (izquierda) son nodos de mecanismo/presente ($t$); las
+	      mayúsculas (derecha), de purview/efecto ($t{+}1$). Un lado vacío significa que
+	      ese bloque no aporta átomos de ese tiempo.
+	\item \textbf{Pérdida mínima ($\varphi$):} $0{,}9424$. Es el indicador clave:
 	      \emph{más bajo es mejor}. Sirve para comparar estrategias o valores de $k$.
 	\item \textbf{Tiempo:} cuánto tardó el análisis.
 \end{itemize}
@@ -283,8 +284,10 @@ Las gráficas \textbf{estáticas} (PNG) quedan en \texttt{data/results/figures/}
 
 \subsection{Optimización de rendimiento}
 \begin{itemize}
-	\item Para sistemas grandes, prefiera \texttt{kgeomip} (más rápido que
-	      \texttt{kqnodes}).
+	\item En sistemas pequeños \texttt{kgeomip} es más rápido; en sistemas grandes
+	      ($n\ge 22$) la relación se invierte y \texttt{kqnodes} resuelve más rápido
+	      (su preparación es más barata que la tabla de costos geométrica). Si el tiempo
+	      importa a $n$ grande, prefiera \texttt{kqnodes}; ejecute ambas y tome el mínimo.
 	\item Desactive el \emph{profiling} para medir tiempos reales
 	      (\texttt{application.disable\_profiling()}).
 	\item El paralelismo por procesos se activa en las rutas que lo soportan; evite
@@ -297,10 +300,10 @@ Las gráficas \textbf{estáticas} (PNG) quedan en \texttt{data/results/figures/}
 \label{sec:webui}
 Para quien prefiera no usar la línea de comandos, el proyecto incluye una
 \textbf{interfaz web} (Streamlit) que cubre todo el flujo desde el navegador.
-Requiere los extras opcionales:
+Streamlit y Plotly son dependencias de núcleo, de modo que \texttt{uv sync} ya las
+instala; basta con lanzar la aplicación:
 \begin{lstlisting}[style=sh]
-uv sync --extra web        # instala streamlit + plotly
-uv run streamlit run streamlit_app.py
+uv run streamlit_app.py
 \end{lstlisting}
 Se abre en \texttt{http://localhost:8501}. La interfaz tiene tres pasos:
 \begin{enumerate}
@@ -317,31 +320,31 @@ Se abre en \texttt{http://localhost:8501}. La interfaz tiene tres pasos:
 	      \emph{benchmark}, se muestra además la gráfica interactiva $\dk$ vs $k$.
 \end{enumerate}
 \newcommand{\guishot}[2]{%
-  \IfFileExists{../../data/.screenshots/#1}{%
-    \begin{figure}[H]\centering
-    \fbox{\includegraphics[width=0.92\textwidth]{../../data/.screenshots/#1}}
-    \caption{#2}\end{figure}%
-  }{}%
+	\IfFileExists{../../data/.screenshots/#1}{%
+		\begin{figure}[H]\centering
+			\fbox{\includegraphics[width=0.92\textwidth]{../../data/.screenshots/#1}}
+			\caption{#2}\end{figure}%
+	}{}%
 }
 
 \guishot{generate_tpm_continuos_n6_example.png}{Paso 1: generar una TPM nueva
-desde el navegador (nodos $n$, probabilidades continuas, semilla). La red queda
-guardada en \texttt{data/samples/} (aquí \texttt{N6B.csv}).}
+	desde el navegador (nodos $n$, probabilidades continuas, semilla). La red queda
+	guardada en \texttt{data/samples/} (aquí \texttt{N6B.csv}).}
 
 \guishot{ejecucion_basica_k3_n10_kgeomi.png}{Paso 3: resultado de KGeoMIP con $k=3$
 sobre N10A. Se ven la pérdida $\dk=0{,}9424$, la $k$-partición de mínima información,
 su distribución marginal reconstruida y el diagrama interactivo por bloques.}
 
 \guishot{tabla_de_evaluacion.png}{Tabla de evaluación (\texttt{.xlsx}) en la web:
-carga del workbook estándar, selección de hojas y vista de resultados tipo consola
-(estrategia, $k$, pérdida, tiempo, partición), equivalente a
-\texttt{uv run exec.py results}.}
+	carga del workbook estándar, selección de hojas y vista de resultados tipo consola
+	(estrategia, $k$, pérdida, tiempo, partición), equivalente a
+	\texttt{uv run exec.py results}.}
 
 \guishot{benchmark_n20.png}{Benchmark $\dk$ vs $k$ (N20A) comparando las siete
-estrategias. Abajo, el selector \emph{Redes a incluir en el benchmark} permite elegir
-qué redes de \texttt{data/samples/} se ejecutan y regenerar el benchmark con ellas.
-Clustering espectral queda arriba (pérdida alta), mientras KGeoMIP, KQNodes y Tabú se
-mantienen en el mínimo.}
+	estrategias. Abajo, el selector \emph{Redes a incluir en el benchmark} permite elegir
+	qué redes de \texttt{data/samples/} se ejecutan y regenerar el benchmark con ellas.
+	Clustering espectral queda arriba (pérdida alta), mientras KGeoMIP, KQNodes y Tabú se
+	mantienen en el mínimo.}
 
 % ====================== 7. SOLUCIÓN DE PROBLEMAS ======================
 \section{Solución de problemas}
@@ -358,7 +361,7 @@ mantienen en el mínimo.}
 		\texttt{ValueError: strict k-partition \dots}    & La partición dejaría un bloque vacío     & Reducir $k$ (no caben tantos bloques no vacíos)                \\
 		\texttt{MemoryError} / proceso ``muerto''        & $n$ demasiado grande (RAM)               & Bajar $n$, o usar \texttt{clustering}                          \\
 		\texttt{ModuleNotFoundError}                     & Dependencias no instaladas               & Ejecutar \texttt{uv sync}                                      \\
-		\texttt{ModuleNotFoundError: streamlit / plotly} & Faltan los extras de la UI web           & Ejecutar \texttt{uv sync --extra web}                          \\
+		\texttt{ModuleNotFoundError: streamlit / plotly} & Dependencias no instaladas               & Ejecutar \texttt{uv sync}                                      \\
 		Comando \texttt{uv} no encontrado                & \texttt{uv} no instalado/PATH            & Reinstalar \texttt{uv} y reabrir la terminal                   \\
 		\bottomrule
 	\end{tabular}
@@ -427,8 +430,9 @@ Los resultados quedan en \texttt{data/results/} (CSV/Excel) y las figuras en
 	\item[Pérdida ($\varphi$ / $\dk$)] Información destruida por una partición; menor
 	      es mejor.
 	\item[KGeoMIP] Estrategia geométrica (rápida, recomendada por defecto).
-	\item[KQNodes] Estrategia submodular (más robusta, más lenta).
-	\item[Clustering] Baseline rápido para sistemas grandes (solo propone).
+	\item[KQNodes] Estrategia submodular (más robusta; más lenta en $n$ pequeño, más
+	      rápida en $n\ge 22$).
+	\item[Clustering] Línea base rápida para sistemas grandes (solo propone).
 	\item[Purview / Mechanism] Conjuntos de nodos de efecto ($t{+}1$) y mecanismo
 	      ($t$) bajo análisis.
 \end{description}
