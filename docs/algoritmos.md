@@ -43,7 +43,7 @@ Bajo independencia condicional, es la solución analítica a la Earth Mover's Di
 
 ## Estrategia 1: Fuerza Bruta (`BruteForce`)
 
-**Archivo:** `src/strategies/brute_force.py`
+**Archivo:** `src/controllers/strategies/force.py`
 
 Evalúa todas las `2^(m+n-1) - 1` biparticiones no triviales del subsistema y
 retorna la de menor φ.
@@ -64,7 +64,7 @@ biparticiones(futuros, presentes)
 
 ## Estrategia 2: Q-Nodes (`QNodes`)
 
-**Archivo:** `src/strategies/q_nodes.py`
+**Archivo:** `src/controllers/strategies/q_nodes.py`
 
 Algoritmo greedy que construye incrementalmente conjuntos de nodos minimizando
 la ganancia marginal submodular en cada paso.
@@ -93,7 +93,7 @@ Retornar la partición de menor emd global
 
 ## Estrategia 3: PyPhi (`Phi`)
 
-**Archivo:** `src/strategies/pyphi_wrapper.py`
+**Archivo:** `src/controllers/strategies/phi.py`
 
 Envuelve la librería [PyPhi](https://github.com/wmayner/pyphi) que implementa
 el cálculo estándar de φ según la especificación IIT 3.0.
@@ -105,7 +105,7 @@ tanto EMD efecto (`effect_mip`) como EMD causal (`cause_mip`).
 
 ## Estrategia 4: GeoMIP — Programación Dinámica (`GeometricSIA`)
 
-**Archivo:** `src/strategies/geometric.py`
+**Archivo:** `src/controllers/strategies/geometric.py`
 
 Utiliza una tabla de transiciones con distancias de Hamming para identificar
 candidatos de bipartición sin evaluar todas las combinaciones.

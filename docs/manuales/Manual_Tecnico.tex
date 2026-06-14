@@ -42,7 +42,8 @@ el sistema según su \textbf{Partición de Mínima Información} (MIP): la divis
 que menos información destruye. El sistema se describe mediante una
 \textbf{Matriz de Probabilidad de Transición} (TPM) sobre variables binarias.
 
-El marco de referencia (GeoMIP y QNodes) resuelve únicamente \textbf{biparticiones}
+El marco de referencia \textbf{GeoMIP}~\cite{geomip} (y su variante submodular QNodes)
+resuelve únicamente \textbf{biparticiones}
 ($k=2$). Este proyecto lo \textbf{extiende a $k$-particiones} con
 $k \in \{2,3,4,5\}$ y escala el tamaño del sistema hasta $n \approx 25$ nodos.
 Esta generalización es relevante porque la verdadera estructura de un sistema
@@ -75,7 +76,7 @@ espectral/KMeans determinista~\cite{vonluxburg}.
 	\item \textbf{Eficiencia:} tabla de costos vectorizada e indexada por el entero
 	      del estado ($\sim$20× a $m{=}10$ y $\sim$80× a $m{=}15$ sobre la versión con
 	      diccionario, creciente con $m$) y marginal local; tensores \texttt{float32}
-	      (pico medido $8{,}34$~GB a $n=25$, cabe en 16~GB) y paralelismo por procesos (PCD).
+	      (pico medido $7{,}9$~GB a $n=25$, cabe en 16~GB) y paralelismo por procesos (PCD).
 \end{itemize}
 
 \subsection{Alcance y recomendaciones de uso}
@@ -164,7 +165,10 @@ donde $\Pi_k(F,M)$ es el conjunto de $k$-particiones estrictas. La $k$-MIP es
 $\mathcal{P}^\star$ y su valor $\dk(\mathcal{P}^\star)$ generaliza a $\Phi$.
 
 \subsection{Extensión del marco GeoMIP/QNodes a $k$-particiones}
-La clave de la extensión (doc.\ §2.2) es que \textbf{una $k$-partición equivale a
+El marco geométrico de partida, incluida la tabla de costos de transición, la
+recurrencia por niveles de Hamming y el factor $\gamma=2^{-d_H}$, es el publicado en
+GeoMIP~\cite{geomip}; allí se formula y valida \emph{solo} para $k=2$. La clave de
+la extensión (doc.\ §2.2) es que \textbf{una $k$-partición equivale a
 	$k-1$ biparticiones sucesivas}: dividir el hipercubo con $k-1$ hiperplanos es lo
 mismo que cortar un bloque en dos, repetidamente. Esto permite \emph{reutilizar}
 la maquinaria de bipartición de ambas estrategias:
@@ -177,7 +181,7 @@ la maquinaria de bipartición de ambas estrategias:
 \end{itemize}
 Para $k=2$ el refinamiento ejecuta \emph{un} corte y por tanto recupera la
 bipartición legada exactamente (invariante 1). La justificación de calidad es
-doble: (i) cada corte hereda la garantía de su método base (GeoMIP es óptimo
+doble: (i) cada corte hereda la garantía de su método base (GeoMIP~\cite{geomip} es óptimo
 exacto en biparticiones sobre el núcleo verificado; Queyranne~\cite{queyranne} es
 exacto para funciones submodulares simétricas~\cite{nwf} en $\bigO(n^3)$), y (ii) la
 elección voraz
@@ -584,7 +588,7 @@ siguientes reportan solo su refinamiento.
 refinamiento voraz no compensa: a $n=20$ el refinamiento cuesta $0{,}08$--$0{,}2$~s
 frente a $7$--$8$~s de preparación (menos del 2\,\% del total), y un \emph{pool}
 de procesos tendría que serializar un subsistema de varios GB. Paralelizar filas
-de la tabla a $n=25$ tampoco: un solo worker alcanza $8{,}4$~GB de pico, así que
+de la tabla a $n=25$ tampoco: un solo worker alcanza $7{,}9$~GB de pico, así que
 en una máquina de 16~GB no caben dos. Se prototipó además un kernel EMD por lotes
 con \textbf{Numba}, pero el perfilado mostró que la EMD es $<1\%$ del costo total (lo
 domina la marginalización), de modo que no compensaba la dependencia ni la compilación
@@ -670,8 +674,8 @@ $S(2n,k)$ a uno polinómico en $n$ y $k$.
 n-cubos del subsistema ($n\,2^n$ valores \texttt{float32}, $3{,}36$~GB) y la
 tabla $T$ ($2^m \times n$, otros $3{,}36$~GB cuando $m=n$). Con la TPM en
 \texttt{uint8} ($0{,}84$~GB) el pico medido de KGeoMIP en N25A es de
-$8{,}4$~GB, dentro de una máquina de 16~GB; KQNodes, que no construye $T$,
-alcanza $5{,}8$~GB.
+$7{,}9$~GB, dentro de una máquina de 16~GB; KQNodes, que no construye $T$,
+alcanza $5{,}6$~GB.
 
 \paragraph{Análisis de casos.} El \textbf{mejor caso} del voraz ocurre cuando el
 primer corte ya aísla la masa de probabilidad (pérdida casi nula, p.\,ej.\ N15A
@@ -759,7 +763,7 @@ def delta_k(subsystem, partition, baseline_distribution=None):
 \end{itemize}
 
 \subsection{Tests implementados}
-El conjunto de pruebas (\texttt{uv run pytest}, $276$) cubre: regresión $k=2$
+El conjunto de pruebas (\texttt{uv run pytest}, $275$) cubre: regresión $k=2$
 (KGeoMIP$\equiv$GeoMIP, KQNodes$\equiv$QNodes), validación $k\in\{3,4,5\}$ contra el
 exacto, semántica estricta de \texttt{KPartition}, determinismo del clustering y de
 las \textbf{metaheurísticas} (misma semilla $\Rightarrow$ misma partición), cota
@@ -948,8 +952,8 @@ La interfaz web vive en \texttt{streamlit\_app.py}.
 	\item \textbf{Metaheurísticas (Tabla~\ref{tab:meta}):} la \emph{búsqueda tabú}
 	      iguala la mejor pérdida convergente en toda la tabla; el \emph{recocido} se le aproxima salvo en
 	      $k$ alto; la \emph{genética} acierta en $k=2$ pero se degrada al crecer $k$,
-	      pues el espacio $k^{2n}$ excede el presupuesto de $\sim\!1200$ evaluaciones por
-	      defecto. Es el comportamiento esperado de una metaheurística sin reinicio y
+	      pues el espacio $k^{2n}$ excede su presupuesto por defecto ($60$ individuos
+	      $\times\,80$ generaciones). Es el comportamiento esperado de una metaheurística sin reinicio y
 	      refuerza que las estrategias núcleo (deterministas) son la mejor opción aquí.
 \end{itemize}
 
@@ -986,7 +990,7 @@ recomendación operativa es ejecutar ambas y tomar el mínimo.
 
 \paragraph{Dónde está el límite.} El techo de $n\approx 25$ no es de tiempo sino de
 memoria: la tabla de costos de KGeoMIP a subsistema completo de $n=25$ ronda los
-$8{,}4$~GB. En una máquina de 16~GB eso obliga a ejecutar las filas grandes en serie,
+$7{,}9$~GB. En una máquina de 16~GB eso obliga a ejecutar las filas grandes en serie,
 que es lo que fija el tiempo total de llenar la tabla oficial. Subir de $25$ pediría
 o más memoria o un esquema que evite materializar la tabla completa.
 
@@ -1007,20 +1011,33 @@ subcomandos: \texttt{correctness}, \texttt{optimality} y \texttt{external}.
 	      \texttt{float64} dentro de $10^{-5}$.
 \end{itemize}
 
-\subsubsection{Frente al proyecto original de la docente}
-La única referencia externa de la que se reporta es el proyecto original entregado
-por la docente (\texttt{.core/core\_00}), cuyo repositorio es
-\href{https://github.com/JuManoel/projecto-analisis-20261}{\texttt{github.com/JuManoel/projecto-analisis-20261}}.
-El subcomando \texttt{external} comprueba dos cosas y mide los resultados:
+\subsubsection{Frente al artículo publicado GeoMIP (oráculo PyPhi)}
+\label{sec:val-geomip}
+El marco que este proyecto extiende fue publicado como \emph{GeoMIP}~\cite{geomip}, que
+aporta un conjunto de resultados de referencia validados contra \textbf{PyPhi} (el patrón
+de oro exhaustivo) en \texttt{data/results/Pruebas\_Metodo2.xlsx}. Como las TPMs de
+referencia son las mismas redes $N\{n\}$ de este repositorio (idénticas byte a byte en
+N3A--N15B), la comparación es directa. Se contrastó \texttt{KGeoMIP} ($k=2$, el régimen
+que el artículo formula) contra la columna PyPhi sobre los \textbf{371 subsistemas} de las
+ocho hojas ($n\in\{3,4,5,6,8,10,15\}$), con las mismas métricas de la Tabla~3 del
+artículo (tasa de acierto, error relativo de $\varphi$ y distancia estructural):
 \begin{itemize}
-	\item \textbf{TPM idéntica:} el archivo \texttt{data/samples/N15A.csv} del que
-	      muestreamos es idéntico byte a byte al que trae el proyecto original.
-	\item \textbf{Reproducción de GeoMIP:} las filas de su
-	      \texttt{resultados\_Geometric.xlsx} (N15A, TPM continua) se reproducen con nuestro
-	      \texttt{GeometricSIA} dentro de la tolerancia \texttt{float32}. Tres filas medidas:
-	      $0{,}0002500843$ vs $0{,}0002501011$; $0{,}0002678838$ vs $0{,}0002678633$
-	      (dos veces). Las seis primeras filas reproducen con \texttt{OK}.
+	\item \textbf{Reproducción del método base:} \texttt{KGeoMIP} reproduce la columna
+	      GeoMIP del artículo con \textbf{0 discrepancias} (verificado fila a fila en la hoja
+	      15A); por construcción es su Método 2 (programación dinámica).
+	\item \textbf{Acierto vs PyPhi:} $100{,}0\%$ ($88/88$) sobre los casos con
+	      $\varphi$ no trivial ($\varphi\ge 0{,}01$) y $93{,}5\%$ en bruto a 4 decimales.
+	\item \textbf{Error relativo de $\varphi$:} máximo $0{,}16\%$ (umbral ``Excelente''
+	      del artículo: $<1\%$).
+	\item \textbf{Distancia estructural:} $0$ en $344/347$ casos; los $3$ restantes
+	      ($\le 0{,}67$) son \emph{óptimos alternativos} con $\dk$ idéntica, fenómeno que el
+	      propio artículo reporta (hasta $0{,}5$).
 \end{itemize}
+Con los umbrales de la Tabla~3 del artículo (Excelente: acierto $>90\%$, error
+$<1\%$), \texttt{KGeoMIP} queda en nivel \textbf{Excelente}. La brecha del acierto en
+bruto se concentra en subsistemas con $\varphi\approx 0$ (redes grandes, reducibles),
+donde el propio GeoMIP del artículo también difiere de PyPhi y donde su Ec.~(6) prescribe
+medir el error en valor absoluto; medido así, el acuerdo es total.
 
 \subsubsection{Re-evaluación de las particiones almacenadas}
 Cada celda de la tabla oficial guarda la partición, su pérdida y su tiempo. El
@@ -1126,6 +1143,11 @@ del algoritmo y la responsabilidad de las decisiones permanecen en el equipo.
 
 \subsection{Referencias}
 \begin{thebibliography}{99}
+	\bibitem{geomip} J. Díaz-Arancibia, L. E. Guerrero, J. Arango-López,
+		L. F. Castillo, A. Bustamante-Mora. \emph{GeoMIP: A Geometric-Topological and
+		Dynamic Programming Framework for Enhanced Computational Tractability of Minimum
+		Information Partition in Integrated Information Theory}. Applied Sciences,
+		16(2):809, 2026. \texttt{https://doi.org/10.3390/app16020809}.
 	\bibitem{tononi} G. Tononi. \emph{An information integration theory of
 		consciousness}. BMC Neuroscience, 5:42, 2004.
 	\bibitem{oizumi} M. Oizumi, L. Albantakis, G. Tononi. \emph{From the phenomenology
