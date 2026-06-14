@@ -1,4 +1,6 @@
 # Python
+.mypy_cache/
+.ruff_cache/
 __pycache__/
 *.py[cod]
 *$py.class
@@ -74,3 +76,7 @@ data/results_others/
 
 # Screenshots de la GUI (no se comitean)
 data/.screenshots/
+
+# Claude 
+.claude/
+
