@@ -2,6 +2,7 @@
 Central profiling manager and utilities built on pyinstrument.
 """
 
+import warnings
 from collections.abc import Callable
 from datetime import datetime
 from functools import wraps
@@ -79,8 +80,10 @@ class ProfilerContext:
                         renderer=HTMLRenderer(show_all=True, timeline=True)
                     )
                 )
-        except Exception:
-            pass
+        except Exception as exc:
+            warnings.warn(
+                f"Profiling report failed for {self.name}: {exc}", stacklevel=2
+            )
 
 
 profiling_manager = ProfilingManager()

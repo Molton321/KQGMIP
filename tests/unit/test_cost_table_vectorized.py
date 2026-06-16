@@ -11,7 +11,8 @@ where exact cost ties are common).
 import numpy as np
 import pytest
 
-from src.funcs.cost_table import CostTable, LegacyCostTable
+from src.funcs.cost_table import CostTable
+from tests.legacy_cost_table import LegacyCostTable
 
 SIZES = [4, 6, 8, 10]
 
@@ -35,7 +36,9 @@ def _random_instance(num_dims: int, seed: int, deterministic: bool):
 @pytest.mark.parametrize("deterministic", [True, False])
 def test_table_is_bit_identical_to_legacy(num_dims: int, deterministic: bool) -> None:
     """Every legacy dict entry must equal the corresponding vectorized row exactly."""
-    flat, start, end = _random_instance(num_dims, seed=num_dims, deterministic=deterministic)
+    flat, start, end = _random_instance(
+        num_dims, seed=num_dims, deterministic=deterministic
+    )
     legacy = LegacyCostTable(flat, start, end)
     vectorized = CostTable(flat, start, end)
 
@@ -70,7 +73,9 @@ def test_candidates_identical_to_legacy(
 @pytest.mark.parametrize("num_dims", SIZES)
 def test_cost_lookup_matches_legacy(num_dims: int) -> None:
     """``cost(start, end)`` must return the same vector as the legacy lookup."""
-    flat, start, end = _random_instance(num_dims, seed=3 * num_dims + 1, deterministic=False)
+    flat, start, end = _random_instance(
+        num_dims, seed=3 * num_dims + 1, deterministic=False
+    )
     legacy = LegacyCostTable(flat, start, end)
     vectorized = CostTable(flat, start, end)
 

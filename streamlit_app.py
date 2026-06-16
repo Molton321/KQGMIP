@@ -18,12 +18,7 @@ from streamlit.web import cli as stcli
 from src.constants.base import BENCHMARK_CSV, PATH_RESULTS, PATH_SAMPLES, STRATEGY_TIMEOUT
 from src.constants.grid import GRID_RESULTS_XLSX
 from src.controllers.manager import Manager
-from src.funcs.grid import (
-    fill_grid,
-    format_results_text,
-    grid_sheet_names,
-    read_grid_results,
-)
+from src.funcs.grid import fill_grid, format_results_text, grid_sheet_names, read_grid_results
 from src.funcs.runner import (
     STRATEGY_BUILDERS,
     STRATEGY_HELP,
@@ -73,7 +68,7 @@ class StreamlitApp:
         st.session_state.setdefault("params", None)
 
     def _import_core(self) -> None:
-        """Wire the headless pipeline (runner, manager, viz) onto the instance."""
+        """Wire the headless pipeline onto the instance."""
         self._manager_cls = Manager
         self._strategy_builders = STRATEGY_BUILDERS
         self._strategy_help = STRATEGY_HELP
@@ -157,7 +152,9 @@ class StreamlitApp:
     def _render_sidebar(self) -> bool:
         """Render the data + strategy controls; return whether a TPM is ready."""
         st.sidebar.header("1 · Datos (TPM)")
-        mode = st.sidebar.radio("Origen de la red", ["Muestra existente", "Generar nueva"], index=0)
+        mode = st.sidebar.radio(
+            "Origen de la red", ["Muestra existente", "Generar nueva"], index=0
+        )
         self._handle_tpm_generation(mode)
         samples = self._available_samples(PATH_SAMPLES)
         if not samples:
@@ -180,7 +177,9 @@ class StreamlitApp:
             help="Cadena binaria de n dígitos que condiciona el análisis.",
         )
         if len(state) != n or any(char not in "01" for char in state):
-            st.sidebar.error(f"El estado debe ser {n} dígitos binarios; usando {default_state}.")
+            st.sidebar.error(
+                f"El estado debe ser {n} dígitos binarios; usando {default_state}."
+            )
             return default_state
         return state
 
@@ -190,13 +189,15 @@ class StreamlitApp:
             return
         n = st.sidebar.slider("Nodos (n)", 2, 25, 4)
         continuous = st.sidebar.checkbox("Probabilidades continuas", value=False)
-        seed = st.sidebar.number_input("Semilla NumPy", value=self._application.numpy_seed, step=1)
+        seed = st.sidebar.number_input(
+            "Semilla NumPy", value=self._application.numpy_seed, step=1
+        )
         if st.sidebar.button("Generar TPM", width="stretch"):
             self._application.numpy_seed = int(seed)
             with st.spinner(f"Generando N{n}…"):
-                filename = self._manager_cls("1" * n, base_path=PATH_SAMPLES).generate_network(
-                    n, deterministic=not continuous, assume_yes=True
-                )
+                filename = self._manager_cls(
+                    "1" * n, base_path=PATH_SAMPLES
+                ).generate_network(n, deterministic=not continuous, assume_yes=True)
             st.sidebar.success(f"Creada: {filename}")
 
     def _render_strategy_section(self, n: int) -> None:
@@ -212,12 +213,19 @@ class StreamlitApp:
             method = st.sidebar.selectbox("Método", ["spectral", "kmeans"])
         self._render_strategy_warning(strategy, n)
         masks = self._render_advanced_masks(n)
-        st.session_state.params = {"strategy": strategy, "k": k, "method": method, **masks}
+        st.session_state.params = {
+            "strategy": strategy,
+            "k": k,
+            "method": method,
+            **masks,
+        }
 
     def _render_strategy_warning(self, strategy: str, n: int) -> None:
         """Warn when the chosen strategy is impractical for the network size."""
         if strategy == "ExhaustiveK" and n > self._EXHAUSTIVE_MAX_N:
-            st.sidebar.warning(f"ExhaustiveK es impracticable para n > {self._EXHAUSTIVE_MAX_N}.")
+            st.sidebar.warning(
+                f"ExhaustiveK es impracticable para n > {self._EXHAUSTIVE_MAX_N}."
+            )
         elif strategy in ("KGeoMIP", "KQNodes") and n > self._GEOMETRIC_SOFT_CEILING:
             st.sidebar.warning(
                 f"KGeoMIP/KQNodes pueden superar los {STRATEGY_TIMEOUT}s para n > "
@@ -248,7 +256,9 @@ class StreamlitApp:
         """Load the selected TPM and run the chosen strategy, storing the result."""
         data = st.session_state.tpm_loaded
         if data is None:
-            st.session_state.error = "No hay TPM cargada. Genera o selecciona una muestra."
+            st.session_state.error = (
+                "No hay TPM cargada. Genera o selecciona una muestra."
+            )
             return
         state, page = data
         params = st.session_state.params
@@ -293,7 +303,9 @@ class StreamlitApp:
     def _strategy_badge(self, strategy: str) -> str:
         """Build the colored per-family badge HTML for a strategy name."""
         color = self._STRATEGY_FAMILY_COLOR.get(strategy, self._THEME["accent"])
-        return f'<span class="kqgmip-badge" style="background:{color}">{strategy}</span>'
+        return (
+            f'<span class="kqgmip-badge" style="background:{color}">{strategy}</span>'
+        )
 
     def _show_metrics(self, result: Any) -> None:
         """Render the headline metrics (loss, strategy badge, runtime)."""
@@ -319,7 +331,9 @@ class StreamlitApp:
             st.plotly_chart(fig, width="stretch")
         with right:
             st.caption("Distribución marginal reconstruida")
-            st.dataframe(self._build_distribution_table(result), width="stretch", height=300)
+            st.dataframe(
+                self._build_distribution_table(result), width="stretch", height=300
+            )
 
     def _build_distribution_table(self, result: Any) -> pd.DataFrame:
         """Build the reconstructed-marginal table for the partition distribution."""
@@ -370,7 +384,9 @@ class StreamlitApp:
             "Equivalentes de consola: uv run exec.py batch · uv run exec.py resultados."
         )
 
-        uploaded = st.file_uploader("Subir un .xlsx con el formato estándar", type="xlsx")
+        uploaded = st.file_uploader(
+            "Subir un .xlsx con el formato estándar", type="xlsx"
+        )
         if uploaded is not None:
             destination = PATH_RESULTS / uploaded.name
             destination.write_bytes(uploaded.getvalue())
@@ -383,14 +399,18 @@ class StreamlitApp:
                 "Sube uno arriba para empezar."
             )
             return
-        chosen_book: Path = st.selectbox("Workbook", workbooks, format_func=lambda p: p.name)
+        chosen_book: Path = st.selectbox(
+            "Workbook", workbooks, format_func=lambda p: p.name
+        )
 
         view_tab, fill_tab = st.tabs(["Ver resultados", "Llenar tabla"])
 
         with view_tab:
             rows = read_grid_results(chosen_book)
             if not rows:
-                st.info("Este workbook aún no tiene resultados; llénalo en la otra pestaña.")
+                st.info(
+                    "Este workbook aún no tiene resultados; llénalo en la otra pestaña."
+                )
             else:
                 st.code(format_results_text(rows, max_rows=16), language=None)
                 with st.expander("Tabla completa (filtrable)"):
@@ -403,7 +423,9 @@ class StreamlitApp:
 
         with fill_tab:
             output_path = (
-                chosen_book if chosen_book.name.startswith("resultados") else GRID_RESULTS_XLSX
+                chosen_book
+                if chosen_book.name.startswith("resultados")
+                else GRID_RESULTS_XLSX
             )
             st.caption(
                 f"Salida: {output_path.name} — la entrada nunca se modifica y las "
@@ -421,7 +443,12 @@ class StreamlitApp:
                     log_box.code("\n".join(lines[-15:]))
 
                 with st.spinner("Ejecutando KQNodes + KGeoMIP sobre la tabla…"):
-                    fill_grid(chosen_book, output_path, sheet_names=chosen_sheets, progress=report)
+                    fill_grid(
+                        chosen_book,
+                        output_path,
+                        sheet_names=chosen_sheets,
+                        progress=report,
+                    )
                 st.success(f"Tabla de resultados guardada en {output_path}")
 
     def _render_benchmark(self) -> None:
@@ -447,7 +474,9 @@ class StreamlitApp:
             with st.expander("Tabla de resultados"):
                 st.dataframe(df, width="stretch")
         else:
-            st.warning("El CSV de benchmark existe pero no tiene filas válidas; regenéralo.")
+            st.warning(
+                "El CSV de benchmark existe pero no tiene filas válidas; regenéralo."
+            )
         self._benchmark_generator()
 
     def _benchmark_generator(self) -> None:
@@ -464,7 +493,9 @@ class StreamlitApp:
             help="Selecciona una o varias redes de data/samples/.",
         )
         if st.button("Generar/Regenerar benchmark") and chosen:
-            with st.spinner(f"Corriendo todas las estrategias sobre {', '.join(chosen)}…"):
+            with st.spinner(
+                f"Corriendo todas las estrategias sobre {', '.join(chosen)}…"
+            ):
                 subprocess.run(
                     [sys.executable, "scripts/run_benchmark.py", "--nets", *chosen],
                     check=False,

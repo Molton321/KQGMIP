@@ -1,6 +1,7 @@
 """Process-parallel primitives: shared memory, seed control, thread affinity."""
 
 import os
+import warnings
 from collections.abc import Generator
 from contextlib import contextmanager
 from multiprocessing import shared_memory
@@ -33,8 +34,11 @@ def limit_worker_threads() -> None:
         os.environ.setdefault(variable, "1")
     try:
         threadpoolctl.threadpool_limits(1)
-    except Exception:
-        pass
+    except Exception as exc:
+        warnings.warn(
+            f"threadpool_limits failed (workers may oversubscribe): {exc}",
+            stacklevel=2,
+        )
 
 
 def chunk_evenly(items: list, n_chunks: int) -> list[list]:

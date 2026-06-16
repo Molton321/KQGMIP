@@ -53,7 +53,7 @@ class QNodes(SIA):
             loss=self.partition_memo[mip][0],
             subsystem_distribution=self.sia_marginal_dists,
             partition_distribution=self.partition_memo[mip][1],
-            total_time=time.time() - self.sia_start_time,
+            total_time=time.perf_counter() - self.sia_start_time,
             partition=fmt_mip,
         )
 
@@ -89,7 +89,7 @@ class QNodes(SIA):
             candidate_partition_dist = None
 
             for _ in range(len(cycle_deltas) - 1):
-                local_emd = 1e5
+                local_emd = float("inf")
                 mip_index = 0
 
                 for k, v in enumerate(cycle_deltas):

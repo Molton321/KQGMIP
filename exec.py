@@ -168,26 +168,26 @@ class ExecApp:
 
     def _run_batch(self, args: argparse.Namespace) -> None:
         """Fill every missing cell of a standard workbook (resumable)."""
-        source = self._resolve_input(args.archivo, GRID_TEMPLATE_XLSX)
+        source = self._resolve_input(args.file, GRID_TEMPLATE_XLSX)
         if not grid_sheet_names(source):
             raise SystemExit(
                 f"{source} no tiene hojas '*-Elementos': no cumple el formato estándar."
             )
-        output = Path(args.salida) if args.salida else GRID_RESULTS_XLSX
+        output = Path(args.out) if args.out else GRID_RESULTS_XLSX
         if output.resolve() == source.resolve():
             raise SystemExit("La salida no puede ser el mismo archivo de entrada.")
         print(
             f"Entrada: {source}\nSalida:  {output} (reanudable; la entrada no se modifica)\n"
         )
-        fill_grid(source, output, sheet_names=args.hojas)
+        fill_grid(source, output, sheet_names=args.sheets)
         print(f"\nPara ver la tabla: uv run exec.py results {output}")
 
     def _show_results(self, args: argparse.Namespace) -> None:
         """Print the console view of a results workbook."""
-        source = self._resolve_input(args.archivo, GRID_RESULTS_XLSX)
+        source = self._resolve_input(args.file, GRID_RESULTS_XLSX)
         rows = read_grid_results(source)
         print(f"Archivo: {source}")
-        print(format_results_text(rows, max_rows=None if args.completo else 24))
+        print(format_results_text(rows, max_rows=None if args.complete else 24))
 
     def _run_benchmark(self, args: argparse.Namespace) -> None:
         """Delegate to the benchmark script with the same interpreter."""

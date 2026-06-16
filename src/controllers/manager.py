@@ -53,8 +53,6 @@ class Manager:
         """
         Generate a random network (TPM) and store it in data/samples/.
         """
-        np.random.seed(application.numpy_seed)
-
         if dimensions < 1:
             raise ValueError("Las dimensiones deben ser positivas")
 
@@ -71,8 +69,9 @@ class Manager:
                 return ""
 
         self.base_path.mkdir(parents=True, exist_ok=True)
-
+        rng = np.random.default_rng(application.numpy_seed)
         suffix = ABC_START
+
         while (self.base_path / f"N{dimensions}{suffix}.{CSV_EXTENSION}").exists():
             if (
                 not assume_yes
@@ -90,9 +89,9 @@ class Manager:
         filepath = self.base_path / filename
 
         states = (
-            np.random.randint(2, size=(num_states, dimensions), dtype=np.int8)
+            rng.integers(0, 2, size=(num_states, dimensions), dtype=np.int8)
             if deterministic
-            else np.random.random(size=(num_states, dimensions))
+            else rng.random(size=(num_states, dimensions))
         )
 
         t0 = time.time()

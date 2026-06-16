@@ -50,7 +50,11 @@ def _best_refinement(
     future_universe: tuple[int, ...],
     present_universe: tuple[int, ...],
 ) -> list[Block] | None:
-    """Return the blocks after the single best refinement, or None if no refinement is possible."""
+    """Return the blocks after the single best refinement, or None if no refinement is possible.
+    Computes the loss directly from the block structure via a lightweight
+    KPartition, and only constructs the final validated KPartition for the
+    winning refinement.
+    """
     best_loss = np.inf
     best_blocks: list[Block] | None = None
 

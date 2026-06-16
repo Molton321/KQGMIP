@@ -238,7 +238,7 @@ class ExhaustiveK(SIA):
             loss=float(best_loss),
             subsystem_distribution=baseline,
             partition_distribution=best_distribution,
-            total_time=time.time() - self.sia_start_time,
+            total_time=time.perf_counter() - self.sia_start_time,
             partition=fmt_kpartition(self.best_partition.signature),
         )
 

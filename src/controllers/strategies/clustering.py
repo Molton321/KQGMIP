@@ -81,7 +81,7 @@ class ClusteringSIA(SIA):
             loss=float(loss),
             subsystem_distribution=baseline,
             partition_distribution=distribution,
-            total_time=time.time() - self.sia_start_time,
+            total_time=time.perf_counter() - self.sia_start_time,
             partition=fmt_kpartition(partition.signature),
         )
 

@@ -38,10 +38,26 @@ class ColorFormatter(logging.Formatter):
 
 
 class SafeLogger:
-    """Logger with color support, UTF-8, and a date/hour directory structure."""
+    """Logger with color support, UTF-8, and a date/hour directory structure.
+    Instances are cached by name so that repeated construction with the same
+    tag returns the existing logger (avoiding duplicate handlers).
+    """
 
-    def __init__(self, name: str):
-        self._logger = self._setup(name)
+    _instances: dict[str, SafeLogger] = {}
+    _logger: logging.Logger
+    _initialized: bool
+
+    def __new__(cls, name: str) -> SafeLogger:
+        if name not in cls._instances:
+            instance = super().__new__(cls)
+            instance._logger = instance._setup(name)
+            cls._instances[name] = instance
+        return cls._instances[name]
+
+    def __init__(self, name: str) -> None:
+        if hasattr(self, "_initialized"):
+            return
+        self._initialized = True
 
     def _safe_str(self, obj: Any) -> str:
         """Stringify any object, never raising on undecodable content."""

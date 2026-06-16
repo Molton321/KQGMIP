@@ -28,23 +28,21 @@ class System:
     def __init__(self, tpm: np.ndarray, initial_state: np.ndarray):
         """Build one float32 n-cube per node from the TPM and initial state.
 
-        Each column is cast to float32 individually (instead of casting the
-        whole TPM up front), so an integer TPM never produces a transient
-        full-size float copy and the caller may keep it in uint8.
+        The TPM is cast to float32 **once** and each NCube stores a *view*
+        into the corresponding column, avoiding 2^n-element copies per node.
+        The shared float32 buffer is kept alive on ``self._tpm_f32``.
         """
         num_nodes = self._validate(tpm, initial_state)
         self.initial_state = initial_state
         self.memo: dict = {}
-
+        self._tpm_f32 = np.ascontiguousarray(tpm, dtype=NCUBE_DTYPE)
         is_little_endian = application.indexing_notation == Notation.LIL_ENDIAN.value
         self.ncubes = tuple(
             NCube(
                 index=idx,
                 dims=np.array(range(num_nodes), dtype=np.int8),
                 data=(
-                    np.ascontiguousarray(tpm[:, idx], dtype=NCUBE_DTYPE).reshape(
-                        (BASE_TWO,) * num_nodes
-                    )
+                    self._tpm_f32[:, idx].reshape((BASE_TWO,) * num_nodes)
                     if is_little_endian
                     else np.ascontiguousarray(
                         tpm[idx, :][reindex(num_nodes)], dtype=NCUBE_DTYPE

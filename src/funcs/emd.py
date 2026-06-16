@@ -32,21 +32,16 @@ def causal_emd(u: NDArray[np.float64], v: NDArray[np.float64]) -> float:
     a cost matrix of shape (n, n) where n is the number of states in the
     distribution.
     """
-    try:
-        n = u.size
-        costs: NDArray[np.float64] = np.empty((n, n))
-        distance = select_distance()
+    n = u.size
+    costs: NDArray[np.float64] = np.empty((n, n))
+    distance = select_distance()
 
-        for i in range(n):
-            costs[i, :i] = [distance(i, j) for j in range(i)]
-            costs[:i, i] = costs[i, :i]
-        np.fill_diagonal(costs, INT_ZERO)
+    for i in range(n):
+        costs[i, :i] = [distance(i, j) for j in range(i)]
+        costs[:i, i] = costs[i, :i]
+    np.fill_diagonal(costs, INT_ZERO)
 
-        return emd(u.astype(np.float64), v.astype(np.float64), costs)
-    except ImportError as err:
-        raise ImportError(
-            "pyemd no está instalado. Instálalo con: pip install pyemd"
-        ) from err
+    return emd(u.astype(np.float64), v.astype(np.float64), costs)
 
 
 def select_emd() -> Callable[[NDArray[np.float32], NDArray[np.float32]], float]:

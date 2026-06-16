@@ -13,6 +13,7 @@ prepared subsystem context and a seeded RNG and returns a SearchResult.
 """
 
 import time
+from abc import abstractmethod
 from collections.abc import Callable
 
 import numpy as np
@@ -46,14 +47,13 @@ class _MetaheuristicSIA(SIA):
         self.k = k
         self.best_partition: KPartition | None = None
 
+    @abstractmethod
     def _search(
         self,
         future_universe: tuple[int, ...],
         present_universe: tuple[int, ...],
         rng: np.random.Generator,
-    ) -> SearchResult:
-        del future_universe, present_universe, rng
-        raise NotImplementedError
+    ) -> SearchResult: ...
 
     def apply_strategy(self, condition: str, purview: str, mechanism: str) -> Solution:
         """Search for a low-loss k-partition with the configured metaheuristic."""
@@ -81,7 +81,7 @@ class _MetaheuristicSIA(SIA):
             loss=result.loss,
             subsystem_distribution=self.sia_marginal_dists,
             partition_distribution=result.distribution,
-            total_time=time.time() - self.sia_start_time,
+            total_time=time.perf_counter() - self.sia_start_time,
             partition=fmt_kpartition(result.partition.signature),
         )
 

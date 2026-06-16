@@ -1,5 +1,10 @@
 """Single-node n-cube: one TPM column with dimensions for each node,
-used for conditioning and marginalization."""
+used for conditioning and marginalization.
+
+Despite being a frozen dataclass, (memo) and (value_memo) dicts are
+**mutated in-place** by :meth:`marginalize` and :meth:`marginal_value`
+for performance (caching).  Do not rely on immutability of these fields.
+"""
 
 from dataclasses import dataclass, field
 

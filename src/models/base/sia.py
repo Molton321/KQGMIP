@@ -68,7 +68,7 @@ class SIA(ABC):
 
         self.sia_subsystem = subsystem
         self.sia_marginal_dists = subsystem.marginal_distribution()
-        self.sia_start_time = time.time()
+        self.sia_start_time = time.perf_counter()
 
     def _check_parameters(self, condition: str, purview: str, mechanism: str) -> bool:
         """Return True if every parameter has the correct length."""

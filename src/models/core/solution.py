@@ -6,7 +6,7 @@ import numpy as np
 from colorama import Fore, Style, init
 
 from src.constants.base import FLOAT_ZERO, WHITESPACE
-from src.constants.tags import PYPHI_LABEL
+from src.constants.strategies import PYPHI_LABEL
 from src.models.base.application import application
 
 init()
@@ -82,4 +82,7 @@ class Solution:
         )
 
     def __repr__(self) -> str:
-        return self.__str__()
+        return (
+            f"Solution(strategy={self.strategy!r}, loss={self.loss!r}, "
+            f"partition={self.partition!r}, execution_time={self.execution_time!r})"
+        )

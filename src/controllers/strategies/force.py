@@ -81,7 +81,7 @@ class BruteForce(SIA):
                         [bipart_prim[ACTUAL], bipart_prim[EFECTO]],
                         [bipart_dual[ACTUAL], bipart_dual[EFECTO]],
                     )
-                    solution.execution_time = time.time() - self.sia_start_time
+                    solution.execution_time = time.perf_counter() - self.sia_start_time
                     return solution
 
         solution.loss = small_phi
@@ -91,5 +91,5 @@ class BruteForce(SIA):
             [bipart_dual[ACTUAL], bipart_dual[EFECTO]],
         )
 
-        solution.execution_time = time.time() - self.sia_start_time
+        solution.execution_time = time.perf_counter() - self.sia_start_time
         return solution

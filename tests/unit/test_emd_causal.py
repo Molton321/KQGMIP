@@ -8,7 +8,7 @@ cross-checking. These tests are skipped when ``pyemd`` is not installed.
 import numpy as np
 import pytest
 
-pyemd = pytest.importorskip("pyemd")  # noqa: F841  (skip whole module if missing)
+pyemd = pytest.importorskip("pyemd")  # skip whole module if missing
 
 from src.funcs.emd import causal_emd, effect_emd, select_emd  # noqa: E402
 from src.models.base.application import application  # noqa: E402

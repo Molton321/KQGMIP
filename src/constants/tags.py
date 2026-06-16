@@ -9,6 +9,3 @@ DUMMY_PARTITION: str = "NO-PARTITION\n"
 
 SIA_LABEL: str = "sia"
 SIA_PREPARATION_TAG: str = f"{SIA_LABEL}_preparation"
-
-
-PYPHI_LABEL: str = "Pyphi"
