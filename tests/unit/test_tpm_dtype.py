@@ -1,8 +1,8 @@
 """Memory-oriented TPM dtype handling must never change numeric results.
 
-Deterministic 0/1 TPMs load as uint8 (4x smaller resident memory) and are cast
-to float32 per cube inside ``System``; continuous TPMs keep float32. Every
-downstream value must be identical regardless of the input dtype.
+Deterministic 0/1 TPMs load as uint8 (4x smaller resident memory) and are kept
+compact inside ``System`` with float32 computations; continuous TPMs keep
+float32. Every downstream value must be identical regardless of the input dtype.
 """
 
 import contextlib
@@ -16,7 +16,7 @@ from src.controllers.strategies.geometric import GeometricSIA
 from src.controllers.strategies.kgeomip import KGeoMIP
 from src.controllers.strategies.q_nodes import QNodes
 from src.models.base.application import application
-from src.models.core.system import NCUBE_DTYPE, System
+from src.models.core.system import System
 
 
 def test_load_network_returns_uint8_for_deterministic_tpm() -> None:
@@ -36,7 +36,7 @@ def test_load_network_keeps_float32_for_continuous_tpm() -> None:
 
 
 def test_system_cubes_identical_for_uint8_and_float32_input() -> None:
-    """Cube tensors are float32 and bit-identical for both input dtypes."""
+    """Cube tensors are numerically identical for both input dtypes."""
     rng = np.random.default_rng(3)
     tpm_u8 = rng.integers(0, 2, size=(2**5, 5)).astype(np.uint8)
     state = rng.integers(0, 2, size=5).astype(np.int8)
@@ -44,7 +44,6 @@ def test_system_cubes_identical_for_uint8_and_float32_input() -> None:
     sys_u8 = System(tpm_u8, state)
     sys_f32 = System(tpm_u8.astype(np.float32), state)
     for cube_a, cube_b in zip(sys_u8.ncubes, sys_f32.ncubes, strict=True):
-        assert cube_a.data.dtype == NCUBE_DTYPE
         assert np.array_equal(cube_a.data, cube_b.data)
 
 

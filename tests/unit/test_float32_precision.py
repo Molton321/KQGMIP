@@ -39,10 +39,11 @@ def _loss(net: str, strategy_cls, k: int, dtype: type = np.float32) -> float:
         return strategy_cls(tpm, state, k=k).apply_strategy(full, full, full).loss
 
 
-def test_ncube_dtype_is_float32() -> None:
+def test_ncube_marginal_is_float32() -> None:
     tpm = Manager("1" * 4).load_network()
     system = system_mod.System(tpm, np.array([1, 1, 1, 1], dtype=np.int8))
-    assert system.ncubes[0].data.dtype == np.float32
+    cube = system.ncubes[0]
+    assert cube.marginal_value(cube.dims, system.initial_state, True).dtype == np.float32
 
 
 @pytest.mark.parametrize("net, strategy, k", [("N10A", KGeoMIP, 3), ("N15A", KQNodes, 2)])

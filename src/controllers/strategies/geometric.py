@@ -10,7 +10,7 @@ import numpy as np
 
 from src.constants.base import ACTUAL, COLS_IDX, EFECTO, NET_LABEL, TYPE_TAG
 from src.constants.strategies import GEOMETRIC_ANALYSIS_TAG, GEOMETRIC_LABEL, GEOMETRIC_STRATEGY_TAG
-from src.funcs.cost_table import CostTable
+from src.funcs.cost_table import CostTable, stack_node_values
 from src.funcs.emd import effect_emd
 from src.funcs.format import fmt_bipartition_q
 from src.middlewares.profile import profile, profiling_manager
@@ -45,14 +45,13 @@ class GeometricSIA(SIA):
 
         future = tuple((EFECTO, idx) for idx in self.sia_subsystem.ncube_indices)
         present = tuple((ACTUAL, idx) for idx in self.sia_subsystem.ncube_dims)
-
-        flat_data = [cube.data.ravel() for cube in self.sia_subsystem.ncubes]
+        stacked = stack_node_values(self.sia_subsystem)
 
         self.vertices = set(present + future)
         dims = self.sia_subsystem.ncube_dims
         self.state_start = self.sia_subsystem.initial_state[dims]
         self.state_end = 1 - self.state_start
-        self.cost_table = CostTable(flat_data, self.state_start, self.state_end)
+        self.cost_table = CostTable(stacked, self.state_start, self.state_end)
 
         mip = self.find_mip()
         fmt_mip = fmt_bipartition_q(list(mip), self.nodes_complement(mip))

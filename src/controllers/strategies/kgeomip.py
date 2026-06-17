@@ -15,7 +15,7 @@ import numpy as np
 
 from src.constants.base import COLS_IDX, NET_LABEL, TYPE_TAG
 from src.constants.strategies import KGEOMIP_ANALYSIS_TAG, KGEOMIP_LABEL, KGEOMIP_STRATEGY_TAG
-from src.funcs.cost_table import CostTable
+from src.funcs.cost_table import CostTable, stack_node_values
 from src.funcs.format import fmt_kpartition
 from src.funcs.k_refine import Block, greedy_k_partition
 from src.middlewares.profile import profile, profiling_manager
@@ -102,11 +102,11 @@ class KGeoMIP(SIA):
 
     def _build_cost_table(self, subsystem) -> CostTable:
         """Construct the reusable Hamming-weighted transition-cost table T."""
-        flat_data = [cube.data.ravel() for cube in subsystem.ncubes]
+        stacked = stack_node_values(subsystem)
         state_start = subsystem.initial_state[subsystem.ncube_dims]
         state_end = 1 - state_start
 
-        return CostTable(flat_data, state_start, state_end)
+        return CostTable(stacked, state_start, state_end)
 
     def _cut_pool(self, subsystem) -> list[Block]:
         """

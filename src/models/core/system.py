@@ -26,23 +26,28 @@ class System:
     """
 
     def __init__(self, tpm: np.ndarray, initial_state: np.ndarray):
-        """Build one float32 n-cube per node from the TPM and initial state.
+        """Build one n-cube per node from the TPM and initial state.
 
-        The TPM is cast to float32 **once** and each NCube stores a *view*
-        into the corresponding column, avoiding 2^n-element copies per node.
-        The shared float32 buffer is kept alive on ``self._tpm_f32``.
+        Each NCube stores a *view* into the corresponding column of the shared
+        buffer kept on (self._tpm). An integer (0/1) TPM is preserved in its
+        compact dtype instead of being cast to float32, so the shared buffer is
+        4x smaller; the float32 cast happens lazily where a value is needed.
         """
         num_nodes = self._validate(tpm, initial_state)
         self.initial_state = initial_state
         self.memo: dict = {}
-        self._tpm_f32 = np.ascontiguousarray(tpm, dtype=NCUBE_DTYPE)
+        self._tpm = (
+            np.ascontiguousarray(tpm)
+            if np.issubdtype(tpm.dtype, np.integer)
+            else np.ascontiguousarray(tpm, dtype=NCUBE_DTYPE)
+        )
         is_little_endian = application.indexing_notation == Notation.LIL_ENDIAN.value
         self.ncubes = tuple(
             NCube(
                 index=idx,
                 dims=np.array(range(num_nodes), dtype=np.int8),
                 data=(
-                    self._tpm_f32[:, idx].reshape((BASE_TWO,) * num_nodes)
+                    self._tpm[:, idx].reshape((BASE_TWO,) * num_nodes)
                     if is_little_endian
                     else np.ascontiguousarray(
                         tpm[idx, :][reindex(num_nodes)], dtype=NCUBE_DTYPE
@@ -178,13 +183,16 @@ class System:
         state = self.initial_state
         distribution = np.empty(len(self.ncubes), dtype=NCUBE_DTYPE)
         for i, cube in enumerate(self.ncubes):
-            axes = np.setdiff1d(cube.dims, future_to_mechanism[cube.index])
+            mechanism = future_to_mechanism[cube.index]
+            axes = np.array(
+                [d for d in cube.dims if int(d) not in mechanism], dtype=np.int8
+            )
             distribution[i] = cube.marginal_value(axes, state, little_endian)
         return distribution
 
     def _validated_block_mapping(
         self, partition: KPartition
-    ) -> dict[int, NDArray[np.int8]]:
+    ) -> dict[int, frozenset[int]]:
         """Check the partition universes and map each future index to its
         paired mechanism block (shared by k_partition and its local
         marginal variant)."""
@@ -206,11 +214,11 @@ class System:
                 f"Expected {current_present_universe}, got {partition.present_universe}."
             )
 
-        future_to_mechanism: dict[int, NDArray[np.int8]] = {}
+        future_to_mechanism: dict[int, frozenset[int]] = {}
         for purview_block, mechanism_block in partition.signature:
-            mechanism_arr = np.array(mechanism_block, dtype=np.int8)
+            mechanism_set = frozenset(int(m) for m in mechanism_block)
             for future_idx in purview_block:
-                future_to_mechanism[future_idx] = mechanism_arr
+                future_to_mechanism[future_idx] = mechanism_set
         return future_to_mechanism
 
     def k_partition(self, partition: KPartition) -> System:
@@ -224,7 +232,16 @@ class System:
         new_system.initial_state = self.initial_state
         new_system.memo = {}
         new_system.ncubes = tuple(
-            cube.marginalize(np.setdiff1d(cube.dims, future_to_mechanism[cube.index]))
+            cube.marginalize(
+                np.array(
+                    [
+                        d
+                        for d in cube.dims
+                        if int(d) not in future_to_mechanism[cube.index]
+                    ],
+                    dtype=np.int8,
+                )
+            )
             for cube in self.ncubes
         )
         return new_system

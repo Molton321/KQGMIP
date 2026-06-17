@@ -16,22 +16,21 @@ class CostTable:
 
     def __init__(
         self,
-        flat_data: list[NDArray[np.float32]],
+        flat_data: list[NDArray[np.float32]] | NDArray[np.float32],
         state_start: NDArray[np.int8],
         state_end: NDArray[np.int8],
     ) -> None:
         """Stack the per-node rows and precompute the powers of two, then build."""
         self.state_start = state_start
         self.state_end = state_end
-        self.num_nodes = len(flat_data)
-        self._flats = [np.ascontiguousarray(flat) for flat in flat_data]
-        self._stacked = np.vstack(self._flats)
         self._num_dims = int(state_start.size)
         self._powers = 1 << np.arange(self._num_dims, dtype=np.int64)
         self._origin = int(np.dot(state_start.astype(np.int64), self._powers))
-        self.table: NDArray[np.float32] = self._build()
+        stacked = np.asarray(flat_data)
+        self.num_nodes = stacked.shape[0]
+        self.table: NDArray[np.float32] = self._build(stacked)
 
-    def _build(self) -> NDArray[np.float32]:
+    def _build(self, stacked: np.ndarray) -> NDArray[np.float32]:
         """Populate the cost table level by level, flipping bits away from the origin
         and accumulating costs from single-bit neighbors. The table is stored as a
         2^m × num_nodes array, indexed by the integer representation of the state.
@@ -43,9 +42,7 @@ class CostTable:
         dist = self._dist
         order = np.argsort(dist, kind="stable")
         boundaries = np.searchsorted(dist[order], np.arange(num_dims + 2))
-
-        origin_values = self._stacked[:, self._origin]
-
+        origin_values = stacked[:, self._origin].astype(np.float32)
         table = np.empty((size, self.num_nodes), dtype=np.float32)
         table[self._origin] = np.float32(0.0)
 
@@ -54,9 +51,7 @@ class CostTable:
             factor = np.float32(1.0 / (1 << level))
             for begin in range(0, level_states.size, COST_TABLE_CHUNK_ROWS):
                 chunk = level_states[begin : begin + COST_TABLE_CHUNK_ROWS]
-                acc = np.abs(self._stacked[:, chunk].T - origin_values).astype(
-                    np.float32
-                )
+                acc = np.abs(stacked[:, chunk].T.astype(np.float32) - origin_values)
                 if level > 1:
                     flipped = chunk ^ self._origin
                     for bit_pos in range(num_dims):
@@ -130,17 +125,25 @@ class CostTable:
         return candidates
 
 
-def _popcount(values: NDArray[np.int64], num_bits: int) -> NDArray[np.uint8]:
-    """Per-element population count of (num_bits)-bit non-negative integers.
-    Vectorized: processes all elements in parallel across bit positions,
-    avoiding a Python-level loop over elements.
+def stack_node_values(subsystem) -> np.ndarray:
+    """Return the (num_nodes, 2^m) node-value matrix for the subsystem, copied
+    into one contiguous buffer preserving the cubes' dtype (an integer TPM stays
+    compact; the cost table casts to float32 per chunk).
     """
-    remaining = values.astype(np.uint64, copy=True)
-    counts = np.zeros(values.shape, dtype=np.uint8)
-    for _ in range(num_bits):
-        counts += (remaining & np.uint64(1)).astype(np.uint8)
-        remaining >>= np.uint64(1)
-    return counts
+    ncubes = subsystem.ncubes
+    if not ncubes:
+        return np.empty((0, 0), dtype=np.float32)
+    size = ncubes[0].data.size
+    stacked = np.empty((len(ncubes), size), dtype=ncubes[0].data.dtype)
+    for row, cube in enumerate(ncubes):
+        stacked[row] = cube.data.reshape(-1)
+    return stacked
+
+
+def _popcount(values: NDArray[np.int64], num_bits: int) -> NDArray[np.uint8]:
+    """Per-element population count of (num_bits)-bit non-negative integers."""
+    mask = (np.int64(1) << num_bits) - np.int64(1)
+    return np.bitwise_count((values & mask).astype(np.uint64)).astype(np.uint8)
 
 
 def _bit_reverse(values: NDArray[np.int64], num_bits: int) -> NDArray[np.int64]:

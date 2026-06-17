@@ -38,7 +38,7 @@ class Phi(SIA):
 
     @profile(context={TYPE_TAG: PYPHI_ANALYSIS_TAG})
     def apply_strategy(self, condition: str, purview: str, mechanism: str) -> Solution:
-        self.sia_start_time = time.time()
+        self.sia_start_time = time.perf_counter()
         length = len(self.initial_state)
         state = tuple(int(s) for s in self.initial_state)
         indices = tuple(range(length))

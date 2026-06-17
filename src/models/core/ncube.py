@@ -50,7 +50,8 @@ class NCube:
         selection = [slice(None)] * num_dims
 
         for cond_idx in conditioned_indices:
-            level = num_dims - (cond_idx + 1)
+            dim_idx = int(np.searchsorted(self.dims, cond_idx))
+            level = num_dims - 1 - dim_idx
             selection[level] = initial_state[cond_idx]
 
         new_dims = np.array(
@@ -83,7 +84,7 @@ class NCube:
                 if int(dim) not in axes_set:
                     axis = num_dims - dim_idx if little_endian else dim_idx
                     selection[axis] = int(initial_state[dim])
-            cached = np.asarray(self.data[tuple(selection)]).mean()
+            cached = np.asarray(self.data[tuple(selection)]).mean(dtype=np.float32)
             self.value_memo[key] = cached
         return cached
 
@@ -108,7 +109,11 @@ class NCube:
                 dtype=np.int8,
             )
             cached = (
-                np.mean(self.data, axis=local_axes, keepdims=False),
+                np.asarray(
+                    np.mean(
+                        self.data, axis=local_axes, keepdims=False, dtype=np.float32
+                    )
+                ),
                 remaining_dims,
             )
             self.memo[key] = cached

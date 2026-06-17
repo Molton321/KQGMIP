@@ -75,8 +75,8 @@ espectral/KMeans determinista~\cite{vonluxburg}.
 	      (p.\,ej.\ $0{,}47$ vs.\ $4{,}69$ en N10A, $k=2$).
 	\item \textbf{Eficiencia:} tabla de costos vectorizada e indexada por el entero
 	      del estado ($\sim$20× a $m{=}10$ y $\sim$80× a $m{=}15$ sobre la versión con
-	      diccionario, creciente con $m$) y marginal local; tensores \texttt{float32}
-	      (pico medido $7{,}9$~GB a $n=25$, cabe en 16~GB) y paralelismo por procesos (PCD).
+	      diccionario, creciente con $m$) y marginal local; n-cubos compactos en \texttt{uint8} (TPM 0/1)
+	      (pico medido $\sim$6~GB a $n=25$, cabe en 16~GB) y paralelismo por procesos (PCD).
 \end{itemize}
 
 \subsection{Alcance y recomendaciones de uso}
@@ -501,7 +501,7 @@ la generación del \emph{cut pool}; el refinamiento posterior es el mismo
 
 \subsection{Estructuras de datos}
 \begin{itemize}
-	\item \textbf{NCube} — tensor $(2,\dots,2)$ \texttt{float32} por columna de la
+	\item \textbf{NCube} — tensor $(2,\dots,2)$ \texttt{uint8}/\texttt{float32} (según la TPM) por columna de la
 	      TPM; \texttt{marginalize} es puro (devuelve un nuevo NCube) y memoizado.
 	\item \textbf{System} — colección de NCubes con \texttt{condition},
 	      \texttt{subtract}, \texttt{bipartition} (memoizada), \texttt{k\_partition} y
@@ -573,9 +573,9 @@ siguientes reportan solo su refinamiento.
 	      de $\dk$ y en el bucle submodular de QNodes (§\ref{sec:marginal-local}).
 	\item \textbf{TPM en \texttt{uint8}:} las TPMs deterministas 0/1 se cargan como
 	      enteros de un byte ($0{,}84$~GB en $n=25$ frente a $3{,}36$~GB en
-	      \texttt{float32}); \texttt{System} convierte cada columna a \texttt{float32} al
-	      construir su n-cubo, de modo que toda la aritmética posterior es en punto
-	      flotante y el resultado no cambia. Las TPMs continuas conservan
+	      \texttt{float32}); los n-cubos son \emph{vistas} de ese buffer (sin copia) y la
+	      aritmética (marginales, tabla de costos) castea a \texttt{float32} donde se
+	      necesita, de modo que el resultado es bit-idéntico. Las TPMs continuas conservan
 	      \texttt{float32} de extremo a extremo.
 	\item \textbf{Memoización} de \texttt{bipartition}/\texttt{marginalize}/
 	      \texttt{marginal\_value} y del popcount de la tabla.
@@ -670,12 +670,12 @@ empírico de horas proyectadas a $\approx 25$~s en N25A. Frente a la fuerza brut
 $\bigO(S(2n,k)\,\cdot)$, ambas heurísticas reducen el factor combinatorio
 $S(2n,k)$ a uno polinómico en $n$ y $k$.
 
-\paragraph{Espacial.} Dos términos del mismo orden conviven en $n=25$: los
-n-cubos del subsistema ($n\,2^n$ valores \texttt{float32}, $3{,}36$~GB) y la
-tabla $T$ ($2^m \times n$, otros $3{,}36$~GB cuando $m=n$). Con la TPM en
-\texttt{uint8} ($0{,}84$~GB) el pico medido de KGeoMIP en N25A es de
-$7{,}9$~GB, dentro de una máquina de 16~GB; KQNodes, que no construye $T$,
-alcanza $5{,}6$~GB.
+\paragraph{Espacial.} Dos términos conviven en $n=25$: los
+n-cubos del subsistema (vistas \texttt{uint8} de la TPM, $0{,}84$~GB) y la
+tabla $T$ ($2^m \times n$, $3{,}36$~GB en \texttt{float32} cuando $m=n$, el
+término dominante). El pico medido de KGeoMIP en N25A es de
+$\sim$6~GB, dentro de una máquina de 16~GB; KQNodes, que no construye $T$,
+alcanza $\sim$1~GB.
 
 \paragraph{Análisis de casos.} El \textbf{mejor caso} del voraz ocurre cuando el
 primer corte ya aísla la masa de probabilidad (pérdida casi nula, p.\,ej.\ N15A

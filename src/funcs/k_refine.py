@@ -3,6 +3,7 @@
 import numpy as np
 from numpy.typing import NDArray
 
+from src.constants.base import FLOAT_ZERO
 from src.funcs.emd import delta_k
 from src.models.core.partition import KPartition
 from src.models.core.system import System
@@ -75,6 +76,8 @@ def _best_refinement(
             if loss < best_loss:
                 best_loss = loss
                 best_blocks = new_blocks
+                if best_loss == FLOAT_ZERO:
+                    return best_blocks
 
     return best_blocks
 
